@@ -8,13 +8,10 @@ import {
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyDyURfwNaIbNCMvjvOlr_lja9cf7NVPYSY",
-    authDomain: "assignment-portal-556d9.firebaseapp.com",
-    projectId: "assignment-portal-556d9",
-    storageBucket: "assignment-portal-556d9.firebasestorage.app",
-    messagingSenderId: "979956221332",
-    appId: "1:979956221332:web:acce0ec4dc6e9303293b81",
-    measurementId: "G-89PBEQFMKG"
+    apiKey:import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
 };
 
 // Initialize Firebase
