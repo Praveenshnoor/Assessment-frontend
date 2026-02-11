@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTimer } from '../hooks/useTimer';
 import { useFullscreen } from '../hooks/useFullscreen';
@@ -14,8 +14,7 @@ import {
   CheckCircle,
   Monitor
 } from 'lucide-react';
-import api from './../../axios';
-import { apiFetch, API_URL } from '../config/api';
+import { apiFetch } from '../config/api';
 
 // Questions will be fetched from API
 
@@ -90,7 +89,8 @@ const TestScreen = () => {
 
     try {
       // Submit to backend
-      const response = await api.post(`${API_URL}/api/student/submit-exam`, {
+      const response = await apiFetch('api/student/submit-exam', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
