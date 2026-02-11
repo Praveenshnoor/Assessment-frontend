@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Monitor, AlertTriangle, CheckCircle, Shield } from 'lucide-react';
+import { apiFetch } from '../config/api';
 
 const Instructions = () => {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ const Instructions = () => {
     // Fetch test details and check for saved progress
     const fetchTestData = async () => {
       try {
-        const response = await fetch(`/api/student/test/${testId}`, {
+        const response = await apiFetch(`api/student/test/${testId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -92,7 +93,7 @@ const Instructions = () => {
       // Only create initial progress if no progress exists (first time starting)
       if (!hasProgress) {
         console.log('Creating initial progress...');
-        const progressResponse = await fetch('/api/student/save-progress', {
+        const progressResponse = await apiFetch('api/student/save-progress', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

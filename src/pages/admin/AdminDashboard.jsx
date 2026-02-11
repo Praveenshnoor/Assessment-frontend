@@ -6,6 +6,7 @@ import {
   Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video
 } from 'lucide-react';
 import CreateTestSection from '../../components/admin/CreateTestSection';
+import { apiFetch } from '../../config/api';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -44,7 +45,7 @@ const AdminDashboard = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('/api/tests', {
+      const response = await apiFetch('api/tests', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -86,7 +87,7 @@ const AdminDashboard = () => {
   const fetchAllResults = async (testsList) => {
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('/api/export/all-results', {
+      const response = await apiFetch('api/export/all-results', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -169,7 +170,7 @@ const AdminDashboard = () => {
 
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`/api/tests/${testId}`, {
+      const response = await apiFetch(`api/tests/${testId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -198,7 +199,7 @@ const AdminDashboard = () => {
 
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`/api/tests/${testId}/status`, {
+      const response = await apiFetch(`api/tests/${testId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -235,7 +236,7 @@ const AdminDashboard = () => {
 
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`/api/export/results?testId=${selectedExamId}`, {
+      const response = await apiFetch(`api/export/results?testId=${selectedExamId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -280,7 +281,7 @@ const AdminDashboard = () => {
     try {
       setIsLoadingInstitutes(true);
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('/api/tests/institutes', {
+      const response = await apiFetch('api/tests/institutes', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -311,7 +312,7 @@ const AdminDashboard = () => {
     if (!isExpanded && !instituteStudents[instituteName]) {
       try {
         const token = localStorage.getItem('adminToken');
-        const response = await fetch(`/api/tests/institutes/${encodeURIComponent(instituteName)}/students`, {
+        const response = await apiFetch(`api/tests/institutes/${encodeURIComponent(instituteName)}/students`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -382,7 +383,7 @@ const AdminDashboard = () => {
     try {
       setIsAssigning(true);
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('/api/tests/assign', {
+      const response = await apiFetch('api/tests/assign', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

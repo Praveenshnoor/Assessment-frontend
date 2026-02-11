@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { LogOut, Clock, BookOpen, AlertCircle } from 'lucide-react';
+import { apiFetch } from '../config/api';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -36,7 +37,7 @@ const Dashboard = () => {
       setInstitute(localStorage.getItem('institute') || '');
 
       try {
-        const response = await fetch('/api/student/tests', {
+        const response = await apiFetch('api/student/tests', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -59,7 +60,7 @@ const Dashboard = () => {
               }
               
               try {
-                const progressResponse = await fetch(`/api/student/test/${test.id}`, {
+                const progressResponse = await apiFetch(`api/student/test/${test.id}`, {
                   headers: {
                     'Authorization': `Bearer ${token}`
                   }

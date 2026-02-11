@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { apiFetch } from '../config/api';
 
 
 const Login = () => {
@@ -45,7 +46,7 @@ const Login = () => {
     try {
       // Step 1: Attempt Admin Login (silently)
       try {
-        const adminResponse = await fetch('/api/admin/login', {
+        const adminResponse = await apiFetch('api/admin/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -79,7 +80,7 @@ const Login = () => {
       const idToken = await userCredential.user.getIdToken();
 
       // Step 4: Call backend to get student profile
-      const response = await fetch('/api/login', {
+      const response = await apiFetch('api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

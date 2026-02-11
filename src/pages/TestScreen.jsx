@@ -14,6 +14,8 @@ import {
   CheckCircle,
   Monitor
 } from 'lucide-react';
+import api from './../../axios';
+import { apiFetch, API_URL } from '../config/api';
 
 // Questions will be fetched from API
 
@@ -88,8 +90,7 @@ const TestScreen = () => {
 
     try {
       // Submit to backend
-      const response = await fetch('/api/student/submit-exam', {
-        method: 'POST',
+      const response = await api.post(`${API_URL}/api/student/submit-exam`, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -178,7 +179,7 @@ const TestScreen = () => {
       
       console.log('💾 Saving progress manually');
       
-      const response = await fetch('/api/student/save-progress', {
+      const response = await apiFetch('api/student/save-progress', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -241,7 +242,7 @@ const TestScreen = () => {
       }
 
       try {
-        const response = await fetch(`/api/student/test/${testId}`, {
+        const response = await apiFetch(`api/student/test/${testId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

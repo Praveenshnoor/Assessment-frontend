@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { apiFetch } from '../config/api';
 
 
 const Register = () => {
@@ -86,7 +87,7 @@ const Register = () => {
       const idToken = await userCredential.user.getIdToken();
 
       // Step 3: Send user data to backend with Firebase token
-      const response = await fetch('/api/register', {
+      const response = await apiFetch('api/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

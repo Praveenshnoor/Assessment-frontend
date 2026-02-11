@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Upload, FileText, Plus, Save, Trash2, ArrowLeft, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { apiFetch } from '../../config/api';
 
 const CreateTestSection = ({ onComplete }) => {
     const [step, setStep] = useState('init'); // init, manual, bulk, success
@@ -42,7 +43,7 @@ const CreateTestSection = ({ onComplete }) => {
 
             try {
                 const token = localStorage.getItem('adminToken');
-                const response = await fetch(`/api/tests/check-name/${encodeURIComponent(testTitle)}`, {
+                const response = await apiFetch(`api/tests/check-name/${encodeURIComponent(testTitle)}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -107,7 +108,7 @@ const CreateTestSection = ({ onComplete }) => {
         
         try {
             const token = localStorage.getItem('adminToken');
-            const response = await fetch('/api/upload/manual', {
+            const response = await apiFetch('api/upload/manual', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -170,7 +171,7 @@ const CreateTestSection = ({ onComplete }) => {
             formData.append('status', 'draft'); // Save as draft initially
 
             const token = localStorage.getItem('adminToken');
-            const response = await fetch('/api/upload/questions', {
+            const response = await apiFetch('api/upload/questions', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -199,7 +200,7 @@ const CreateTestSection = ({ onComplete }) => {
         setIsPublishing(true);
         try {
             const token = localStorage.getItem('adminToken');
-            const response = await fetch(`/api/tests/${uploadedTestId}/status`, {
+            const response = await apiFetch(`api/tests/${uploadedTestId}/status`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
