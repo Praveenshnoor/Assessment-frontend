@@ -119,11 +119,9 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
-      {/* Job Description Modal */}
       {showJobModal && selectedTest && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
-            {/* Modal Header */}
             <div className="bg-gradient-to-r from-[#3B82F6] to-blue-600 px-6 py-4 flex justify-between items-center">
               <div>
                 <h3 className="text-xl font-bold text-white">{selectedTest.title}</h3>
@@ -137,9 +135,7 @@ const Dashboard = () => {
               </button>
             </div>
 
-            {/* Modal Body */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-              {/* Job Role */}
               {selectedTest.jobRole && (
                 <div className="mb-6">
                   <div className="flex items-center mb-3">
@@ -154,7 +150,6 @@ const Dashboard = () => {
                 </div>
               )}
 
-              {/* Job Description */}
               {selectedTest.description && (
                 <div>
                   <div className="flex items-center mb-3">
@@ -177,7 +172,6 @@ const Dashboard = () => {
               )}
             </div>
 
-            {/* Modal Footer */}
             <div className="bg-gray-50 px-6 py-4 flex justify-end border-t border-gray-200">
               <button
                 onClick={() => setShowJobModal(false)}
@@ -190,7 +184,6 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Header */}
       <header className="bg-[#111827] shadow-sm border-b-4 border-[#3B82F6] sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">

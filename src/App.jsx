@@ -8,6 +8,7 @@ import Result from './pages/Results';
 import Feedback from './pages/Feedback';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminReports from './pages/admin/AdminReports';
 import LiveProctoring from './pages/admin/LiveProctoring';
 
 // Protected Route wrappers
@@ -47,6 +48,7 @@ function App() {
 
         {/* Admin Routes */}
         <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+        <Route path="/admin/reports" element={<AdminRoute><AdminReports /></AdminRoute>} />
         <Route path="/admin/live-proctoring" element={<AdminRoute><LiveProctoring /></AdminRoute>} />
 
         {/* Default */}

@@ -437,6 +437,13 @@ const AdminDashboard = () => {
             </div>
             <div className="flex items-center space-x-3">
               <button
+                onClick={() => navigate('/admin/reports')}
+                className="flex items-center space-x-2 px-5 py-2.5 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-semibold"
+              >
+                <FileSpreadsheet size={20} />
+                <span className="font-medium">Reports</span>
+              </button>
+              <button
                 onClick={() => navigate('/admin/live-proctoring')}
                 className="flex items-center space-x-2 px-5 py-2.5 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-semibold"
               >
