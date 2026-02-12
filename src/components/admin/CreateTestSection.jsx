@@ -5,6 +5,7 @@ import { apiFetch } from '../../config/api';
 const CreateTestSection = ({ onComplete }) => {
     const [step, setStep] = useState('init'); // init, manual, bulk, success
     const [testTitle, setTestTitle] = useState('');
+    const [jobRole, setJobRole] = useState('');
     const [testDescription, setTestDescription] = useState('');
     const [duration, setDuration] = useState(60);
     const [maxAttempts, setMaxAttempts] = useState(1);
@@ -74,6 +75,14 @@ const CreateTestSection = ({ onComplete }) => {
             alert('Please enter a test title first');
             return;
         }
+        if (!jobRole.trim()) {
+            alert('Please enter a job role');
+            return;
+        }
+        if (!testDescription.trim()) {
+            alert('Please enter a job description');
+            return;
+        }
         if (nameAvailability.available === false) {
             alert('This test name is already taken. Please choose a different name.');
             return;
@@ -116,6 +125,7 @@ const CreateTestSection = ({ onComplete }) => {
                 },
                 body: JSON.stringify({
                     testName: testTitle,
+                    jobRole: jobRole,
                     testDescription: testDescription,
                     duration: duration,
                     maxAttempts: maxAttempts,
@@ -162,6 +172,7 @@ const CreateTestSection = ({ onComplete }) => {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('testName', testTitle);
+            formData.append('jobRole', jobRole);
             formData.append('testDescription', testDescription);
             formData.append('duration', duration);
             formData.append('maxAttempts', maxAttempts);
@@ -229,6 +240,7 @@ const CreateTestSection = ({ onComplete }) => {
     const resetForm = () => {
         setStep('init');
         setTestTitle('');
+        setJobRole('');
         setTestDescription('');
         setDuration(60);
         setMaxAttempts(1);
@@ -294,14 +306,29 @@ const CreateTestSection = ({ onComplete }) => {
 
                         {/* Test Description */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Job Role *</label>
+                            <input
+                                type="text"
+                                value={jobRole}
+                                onChange={(e) => setJobRole(e.target.value)}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                                placeholder="e.g., Software Engineer, Data Analyst, Marketing Manager"
+                                required
+                            />
+                        </div>
+
+                        {/* Test Description */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Job Description *</label>
                             <textarea
                                 value={testDescription}
                                 onChange={(e) => setTestDescription(e.target.value)}
-                                rows={3}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent"
-                                placeholder="Brief description of the test..."
+                                rows={6}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent resize-y"
+                                placeholder="Add job role field and job description viewer for students"
+                                required
                             />
+                            <p className="mt-1 text-xs text-gray-500">Provide comprehensive job details - students will be able to view this before taking the test</p>
                         </div>
 
                         {/* Duration and Max Attempts */}
@@ -368,11 +395,11 @@ const CreateTestSection = ({ onComplete }) => {
                             <button
                                 onClick={() => handleStart('manual')}
                                 className={`p-6 border-2 rounded-xl text-left transition-all hover:border-slate-900 group ${
-                                    !testTitle || nameAvailability.available === false || nameAvailability.checking
+                                    !testTitle || !jobRole || !testDescription || nameAvailability.available === false || nameAvailability.checking
                                         ? 'opacity-50 cursor-not-allowed' 
                                         : 'hover:shadow-md'
                                 }`}
-                                disabled={!testTitle || nameAvailability.available === false || nameAvailability.checking}
+                                disabled={!testTitle || !jobRole || !testDescription || nameAvailability.available === false || nameAvailability.checking}
                             >
                                 <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
                                     <Plus className="w-6 h-6 text-blue-600 group-hover:text-white" />
@@ -384,11 +411,11 @@ const CreateTestSection = ({ onComplete }) => {
                             <button
                                 onClick={() => handleStart('bulk')}
                                 className={`p-6 border-2 rounded-xl text-left transition-all hover:border-slate-900 group ${
-                                    !testTitle || nameAvailability.available === false || nameAvailability.checking
+                                    !testTitle || !jobRole || !testDescription || nameAvailability.available === false || nameAvailability.checking
                                         ? 'opacity-50 cursor-not-allowed' 
                                         : 'hover:shadow-md'
                                 }`}
-                                disabled={!testTitle || nameAvailability.available === false || nameAvailability.checking}
+                                disabled={!testTitle || !jobRole || !testDescription || nameAvailability.available === false || nameAvailability.checking}
                             >
                                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-green-600 transition-colors">
                                     <Upload className="w-6 h-6 text-green-600 group-hover:text-white" />

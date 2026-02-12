@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { LogOut, Clock, BookOpen, AlertCircle } from 'lucide-react';
+import { LogOut, Clock, BookOpen, AlertCircle, FileText, X } from 'lucide-react';
 import { apiFetch } from '../config/api';
 
 const Dashboard = () => {
@@ -23,6 +23,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [testsWithProgress, setTestsWithProgress] = useState(new Set());
+  const [selectedTest, setSelectedTest] = useState(null);
+  const [showJobModal, setShowJobModal] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -110,8 +112,84 @@ const Dashboard = () => {
     navigate('/instructions');
   };
 
+  const handleViewJobDescription = (test) => {
+    setSelectedTest(test);
+    setShowJobModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
+      {/* Job Description Modal */}
+      {showJobModal && selectedTest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-[#3B82F6] to-blue-600 px-6 py-4 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-white">{selectedTest.title}</h3>
+                <p className="text-blue-100 text-sm mt-1">Job Role & Description</p>
+              </div>
+              <button
+                onClick={() => setShowJobModal(false)}
+                className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+              {/* Job Role */}
+              {selectedTest.jobRole && (
+                <div className="mb-6">
+                  <div className="flex items-center mb-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                      <FileText className="w-5 h-5 text-[#3B82F6]" />
+                    </div>
+                    <h4 className="text-lg font-bold text-[#111827]">Job Role</h4>
+                  </div>
+                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-[#3B82F6] p-5 rounded-r-lg">
+                    <p className="text-[#111827] font-bold text-xl">{selectedTest.jobRole}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Job Description */}
+              {selectedTest.description && (
+                <div>
+                  <div className="flex items-center mb-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                      <BookOpen className="w-5 h-5 text-green-600" />
+                    </div>
+                    <h4 className="text-lg font-bold text-[#111827]">Job Description</h4>
+                  </div>
+                  <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <p className="text-[#374151] whitespace-pre-wrap leading-relaxed text-base">{selectedTest.description}</p>
+                  </div>
+                </div>
+              )}
+
+              {!selectedTest.jobRole && !selectedTest.description && (
+                <div className="text-center py-8 text-gray-400">
+                  <FileText className="mx-auto h-12 w-12 mb-3 opacity-50" />
+                  <p>No job description available for this test</p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-end border-t border-gray-200">
+              <button
+                onClick={() => setShowJobModal(false)}
+                className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-[#111827] shadow-sm border-b-4 border-[#3B82F6] sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -254,31 +332,41 @@ const Dashboard = () => {
                   )}
                 </div>
 
-                <button
-                  onClick={() => test.isAvailable && !test.alreadyTaken && handleTakeTest(test.id)}
-                  disabled={!test.isAvailable || test.alreadyTaken}
-                  className={`w-full py-3 px-4 font-semibold rounded-lg transition-colors shadow-sm ${
-                    test.alreadyTaken
-                      ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                <div className="space-y-3">
+                  <button
+                    onClick={() => handleViewJobDescription(test)}
+                    className="w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors flex items-center justify-center space-x-2 border border-gray-300"
+                  >
+                    <FileText size={18} />
+                    <span>View Job Description</span>
+                  </button>
+
+                  <button
+                    onClick={() => test.isAvailable && !test.alreadyTaken && handleTakeTest(test.id)}
+                    disabled={!test.isAvailable || test.alreadyTaken}
+                    className={`w-full py-3 px-4 font-semibold rounded-lg transition-colors shadow-sm ${
+                      test.alreadyTaken
+                        ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                        : test.testStatus === 'upcoming'
+                        ? 'bg-orange-400 text-white cursor-not-allowed'
+                        : test.testStatus === 'expired'
+                        ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                        : testsWithProgress.has(test.id)
+                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                        : 'bg-[#3B82F6] hover:bg-blue-600 text-white'
+                    }`}
+                  >
+                    {test.alreadyTaken 
+                      ? `Completed (${test.attemptsTaken}/${test.maxAttempts} attempts used)` 
                       : test.testStatus === 'upcoming'
-                      ? 'bg-orange-400 text-white cursor-not-allowed'
+                      ? `🕐 ${test.availabilityMessage}`
                       : test.testStatus === 'expired'
-                      ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                      ? `⏰ ${test.availabilityMessage}`
                       : testsWithProgress.has(test.id)
-                      ? 'bg-green-600 hover:bg-green-700 text-white'
-                      : 'bg-[#3B82F6] hover:bg-blue-600 text-white'
-                  }`}
-                >
-                  {test.alreadyTaken 
-                    ? `Completed (${test.attemptsTaken}/${test.maxAttempts} attempts used)` 
-                    : test.testStatus === 'upcoming'
-                    ? `🕐 ${test.availabilityMessage}`
-                    : test.testStatus === 'expired'
-                    ? `⏰ ${test.availabilityMessage}`
-                    : testsWithProgress.has(test.id)
-                    ? '▶ Resume Test'
-                    : `Take Test (${test.attemptsRemaining} attempts left)`}
-                </button>
+                      ? '▶ Resume Test'
+                      : `Take Test (${test.attemptsRemaining} attempts left)`}
+                  </button>
+                </div>
               </div>
               );
             })}
