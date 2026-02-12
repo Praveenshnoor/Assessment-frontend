@@ -26,6 +26,14 @@ const AdminDashboard = () => {
   const [isLoadingInstitutes, setIsLoadingInstitutes] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
 
+  // Job Role/Description Modal States
+  const [showJobModal, setShowJobModal] = useState(false);
+  const [selectedJobTest, setSelectedJobTest] = useState(null);
+  const [jobRole, setJobRole] = useState('');
+  const [jobDescription, setJobDescription] = useState('');
+  const [isEditingJob, setIsEditingJob] = useState(false);
+  const [isSavingJob, setIsSavingJob] = useState(false);
+
   // Derived state: Get students for the selected exam
   const selectedExamStudents = selectedExamId ? (studentsData[selectedExamId] || []) : [];
   const selectedExamDetails = tests.find(t => t.id === selectedExamId);
@@ -66,6 +74,8 @@ const AdminDashboard = () => {
           passingPercentage: test.passing_percentage || 50,
           startDateTime: test.start_datetime,
           endDateTime: test.end_datetime,
+          jobRole: test.job_role || '',
+          description: test.description || '',
           date: new Date(test.created_at).toLocaleDateString('en-US', { 
             year: 'numeric', 
             month: 'short', 
@@ -420,6 +430,54 @@ const AdminDashboard = () => {
     ).join(' ');
   };
 
+  // Handle viewing job role and description
+  const handleViewJob = (test) => {
+    setSelectedJobTest(test);
+    setJobRole(test.jobRole || '');
+    setJobDescription(test.description || '');
+    setIsEditingJob(false);
+    setShowJobModal(true);
+  };
+
+  // Handle saving job role and description
+  const handleSaveJob = async () => {
+    if (!jobRole.trim()) {
+      alert('Job role is required');
+      return;
+    }
+
+    try {
+      setIsSavingJob(true);
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch(`api/tests/${selectedJobTest.id}/job-details`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          job_role: jobRole.trim(),
+          description: jobDescription.trim()
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert('Job details updated successfully');
+        setIsEditingJob(false);
+        fetchTests(); // Refresh the list
+      } else {
+        alert(data.message || 'Failed to update job details');
+      }
+    } catch (error) {
+      console.error('Error updating job details:', error);
+      alert('Failed to update job details');
+    } finally {
+      setIsSavingJob(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
       {/* Header */}
@@ -642,8 +700,8 @@ const AdminDashboard = () => {
                           key={test.id}
                           className="bg-white border-2 border-[#E5E7EB] rounded-xl p-6 hover:shadow-lg hover:border-[#3B82F6] transition-all group relative"
                         >
-                          {/* Status Badge */}
-                          <div className="absolute top-4 right-4">
+                          {/* Status Badge and Job View Button */}
+                          <div className="absolute top-4 right-4 flex items-center space-x-2">
                             {test.status === 'published' ? (
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                 <CheckCircle size={12} className="mr-1" />
@@ -659,6 +717,16 @@ const AdminDashboard = () => {
                                 Draft
                               </span>
                             )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewJob(test);
+                              }}
+                              className="p-1.5 bg-blue-100 hover:bg-[#3B82F6] text-[#3B82F6] hover:text-white rounded-lg transition-colors"
+                              title="View/Edit Job Details"
+                            >
+                              <Eye size={14} />
+                            </button>
                           </div>
 
                           {/* Header with Icon */}
@@ -939,6 +1007,120 @@ const AdminDashboard = () => {
           </>
         )}
       </main>
+
+      {/* Job Role/Description Modal */}
+      {showJobModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-[#E5E7EB]">
+              <div className="flex items-center justify-between">
+                <h3 className="text-2xl font-bold text-[#111827]">
+                  {isEditingJob ? 'Edit Job Details' : 'Job Details'}
+                </h3>
+                <button
+                  onClick={() => setShowJobModal(false)}
+                  className="text-[#374151] hover:text-[#111827] transition-colors"
+                >
+                  <XCircle size={24} />
+                </button>
+              </div>
+              <p className="text-sm text-[#374151] mt-1">
+                Test: {selectedJobTest?.name}
+              </p>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Job Role */}
+              <div>
+                <label className="block text-sm font-bold text-[#111827] mb-2">
+                  Job Role {isEditingJob && <span className="text-red-600">*</span>}
+                </label>
+                {isEditingJob ? (
+                  <input
+                    type="text"
+                    value={jobRole}
+                    onChange={(e) => setJobRole(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#3B82F6] bg-white text-[#111827] font-medium"
+                    placeholder="e.g., Senior Software Engineer"
+                  />
+                ) : (
+                  <div className="px-4 py-3 bg-[#F9FAFB] rounded-xl border-2 border-[#E5E7EB]">
+                    <p className="text-[#111827] font-semibold">
+                      {jobRole || 'Not specified'}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Job Description */}
+              <div>
+                <label className="block text-sm font-bold text-[#111827] mb-2">
+                  Job Description
+                </label>
+                {isEditingJob ? (
+                  <textarea
+                    value={jobDescription}
+                    onChange={(e) => setJobDescription(e.target.value)}
+                    rows="10"
+                    className="w-full px-4 py-3 border-2 border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#3B82F6] bg-white text-[#111827] resize-none"
+                    placeholder="Enter detailed job description including responsibilities, requirements, skills needed, etc."
+                  />
+                ) : (
+                  <div className="px-4 py-3 bg-[#F9FAFB] rounded-xl border-2 border-[#E5E7EB] max-h-96 overflow-y-auto">
+                    <p className="text-[#374151] whitespace-pre-wrap">
+                      {jobDescription || 'No description provided'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-[#E5E7EB] flex justify-end space-x-3">
+              {isEditingJob ? (
+                <>
+                  <button
+                    onClick={() => {
+                      setIsEditingJob(false);
+                      setJobRole(selectedJobTest?.jobRole || '');
+                      setJobDescription(selectedJobTest?.description || '');
+                    }}
+                    className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-[#111827] rounded-xl font-medium transition-colors"
+                    disabled={isSavingJob}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveJob}
+                    disabled={isSavingJob}
+                    className="px-6 py-3 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    {isSavingJob && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    )}
+                    <span>{isSavingJob ? 'Saving...' : 'Save Changes'}</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowJobModal(false)}
+                    className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-[#111827] rounded-xl font-medium transition-colors"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => setIsEditingJob(true)}
+                    className="px-6 py-3 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-xl font-medium transition-colors"
+                  >
+                    Edit Details
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
