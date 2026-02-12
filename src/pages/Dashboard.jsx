@@ -25,6 +25,7 @@ const Dashboard = () => {
   const [testsWithProgress, setTestsWithProgress] = useState(new Set());
   const [selectedTest, setSelectedTest] = useState(null);
   const [showJobModal, setShowJobModal] = useState(false);
+  const [selectedJobRoleIndex, setSelectedJobRoleIndex] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -50,6 +51,14 @@ const Dashboard = () => {
         }
 
         const data = await response.json();
+        console.log('=== STUDENT TESTS API RESPONSE ===');
+        console.log('Full response:', data);
+        console.log('Tests count:', data.tests?.length);
+        if (data.tests && data.tests.length > 0) {
+          console.log('First test:', data.tests[0]);
+          console.log('First test jobRoles:', data.tests[0].jobRoles);
+        }
+        
         if (data.success) {
           setAvailableTests(data.tests);
           
@@ -113,7 +122,13 @@ const Dashboard = () => {
   };
 
   const handleViewJobDescription = (test) => {
+    console.log('=== VIEW JOB DESCRIPTION ===');
+    console.log('Test data:', test);
+    console.log('Job Roles:', test.jobRoles);
+    console.log('Job Roles length:', test.jobRoles?.length);
+    console.log('Job Role (old):', test.jobRole);
     setSelectedTest(test);
+    setSelectedJobRoleIndex(0); // Reset to first role
     setShowJobModal(true);
   };
 
@@ -136,35 +151,86 @@ const Dashboard = () => {
             </div>
 
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-              {selectedTest.jobRole && (
-                <div className="mb-6">
-                  <div className="flex items-center mb-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                      <FileText className="w-5 h-5 text-[#3B82F6]" />
-                    </div>
-                    <h4 className="text-lg font-bold text-[#111827]">Job Role</h4>
+              {selectedTest.jobRoles && selectedTest.jobRoles.length > 0 ? (
+                <>
+                  {/* Always show dropdown if jobRoles exist */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-bold text-[#111827] mb-2">
+                      Select Job Role {selectedTest.jobRoles.length > 1 && `(${selectedTest.jobRoles.length} available)`}
+                    </label>
+                    <select
+                      value={selectedJobRoleIndex}
+                      onChange={(e) => setSelectedJobRoleIndex(parseInt(e.target.value))}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3B82F6] focus:border-[#3B82F6] bg-white text-[#111827] font-medium"
+                      disabled={selectedTest.jobRoles.length === 1}
+                    >
+                      {selectedTest.jobRoles.map((role, index) => (
+                        <option key={index} value={index}>
+                          {role.jobRole}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-[#3B82F6] p-5 rounded-r-lg">
-                    <p className="text-[#111827] font-bold text-xl">{selectedTest.jobRole}</p>
-                  </div>
-                </div>
-              )}
 
-              {selectedTest.description && (
-                <div>
-                  <div className="flex items-center mb-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                      <BookOpen className="w-5 h-5 text-green-600" />
+                  <div className="mb-6">
+                    <div className="flex items-center mb-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                        <FileText className="w-5 h-5 text-[#3B82F6]" />
+                      </div>
+                      <h4 className="text-lg font-bold text-[#111827]">Job Role</h4>
                     </div>
-                    <h4 className="text-lg font-bold text-[#111827]">Job Description</h4>
+                    <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-[#3B82F6] p-5 rounded-r-lg">
+                      <p className="text-[#111827] font-bold text-xl">
+                        {selectedTest.jobRoles[selectedJobRoleIndex]?.jobRole || 'Not specified'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-                    <p className="text-[#374151] whitespace-pre-wrap leading-relaxed text-base">{selectedTest.description}</p>
-                  </div>
-                </div>
-              )}
 
-              {!selectedTest.jobRole && !selectedTest.description && (
+                  {selectedTest.jobRoles[selectedJobRoleIndex]?.jobDescription && (
+                    <div>
+                      <div className="flex items-center mb-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                          <BookOpen className="w-5 h-5 text-green-600" />
+                        </div>
+                        <h4 className="text-lg font-bold text-[#111827]">Job Description</h4>
+                      </div>
+                      <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                        <p className="text-[#374151] whitespace-pre-wrap leading-relaxed text-base">
+                          {selectedTest.jobRoles[selectedJobRoleIndex].jobDescription}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : selectedTest.jobRole ? (
+                <>
+                  <div className="mb-6">
+                    <div className="flex items-center mb-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                        <FileText className="w-5 h-5 text-[#3B82F6]" />
+                      </div>
+                      <h4 className="text-lg font-bold text-[#111827]">Job Role</h4>
+                    </div>
+                    <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-[#3B82F6] p-5 rounded-r-lg">
+                      <p className="text-[#111827] font-bold text-xl">{selectedTest.jobRole}</p>
+                    </div>
+                  </div>
+
+                  {selectedTest.description && (
+                    <div>
+                      <div className="flex items-center mb-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                          <BookOpen className="w-5 h-5 text-green-600" />
+                        </div>
+                        <h4 className="text-lg font-bold text-[#111827]">Job Description</h4>
+                      </div>
+                      <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                        <p className="text-[#374151] whitespace-pre-wrap leading-relaxed text-base">{selectedTest.description}</p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
                 <div className="text-center py-8 text-gray-400">
                   <FileText className="mx-auto h-12 w-12 mb-3 opacity-50" />
                   <p>No job description available for this test</p>

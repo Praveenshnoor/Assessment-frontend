@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, FileSpreadsheet, LogOut, Download, ArrowLeft, 
-  Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video
+  Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video, Loader2, X
 } from 'lucide-react';
 import CreateTestSection from '../../components/admin/CreateTestSection';
 import { apiFetch } from '../../config/api';
@@ -29,10 +29,11 @@ const AdminDashboard = () => {
   // Job Role/Description Modal States
   const [showJobModal, setShowJobModal] = useState(false);
   const [selectedJobTest, setSelectedJobTest] = useState(null);
-  const [jobRole, setJobRole] = useState('');
-  const [jobDescription, setJobDescription] = useState('');
+  const [jobRoles, setJobRoles] = useState([]);
+  const [selectedJobRoleIndex, setSelectedJobRoleIndex] = useState(0);
   const [isEditingJob, setIsEditingJob] = useState(false);
   const [isSavingJob, setIsSavingJob] = useState(false);
+  const [isLoadingJobRoles, setIsLoadingJobRoles] = useState(false);
 
   // Derived state: Get students for the selected exam
   const selectedExamStudents = selectedExamId ? (studentsData[selectedExamId] || []) : [];
@@ -431,51 +432,117 @@ const AdminDashboard = () => {
   };
 
   // Handle viewing job role and description
-  const handleViewJob = (test) => {
+  const handleViewJob = async (test) => {
     setSelectedJobTest(test);
-    setJobRole(test.jobRole || '');
-    setJobDescription(test.description || '');
     setIsEditingJob(false);
     setShowJobModal(true);
+    setIsLoadingJobRoles(true);
+    
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch(`api/tests/${test.id}/job-roles`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success && data.job_roles.length > 0) {
+        const roles = data.job_roles.map(r => ({
+          jobRole: r.job_role,
+          jobDescription: r.job_description,
+          isDefault: r.is_default
+        }));
+        setJobRoles(roles);
+        setSelectedJobRoleIndex(0);
+      } else {
+        // Fallback to test's default job role
+        setJobRoles([{
+          jobRole: test.jobRole || '',
+          jobDescription: test.description || '',
+          isDefault: true
+        }]);
+        setSelectedJobRoleIndex(0);
+      }
+    } catch (error) {
+      console.error('Error fetching job roles:', error);
+      // Fallback to test's default job role
+      setJobRoles([{
+        jobRole: test.jobRole || '',
+        jobDescription: test.description || '',
+        isDefault: true
+      }]);
+      setSelectedJobRoleIndex(0);
+    } finally {
+      setIsLoadingJobRoles(false);
+    }
   };
 
   // Handle saving job role and description
   const handleSaveJob = async () => {
-    if (!jobRole.trim()) {
-      alert('Job role is required');
-      return;
+    // Validate all job roles
+    for (let i = 0; i < jobRoles.length; i++) {
+      if (!jobRoles[i].jobRole.trim()) {
+        alert(`Job role ${i + 1} is required`);
+        return;
+      }
     }
 
     try {
       setIsSavingJob(true);
       const token = localStorage.getItem('adminToken');
-      const response = await apiFetch(`api/tests/${selectedJobTest.id}/job-details`, {
-        method: 'PUT',
+      const response = await apiFetch(`api/tests/${selectedJobTest.id}/job-roles`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          job_role: jobRole.trim(),
-          description: jobDescription.trim()
+          job_roles: jobRoles.map(r => ({
+            job_role: r.jobRole.trim(),
+            job_description: r.jobDescription.trim()
+          }))
         })
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
-        alert('Job details updated successfully');
+        alert('Job roles updated successfully');
         setIsEditingJob(false);
         fetchTests(); // Refresh the list
       } else {
-        alert(data.message || 'Failed to update job details');
+        alert(data.message || 'Failed to update job roles');
       }
     } catch (error) {
-      console.error('Error updating job details:', error);
-      alert('Failed to update job details');
+      console.error('Error updating job roles:', error);
+      alert('Failed to update job roles');
     } finally {
       setIsSavingJob(false);
     }
+  };
+
+  const handleAddJobRole = () => {
+    setJobRoles([...jobRoles, { jobRole: '', jobDescription: '', isDefault: false }]);
+  };
+
+  const handleRemoveJobRole = (index) => {
+    if (jobRoles.length === 1) {
+      alert('At least one job role is required');
+      return;
+    }
+    const newJobRoles = jobRoles.filter((_, i) => i !== index);
+    setJobRoles(newJobRoles);
+    if (selectedJobRoleIndex >= newJobRoles.length) {
+      setSelectedJobRoleIndex(newJobRoles.length - 1);
+    }
+  };
+
+  const handleJobRoleChange = (index, field, value) => {
+    const newJobRoles = [...jobRoles];
+    newJobRoles[index][field] = value;
+    setJobRoles(newJobRoles);
   };
 
   return (
@@ -1011,68 +1078,129 @@ const AdminDashboard = () => {
       {/* Job Role/Description Modal */}
       {showJobModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-[#E5E7EB]">
-              <div className="flex items-center justify-between">
-                <h3 className="text-2xl font-bold text-[#111827]">
-                  {isEditingJob ? 'Edit Job Details' : 'Job Details'}
-                </h3>
-                <button
-                  onClick={() => setShowJobModal(false)}
-                  className="text-[#374151] hover:text-[#111827] transition-colors"
-                >
-                  <XCircle size={24} />
-                </button>
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-[#3B82F6] to-blue-600 px-6 py-4 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-white">{selectedJobTest?.name}</h3>
+                <p className="text-blue-100 text-sm mt-1">Job Role & Description</p>
               </div>
-              <p className="text-sm text-[#374151] mt-1">
-                Test: {selectedJobTest?.name}
-              </p>
+              <button
+                onClick={() => setShowJobModal(false)}
+                className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
+              >
+                <X size={24} />
+              </button>
             </div>
 
-            <div className="p-6 space-y-6">
-              {/* Job Role */}
-              <div>
-                <label className="block text-sm font-bold text-[#111827] mb-2">
-                  Job Role {isEditingJob && <span className="text-red-600">*</span>}
-                </label>
-                {isEditingJob ? (
-                  <input
-                    type="text"
-                    value={jobRole}
-                    onChange={(e) => setJobRole(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#3B82F6] bg-white text-[#111827] font-medium"
-                    placeholder="e.g., Senior Software Engineer"
-                  />
-                ) : (
-                  <div className="px-4 py-3 bg-[#F9FAFB] rounded-xl border-2 border-[#E5E7EB]">
-                    <p className="text-[#111827] font-semibold">
-                      {jobRole || 'Not specified'}
-                    </p>
-                  </div>
-                )}
-              </div>
+            <div className="p-6 space-y-6">{isLoadingJobRoles ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="animate-spin text-[#3B82F6]" size={32} />
+                  <span className="ml-3 text-[#374151]">Loading job roles...</span>
+                </div>
+              ) : (
+                <>
+                  {!isEditingJob && jobRoles.length > 1 && (
+                    <div>
+                      <label className="block text-sm font-bold text-[#111827] mb-2">
+                        Select Job Role
+                      </label>
+                      <select
+                        value={selectedJobRoleIndex}
+                        onChange={(e) => setSelectedJobRoleIndex(parseInt(e.target.value))}
+                        className="w-full px-4 py-3 border-2 border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#3B82F6] bg-white text-[#111827] font-medium"
+                      >
+                        {jobRoles.map((role, index) => (
+                          <option key={index} value={index}>
+                            {role.jobRole}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
-              {/* Job Description */}
-              <div>
-                <label className="block text-sm font-bold text-[#111827] mb-2">
-                  Job Description
-                </label>
-                {isEditingJob ? (
-                  <textarea
-                    value={jobDescription}
-                    onChange={(e) => setJobDescription(e.target.value)}
-                    rows="10"
-                    className="w-full px-4 py-3 border-2 border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#3B82F6] bg-white text-[#111827] resize-none"
-                    placeholder="Enter detailed job description including responsibilities, requirements, skills needed, etc."
-                  />
-                ) : (
-                  <div className="px-4 py-3 bg-[#F9FAFB] rounded-xl border-2 border-[#E5E7EB] max-h-96 overflow-y-auto">
-                    <p className="text-[#374151] whitespace-pre-wrap">
-                      {jobDescription || 'No description provided'}
-                    </p>
-                  </div>
-                )}
-              </div>
+                  {isEditingJob ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-sm font-bold text-[#111827]">
+                          Job Roles & Descriptions
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleAddJobRole}
+                          className="flex items-center space-x-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                        >
+                          <Plus size={16} />
+                          <span>Add Role</span>
+                        </button>
+                      </div>
+
+                      {jobRoles.map((role, index) => (
+                        <div key={index} className="p-4 border-2 border-gray-200 rounded-lg space-y-3 bg-gray-50">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-semibold text-gray-700">
+                              Role {index + 1} {index === 0 && <span className="text-blue-600">(Default)</span>}
+                            </span>
+                            {jobRoles.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveJobRole(index)}
+                                className="text-red-600 hover:text-red-700 p-1"
+                                title="Remove this role"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+
+                          <div>
+                            <input
+                              type="text"
+                              value={role.jobRole}
+                              onChange={(e) => handleJobRoleChange(index, 'jobRole', e.target.value)}
+                              className="w-full px-4 py-3 border-2 border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#3B82F6] bg-white text-[#111827] font-medium"
+                              placeholder="e.g., Senior Software Engineer"
+                            />
+                          </div>
+
+                          <div>
+                            <textarea
+                              value={role.jobDescription}
+                              onChange={(e) => handleJobRoleChange(index, 'jobDescription', e.target.value)}
+                              rows={4}
+                              className="w-full px-4 py-3 border-2 border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#3B82F6] bg-white text-[#111827] resize-none"
+                              placeholder="Enter job description, requirements, responsibilities..."
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="block text-sm font-bold text-[#111827] mb-2">
+                          Job Role
+                        </label>
+                        <div className="px-4 py-3 bg-[#F9FAFB] rounded-xl border-2 border-[#E5E7EB]">
+                          <p className="text-[#111827] font-semibold">
+                            {jobRoles[selectedJobRoleIndex]?.jobRole || 'Not specified'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-bold text-[#111827] mb-2">
+                          Job Description
+                        </label>
+                        <div className="px-4 py-3 bg-[#F9FAFB] rounded-xl border-2 border-[#E5E7EB] max-h-96 overflow-y-auto">
+                          <p className="text-[#374151] whitespace-pre-wrap">
+                            {jobRoles[selectedJobRoleIndex]?.jobDescription || 'No description provided'}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Modal Footer */}
@@ -1082,8 +1210,7 @@ const AdminDashboard = () => {
                   <button
                     onClick={() => {
                       setIsEditingJob(false);
-                      setJobRole(selectedJobTest?.jobRole || '');
-                      setJobDescription(selectedJobTest?.description || '');
+                      handleViewJob(selectedJobTest); // Reload original data
                     }}
                     className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-[#111827] rounded-xl font-medium transition-colors"
                     disabled={isSavingJob}
@@ -1096,7 +1223,7 @@ const AdminDashboard = () => {
                     className="px-6 py-3 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                   >
                     {isSavingJob && (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <Loader2 className="animate-spin" size={16} />
                     )}
                     <span>{isSavingJob ? 'Saving...' : 'Save Changes'}</span>
                   </button>
@@ -1113,7 +1240,7 @@ const AdminDashboard = () => {
                     onClick={() => setIsEditingJob(true)}
                     className="px-6 py-3 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-xl font-medium transition-colors"
                   >
-                    Edit Details
+                    Edit Roles
                   </button>
                 </>
               )}

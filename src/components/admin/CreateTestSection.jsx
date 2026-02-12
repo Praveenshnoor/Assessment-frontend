@@ -5,8 +5,7 @@ import { apiFetch } from '../../config/api';
 const CreateTestSection = ({ onComplete }) => {
     const [step, setStep] = useState('init'); // init, manual, bulk, success
     const [testTitle, setTestTitle] = useState('');
-    const [jobRole, setJobRole] = useState('');
-    const [testDescription, setTestDescription] = useState('');
+    const [jobRoles, setJobRoles] = useState([{ job_role: '', job_description: '' }]);
     const [duration, setDuration] = useState(60);
     const [maxAttempts, setMaxAttempts] = useState(1);
     const [passingPercentage, setPassingPercentage] = useState(50);
@@ -75,12 +74,12 @@ const CreateTestSection = ({ onComplete }) => {
             alert('Please enter a test title first');
             return;
         }
-        if (!jobRole.trim()) {
-            alert('Please enter a job role');
+        if (jobRoles.length === 0 || !jobRoles[0].job_role.trim()) {
+            alert('Please enter at least one job role');
             return;
         }
-        if (!testDescription.trim()) {
-            alert('Please enter a job description');
+        if (!jobRoles[0].job_description.trim()) {
+            alert('Please enter a job description for the first role');
             return;
         }
         if (nameAvailability.available === false) {
@@ -88,6 +87,25 @@ const CreateTestSection = ({ onComplete }) => {
             return;
         }
         setStep(mode);
+    };
+
+    const handleAddJobRole = () => {
+        setJobRoles([...jobRoles, { job_role: '', job_description: '' }]);
+    };
+
+    const handleRemoveJobRole = (index) => {
+        if (jobRoles.length === 1) {
+            alert('At least one job role is required');
+            return;
+        }
+        const newJobRoles = jobRoles.filter((_, i) => i !== index);
+        setJobRoles(newJobRoles);
+    };
+
+    const handleJobRoleChange = (index, field, value) => {
+        const newJobRoles = [...jobRoles];
+        newJobRoles[index][field] = value;
+        setJobRoles(newJobRoles);
     };
 
     const handleAddQuestion = () => {
@@ -125,7 +143,7 @@ const CreateTestSection = ({ onComplete }) => {
                 },
                 body: JSON.stringify({
                     testName: testTitle,
-                    jobRole: jobRole,
+                    jobRoles: jobRoles,
                     testDescription: testDescription,
                     duration: duration,
                     maxAttempts: maxAttempts,
@@ -172,8 +190,8 @@ const CreateTestSection = ({ onComplete }) => {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('testName', testTitle);
-            formData.append('jobRole', jobRole);
-            formData.append('testDescription', testDescription);
+            formData.append('jobRoles', JSON.stringify(jobRoles));
+            formData.append('testDescription', jobRoles[0]?.job_description || '');
             formData.append('duration', duration);
             formData.append('maxAttempts', maxAttempts);
             formData.append('passingPercentage', passingPercentage);
@@ -240,10 +258,10 @@ const CreateTestSection = ({ onComplete }) => {
     const resetForm = () => {
         setStep('init');
         setTestTitle('');
-        setJobRole('');
-        setTestDescription('');
+        setJobRoles([{ job_role: '', job_description: '' }]);
         setDuration(60);
         setMaxAttempts(1);
+        setPassingPercentage(50);
         setStartDateTime('');
         setEndDateTime('');
         setQuestions([]);
@@ -304,31 +322,62 @@ const CreateTestSection = ({ onComplete }) => {
                             )}
                         </div>
 
-                        {/* Test Description */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Job Role *</label>
-                            <input
-                                type="text"
-                                value={jobRole}
-                                onChange={(e) => setJobRole(e.target.value)}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent"
-                                placeholder="e.g., Software Engineer, Data Analyst, Marketing Manager"
-                                required
-                            />
-                        </div>
-
-                        {/* Test Description */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Job Description *</label>
-                            <textarea
-                                value={testDescription}
-                                onChange={(e) => setTestDescription(e.target.value)}
-                                rows={6}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent resize-y"
-                                placeholder="Add job role field and job description viewer for students"
-                                required
-                            />
-                            <p className="mt-1 text-xs text-gray-500">Provide comprehensive job details - students will be able to view this before taking the test</p>
+                        {/* Job Roles Section */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <label className="block text-sm font-medium text-gray-700">Job Roles & Descriptions *</label>
+                                <button
+                                    type="button"
+                                    onClick={handleAddJobRole}
+                                    className="flex items-center space-x-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                                >
+                                    <Plus size={16} />
+                                    <span>Add Role</span>
+                                </button>
+                            </div>
+                            
+                            {jobRoles.map((role, index) => (
+                                <div key={index} className="p-4 border-2 border-gray-200 rounded-lg space-y-3 bg-gray-50">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-semibold text-gray-700">
+                                            Role {index + 1} {index === 0 && <span className="text-blue-600">(Default)</span>}
+                                        </span>
+                                        {jobRoles.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveJobRole(index)}
+                                                className="text-red-600 hover:text-red-700 p-1"
+                                                title="Remove this role"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
+                                    </div>
+                                    
+                                    <div>
+                                        <input
+                                            type="text"
+                                            value={role.job_role}
+                                            onChange={(e) => handleJobRoleChange(index, 'job_role', e.target.value)}
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                                            placeholder="e.g., Senior Software Engineer, Junior Developer"
+                                            required
+                                        />
+                                    </div>
+                                    
+                                    <div>
+                                        <textarea
+                                            value={role.job_description}
+                                            onChange={(e) => handleJobRoleChange(index, 'job_description', e.target.value)}
+                                            rows={4}
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent resize-y"
+                                            placeholder="Enter job description, requirements, responsibilities..."
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                            <p className="text-xs text-gray-500">Students will be able to select a role and view its description before taking the test</p>
                         </div>
 
                         {/* Duration and Max Attempts */}
@@ -395,11 +444,11 @@ const CreateTestSection = ({ onComplete }) => {
                             <button
                                 onClick={() => handleStart('manual')}
                                 className={`p-6 border-2 rounded-xl text-left transition-all hover:border-slate-900 group ${
-                                    !testTitle || !jobRole || !testDescription || nameAvailability.available === false || nameAvailability.checking
+                                    !testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking
                                         ? 'opacity-50 cursor-not-allowed' 
                                         : 'hover:shadow-md'
                                 }`}
-                                disabled={!testTitle || !jobRole || !testDescription || nameAvailability.available === false || nameAvailability.checking}
+                                disabled={!testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking}
                             >
                                 <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
                                     <Plus className="w-6 h-6 text-blue-600 group-hover:text-white" />
@@ -411,11 +460,11 @@ const CreateTestSection = ({ onComplete }) => {
                             <button
                                 onClick={() => handleStart('bulk')}
                                 className={`p-6 border-2 rounded-xl text-left transition-all hover:border-slate-900 group ${
-                                    !testTitle || !jobRole || !testDescription || nameAvailability.available === false || nameAvailability.checking
+                                    !testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking
                                         ? 'opacity-50 cursor-not-allowed' 
                                         : 'hover:shadow-md'
                                 }`}
-                                disabled={!testTitle || !jobRole || !testDescription || nameAvailability.available === false || nameAvailability.checking}
+                                disabled={!testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking}
                             >
                                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-green-600 transition-colors">
                                     <Upload className="w-6 h-6 text-green-600 group-hover:text-white" />
