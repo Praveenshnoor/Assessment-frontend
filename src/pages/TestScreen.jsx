@@ -12,7 +12,10 @@ import {
   ChevronRight,
   Flag,
   CheckCircle,
-  Monitor
+  Monitor,
+  Eraser,
+  PlayCircle,
+  ShieldCheck
 } from 'lucide-react';
 import { apiFetch } from '../config/api';
 
@@ -30,6 +33,8 @@ const TestScreen = () => {
   const [warningCount, setWarningCount] = useState(0);
   const [showTabWarning, setShowTabWarning] = useState(false);
   const [initialTimeRemaining, setInitialTimeRemaining] = useState(3600); // Default 60 minutes in seconds
+  const [hasStarted, setHasStarted] = useState(false);
+  const [testDetails, setTestDetails] = useState(null);
 
   const {
     isFullscreen,
@@ -130,13 +135,19 @@ const TestScreen = () => {
 
   // Update handleTimeUp to use submitTest
   useEffect(() => {
-    if (timeLeft === 0) {
+    if (timeLeft === 0 && hasStarted) {
       submitTest('time_up');
     }
-  }, [timeLeft, submitTest]);
+  }, [timeLeft, submitTest, hasStarted]);
 
   // Handle tab switch
   const handleTabSwitch = useCallback((count, max) => {
+    // Don't count tab switches before exam starts
+    if (!hasStarted) {
+      console.log('[Tab Switch] Ignored - exam not started yet');
+      return;
+    }
+
     setWarningCount(count);
     setShowTabWarning(true);
 
@@ -155,9 +166,64 @@ const TestScreen = () => {
       // Hide warning modal after 3 seconds
       setTimeout(() => setShowTabWarning(false), 3000);
     }
-  }, [submitTest]);
+  }, [submitTest, hasStarted]);
 
   useTabSwitch(handleTabSwitch, 3);
+
+  // Handle start exam - triggers fullscreen and proctoring
+  const handleStartExam = async () => {
+    console.log('[Start Exam] User clicked start button');
+    
+    // Initialize proctoring with proper error handling
+    const studentId = localStorage.getItem('studentId') || 'unknown';
+    const studentName = localStorage.getItem('studentName') || 'Student';
+    const testId = localStorage.getItem('selectedTestId');
+
+    console.log('[Proctoring] Student ID:', studentId);
+    console.log('[Proctoring] Student Name:', studentName);
+    console.log('[Proctoring] Starting proctoring for:', studentName);
+
+    try {
+      const proctoringResult = await startProctoring({
+        studentId: studentId,
+        studentName: studentName,
+        testId: testId,
+        testTitle: testDetails?.title || 'Test',
+      });
+
+      if (proctoringResult.success) {
+        console.log('[Proctoring] Successfully started');
+      } else {
+        console.error('[Proctoring] Failed to start:', proctoringResult.error);
+        // Don't block test if proctoring fails, just log it
+      }
+    } catch (proctoringErr) {
+      console.error('[Proctoring] Error starting proctoring:', proctoringErr);
+      // Don't block test if proctoring fails
+    }
+
+    // Enter fullscreen mode
+    console.log('[Fullscreen] Requesting fullscreen mode...');
+    try {
+      await enterFullscreen();
+      console.log('[Fullscreen] Fullscreen mode activated');
+    } catch (fullscreenErr) {
+      console.error('[Fullscreen] Failed to enter fullscreen:', fullscreenErr);
+      // Don't block test if fullscreen fails - the warning modal will show
+    }
+
+    // Mark exam as started
+    setHasStarted(true);
+  };
+
+  // Handle clear response
+  const handleClearResponse = () => {
+    setAnswers(prev => {
+      const newAnswers = { ...prev };
+      delete newAnswers[currentQuestion];
+      return newAnswers;
+    });
+  };
 
   // Manual save function - only called when user clicks Save & Next or Skip
   const saveProgressNow = useCallback(async () => {
@@ -255,6 +321,13 @@ const TestScreen = () => {
         const data = await response.json();
         if (data.success && data.test && data.test.questions) {
           setQuestions(data.test.questions);
+          
+          // Store test details for instruction screen
+          setTestDetails({
+            title: data.test.title || 'Assessment',
+            duration: data.test.duration || 60,
+            totalQuestions: data.test.questions.length
+          });
 
           // Get test duration from backend
           const duration = data.test.duration || 60;
@@ -274,48 +347,39 @@ const TestScreen = () => {
             } else {
               setInitialTimeRemaining(duration * 60); // Convert minutes to seconds
             }
+            
+            // If there's saved progress, user has already started
+            setHasStarted(true);
+            
+            // Resume proctoring and fullscreen for resumed exams
+            const studentId = localStorage.getItem('studentId') || 'unknown';
+            const studentName = localStorage.getItem('studentName') || 'Student';
+
+            try {
+              const proctoringResult = await startProctoring({
+                studentId: studentId,
+                studentName: studentName,
+                testId: testId,
+                testTitle: data.test.title,
+              });
+
+              if (proctoringResult.success) {
+                console.log('[Proctoring] Successfully resumed');
+              }
+            } catch (proctoringErr) {
+              console.error('[Proctoring] Error resuming proctoring:', proctoringErr);
+            }
+
+            try {
+              await enterFullscreen();
+              console.log('[Fullscreen] Fullscreen mode resumed');
+            } catch (fullscreenErr) {
+              console.error('[Fullscreen] Failed to resume fullscreen:', fullscreenErr);
+            }
           } else {
             // No saved progress, use full duration
             setInitialTimeRemaining(duration * 60);
-          }
-
-          // Initialize proctoring with proper error handling
-          // Get student data from localStorage (stored as separate items)
-          const studentId = localStorage.getItem('studentId') || 'unknown';
-          const studentName = localStorage.getItem('studentName') || 'Student';
-
-          console.log('[Proctoring] Student ID:', studentId);
-          console.log('[Proctoring] Student Name:', studentName);
-          console.log('[Proctoring] Starting proctoring for:', studentName);
-
-          try {
-            const proctoringResult = await startProctoring({
-              studentId: studentId,
-              studentName: studentName,
-              testId: testId,
-              testTitle: data.test.title,
-            });
-
-            if (proctoringResult.success) {
-              console.log('[Proctoring] Successfully started');
-            } else {
-              console.error('[Proctoring] Failed to start:', proctoringResult.error);
-              // Don't block test if proctoring fails, just log it
-            }
-          } catch (proctoringErr) {
-            console.error('[Proctoring] Error starting proctoring:', proctoringErr);
-            // Don't block test if proctoring fails
-          }
-
-          // Automatically enter fullscreen mode after component is ready
-          // This must be done on the test page itself (not before navigation)
-          console.log('[Fullscreen] Requesting fullscreen mode...');
-          try {
-            await enterFullscreen();
-            console.log('[Fullscreen] Fullscreen mode activated');
-          } catch (fullscreenErr) {
-            console.error('[Fullscreen] Failed to enter fullscreen:', fullscreenErr);
-            // Don't block test if fullscreen fails - the warning modal will show
+            // Don't start proctoring/fullscreen yet - wait for user to click Start
           }
         } else {
           throw new Error('Invalid test data');
@@ -429,8 +493,12 @@ const TestScreen = () => {
   };
 
   const getQuestionStatus = (index) => {
-    if (markedForReview.has(index)) return 'review';
-    if (answers[index] !== undefined) return 'answered';
+    const isAnswered = answers[index] !== undefined;
+    const isMarked = markedForReview.has(index);
+    
+    if (isAnswered && isMarked) return 'answered-and-marked';
+    if (isMarked) return 'review';
+    if (isAnswered) return 'answered';
     if (visited.has(index)) return 'visited';
     return 'not-visited';
   };
@@ -462,6 +530,137 @@ const TestScreen = () => {
   }
 
   const currentQ = questions[currentQuestion];
+
+  // Instruction screen - shown before exam starts
+  if (!hasStarted && !loading && !error && questions.length > 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-6">
+        <div className="max-w-4xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
+            <h1 className="text-3xl font-bold text-white mb-2">
+              {testDetails?.title || 'Assessment'}
+            </h1>
+            <p className="text-blue-100">Please read the instructions carefully before starting</p>
+          </div>
+
+          {/* Content */}
+          <div className="p-8 space-y-6">
+            {/* Test Info Cards */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Clock className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-600">Duration</p>
+                    <p className="text-xl font-bold text-slate-900">{testDetails?.duration || 60} mins</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-600">Questions</p>
+                    <p className="text-xl font-bold text-slate-900">{testDetails?.totalQuestions || questions.length}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <ShieldCheck className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-600">Proctored</p>
+                    <p className="text-xl font-bold text-slate-900">Yes</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Instructions */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+              <h2 className="text-lg font-bold text-amber-900 mb-4 flex items-center">
+                <AlertTriangle className="w-5 h-5 mr-2" />
+                Important Instructions
+              </h2>
+              <ul className="space-y-3 text-slate-700">
+                <li className="flex items-start">
+                  <span className="w-6 h-6 bg-amber-200 rounded-full flex items-center justify-center text-amber-900 font-bold text-sm mr-3 flex-shrink-0 mt-0.5">1</span>
+                  <span>The exam will automatically enter <strong>fullscreen mode</strong>. Do not exit fullscreen during the test.</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="w-6 h-6 bg-amber-200 rounded-full flex items-center justify-center text-amber-900 font-bold text-sm mr-3 flex-shrink-0 mt-0.5">2</span>
+                  <span>Your <strong>camera will be activated</strong> for proctoring purposes throughout the exam.</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="w-6 h-6 bg-amber-200 rounded-full flex items-center justify-center text-amber-900 font-bold text-sm mr-3 flex-shrink-0 mt-0.5">3</span>
+                  <span>Do not switch tabs or minimize the browser. You will receive <strong>warnings (max 3)</strong>, after which the test will auto-submit.</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="w-6 h-6 bg-amber-200 rounded-full flex items-center justify-center text-amber-900 font-bold text-sm mr-3 flex-shrink-0 mt-0.5">4</span>
+                  <span>The timer will start immediately when you click "Start Exam".</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="w-6 h-6 bg-amber-200 rounded-full flex items-center justify-center text-amber-900 font-bold text-sm mr-3 flex-shrink-0 mt-0.5">5</span>
+                  <span>You can navigate between questions, mark them for review, and change answers anytime before submission.</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="w-6 h-6 bg-amber-200 rounded-full flex items-center justify-center text-amber-900 font-bold text-sm mr-3 flex-shrink-0 mt-0.5">6</span>
+                  <span>The test will <strong>auto-submit</strong> when time runs out.</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* System Requirements */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
+              <h3 className="font-semibold text-slate-900 mb-3">System Requirements</h3>
+              <ul className="grid grid-cols-2 gap-3 text-sm text-slate-600">
+                <li className="flex items-center">
+                  <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                  Stable internet connection
+                </li>
+                <li className="flex items-center">
+                  <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                  Working webcam
+                </li>
+                <li className="flex items-center">
+                  <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                  Updated browser (Chrome/Firefox)
+                </li>
+                <li className="flex items-center">
+                  <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                  Allow camera & fullscreen permissions
+                </li>
+              </ul>
+            </div>
+
+            {/* Start Button */}
+            <div className="flex justify-center pt-4">
+              <button
+                onClick={handleStartExam}
+                className="flex items-center space-x-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-lg font-bold rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+              >
+                <PlayCircle className="w-6 h-6" />
+                <span>Start Exam</span>
+              </button>
+            </div>
+
+            <p className="text-center text-sm text-slate-500 mt-4">
+              By clicking "Start Exam", you agree to the exam rules and monitoring policies.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
@@ -526,6 +725,7 @@ const TestScreen = () => {
                 const status = getQuestionStatus(index);
                 let bgClass = 'bg-gray-100 text-gray-600'; // not-visited
                 if (status === 'answered') bgClass = 'bg-green-500 text-white';
+                else if (status === 'answered-and-marked') bgClass = 'bg-purple-500 text-white';
                 else if (status === 'review') bgClass = 'bg-yellow-500 text-white';
                 else if (status === 'visited') bgClass = 'bg-gray-300 text-gray-700';
 
@@ -548,21 +748,22 @@ const TestScreen = () => {
           </div>
 
           <div className="p-4 space-y-3">
+            <div className="text-xs font-semibold text-gray-500 uppercase mb-2">Summary</div>
             <div className="flex items-center space-x-2 text-sm">
               <div className="w-4 h-4 bg-green-500 rounded"></div>
-              <span className="text-gray-600">Answered ({Object.keys(answers).length})</span>
+              <span className="text-gray-600">Answered ({Object.keys(answers).filter(key => !markedForReview.has(parseInt(key))).length})</span>
+            </div>
+            <div className="flex items-center space-x-2 text-sm">
+              <div className="w-4 h-4 bg-purple-500 rounded"></div>
+              <span className="text-gray-600">Answered & Marked ({Object.keys(answers).filter(key => markedForReview.has(parseInt(key))).length})</span>
             </div>
             <div className="flex items-center space-x-2 text-sm">
               <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-              <span className="text-gray-600">Marked for Review ({markedForReview.size})</span>
+              <span className="text-gray-600">Marked for Review ({Array.from(markedForReview).filter(idx => answers[idx] === undefined).length})</span>
             </div>
             <div className="flex items-center space-x-2 text-sm">
               <div className="w-4 h-4 bg-gray-300 rounded"></div>
-              <span className="text-gray-600">Visited</span>
-            </div>
-            <div className="flex items-center space-x-2 text-sm">
-              <div className="w-4 h-4 bg-gray-100 border border-gray-300 rounded"></div>
-              <span className="text-gray-600">Not Visited</span>
+              <span className="text-gray-600">Not Answered ({questions.length - Object.keys(answers).length - Array.from(markedForReview).filter(idx => answers[idx] === undefined).length})</span>
             </div>
           </div>
 
@@ -662,6 +863,20 @@ const TestScreen = () => {
 
               <div className="flex space-x-3">
                 <button
+                  onClick={handleClearResponse}
+                  disabled={answers[currentQuestion] === undefined}
+                  className={`
+                    flex items-center space-x-2 px-4 py-3 rounded-lg font-semibold transition-colors
+                    ${answers[currentQuestion] === undefined
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'border-2 border-red-300 text-red-600 hover:border-red-400 hover:bg-red-50'}
+                  `}
+                >
+                  <Eraser size={18} />
+                  <span>Clear Response</span>
+                </button>
+
+                <button
                   onClick={async () => {
                     handleAnswerSelect(undefined);
                     await saveProgressNow(); // Save before skipping
@@ -670,6 +885,18 @@ const TestScreen = () => {
                   className="px-6 py-3 border-2 border-gray-300 text-gray-600 rounded-lg font-semibold hover:border-gray-400 hover:bg-gray-50 transition-colors"
                 >
                   Skip
+                </button>
+
+                <button
+                  onClick={async () => {
+                    toggleMarkForReview();
+                    await saveProgressNow();
+                    handleNext();
+                  }}
+                  className="flex items-center space-x-2 px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-semibold transition-colors shadow-sm"
+                >
+                  <Flag size={18} />
+                  <span>Mark for Review & Next</span>
                 </button>
 
                 <button
