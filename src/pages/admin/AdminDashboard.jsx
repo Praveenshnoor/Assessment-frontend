@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, FileSpreadsheet, LogOut, Download, ArrowLeft, 
-  Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video, Loader2, X
+  Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video, Loader2, X, Building2
 } from 'lucide-react';
 import CreateTestSection from '../../components/admin/CreateTestSection';
 import { apiFetch } from '../../config/api';
@@ -35,6 +35,34 @@ const AdminDashboard = () => {
   const [isSavingJob, setIsSavingJob] = useState(false);
   const [isLoadingJobRoles, setIsLoadingJobRoles] = useState(false);
 
+  // Institute Management States
+  const [allInstitutes, setAllInstitutes] = useState([]);
+  const [isLoadingAllInstitutes, setIsLoadingAllInstitutes] = useState(false);
+  const [newInstituteName, setNewInstituteName] = useState('');
+  const [isAddingInstitute, setIsAddingInstitute] = useState(false);
+
+  // Assigned Tests Modal States
+  const [showAssignedTestsModal, setShowAssignedTestsModal] = useState(false);
+  const [selectedInstituteForTests, setSelectedInstituteForTests] = useState(null);
+  const [assignedTests, setAssignedTests] = useState([]);
+  const [isLoadingAssignedTests, setIsLoadingAssignedTests] = useState(false);
+  const [selectedTestForInstitute, setSelectedTestForInstitute] = useState('');
+  const [isAssigningTestToInstitute, setIsAssigningTestToInstitute] = useState(false);
+
+  // Student Management States
+  const [showStudentManagementModal, setShowStudentManagementModal] = useState(false);
+  const [selectedInstituteForStudents, setSelectedInstituteForStudents] = useState(null);
+  const [instituteStudentsForManagement, setInstituteStudentsForManagement] = useState([]);
+  const [isLoadingStudentsForManagement, setIsLoadingStudentsForManagement] = useState(false);
+  const [showAddStudentForm, setShowAddStudentForm] = useState(false);
+  const [newStudentData, setNewStudentData] = useState({
+    full_name: '',
+    email: '',
+    roll_number: '',
+    institute: ''
+  });
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
+
   // Derived state: Get students for the selected exam
   const selectedExamStudents = selectedExamId ? (studentsData[selectedExamId] || []) : [];
   const selectedExamDetails = tests.find(t => t.id === selectedExamId);
@@ -46,6 +74,9 @@ const AdminDashboard = () => {
       fetchTests();
       if (activeTab === 'assign') {
         fetchInstitutes();
+      }
+      if (activeTab === 'institutes') {
+        fetchAllInstitutes();
       }
     }
   }, [navigate, activeTab]);
@@ -190,7 +221,11 @@ const AdminDashboard = () => {
 
       if (response.ok) {
         alert('Test deleted successfully');
-        fetchTests(); // Refresh the list
+        fetchTests(); // Refresh the test list
+        // Refresh institute list if we're on the institutes tab to update test counts
+        if (activeTab === 'institutes') {
+          fetchAllInstitutes();
+        }
       } else {
         alert('Failed to delete test');
       }
@@ -545,6 +580,361 @@ const AdminDashboard = () => {
     setJobRoles(newJobRoles);
   };
 
+  // Institute Management Functions
+  const fetchAllInstitutes = async () => {
+    try {
+      setIsLoadingAllInstitutes(true);
+      const token = localStorage.getItem('adminToken');
+      console.log('=== FETCHING ALL INSTITUTES ===');
+      console.log('Token:', token ? 'Present' : 'Missing');
+      
+      const response = await apiFetch('api/institutes', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
+      const data = await response.json();
+      console.log('Response data:', data);
+      
+      if (response.ok && data.success) {
+        console.log('Institutes received:', data.institutes.length);
+        console.log('Institutes data:', data.institutes);
+        setAllInstitutes(data.institutes);
+      } else {
+        console.error('Failed to fetch institutes:', data.message);
+        alert(`Failed to fetch institutes: ${data.message}`);
+      }
+    } catch (error) {
+      console.error('Error fetching institutes:', error);
+      alert(`Error fetching institutes: ${error.message}`);
+    } finally {
+      setIsLoadingAllInstitutes(false);
+    }
+  };
+
+  const handleAddInstitute = async () => {
+    if (!newInstituteName.trim()) {
+      alert('Please enter an institute name');
+      return;
+    }
+
+    try {
+      setIsAddingInstitute(true);
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch('api/institutes', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          instituteName: newInstituteName.trim()
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert(data.message || 'Institute added successfully');
+        setNewInstituteName('');
+        fetchAllInstitutes();
+      } else {
+        alert(data.message || 'Failed to add institute');
+      }
+    } catch (error) {
+      console.error('Error adding institute:', error);
+      alert('Failed to add institute');
+    } finally {
+      setIsAddingInstitute(false);
+    }
+  };
+
+  const handleDeleteInstitute = async (instituteId, instituteName) => {
+    if (!confirm(`Are you sure you want to delete "${instituteName}"? This will not delete students, but will deactivate the institute.`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch(`api/institutes/${instituteId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert('Institute deleted successfully');
+        fetchAllInstitutes();
+      } else {
+        alert(data.message || 'Failed to delete institute');
+      }
+    } catch (error) {
+      console.error('Error deleting institute:', error);
+      alert('Failed to delete institute');
+    }
+  };
+
+  const handleViewAssignedTests = async (institute) => {
+    setSelectedInstituteForTests(institute);
+    setShowAssignedTestsModal(true);
+    setIsLoadingAssignedTests(true);
+    setSelectedTestForInstitute('');
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch(`api/institutes/${institute.id}/assigned-tests`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setAssignedTests(data.tests);
+      } else {
+        console.error('Failed to fetch assigned tests:', data.message);
+        setAssignedTests([]);
+      }
+    } catch (error) {
+      console.error('Error fetching assigned tests:', error);
+      setAssignedTests([]);
+    } finally {
+      setIsLoadingAssignedTests(false);
+    }
+  };
+
+  const handleAssignTestToInstitute = async () => {
+    if (!selectedTestForInstitute) {
+      alert('Please select a test to assign');
+      return;
+    }
+
+    try {
+      setIsAssigningTestToInstitute(true);
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch(`api/institutes/${selectedInstituteForTests.id}/assign-test`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          test_id: parseInt(selectedTestForInstitute)
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert(data.message || 'Test assigned successfully');
+        setSelectedTestForInstitute('');
+        handleViewAssignedTests(selectedInstituteForTests);
+        fetchAllInstitutes(); // Refresh institute list to update test counts
+      } else if (response.status === 409 && data.already_assigned) {
+        // Handle duplicate assignment
+        alert(data.message || 'This test is already assigned to this institute');
+      } else {
+        alert(data.message || 'Failed to assign test');
+      }
+    } catch (error) {
+      console.error('Error assigning test:', error);
+      alert('Failed to assign test');
+    } finally {
+      setIsAssigningTestToInstitute(false);
+    }
+  };
+
+  const handleUnassignTestFromInstitute = async (testId, testTitle) => {
+    if (!confirm(`Are you sure you want to unassign "${testTitle}" from this institute?`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch(`api/institutes/${selectedInstituteForTests.id}/unassign-test/${testId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert(data.message || 'Test unassigned successfully');
+        handleViewAssignedTests(selectedInstituteForTests);
+        fetchAllInstitutes(); // Refresh institute list to update test counts
+      } else {
+        alert(data.message || 'Failed to unassign test');
+      }
+    } catch (error) {
+      console.error('Error unassigning test:', error);
+      alert('Failed to unassign test');
+    }
+  };
+
+  // Student Management Functions
+  const handleManageStudents = async (institute) => {
+    setSelectedInstituteForStudents(institute);
+    setShowStudentManagementModal(true);
+    setIsLoadingStudentsForManagement(true);
+    setShowAddStudentForm(false);
+    setNewStudentData({
+      full_name: '',
+      email: '',
+      roll_number: '',
+      institute: institute.display_name
+    });
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch(`api/institutes/${encodeURIComponent(institute.name)}/students`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setInstituteStudentsForManagement(data.students);
+      } else {
+        console.error('Failed to fetch students:', data.message);
+        setInstituteStudentsForManagement([]);
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      setInstituteStudentsForManagement([]);
+    } finally {
+      setIsLoadingStudentsForManagement(false);
+    }
+  };
+
+  const handleAddStudent = async () => {
+    if (!newStudentData.full_name.trim() || !newStudentData.email.trim()) {
+      alert('Full name and email are required');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newStudentData.email.trim())) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      setIsAddingStudent(true);
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch('api/student/create', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          full_name: newStudentData.full_name.trim(),
+          email: newStudentData.email.trim(),
+          roll_number: newStudentData.roll_number.trim() || null,
+          institute: selectedInstituteForStudents.name
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Show success message with test assignment info
+        alert(data.message || 'Student added successfully');
+        setShowAddStudentForm(false);
+        setNewStudentData({
+          full_name: '',
+          email: '',
+          roll_number: '',
+          institute: selectedInstituteForStudents.display_name
+        });
+        handleManageStudents(selectedInstituteForStudents);
+        fetchAllInstitutes(); // Refresh to update student counts
+      } else {
+        alert(data.message || 'Failed to add student');
+      }
+    } catch (error) {
+      console.error('Error adding student:', error);
+      alert('Failed to add student');
+    } finally {
+      setIsAddingStudent(false);
+    }
+  };
+
+  const handleDeleteStudent = async (studentId, studentName) => {
+    if (!confirm(`Are you sure you want to delete "${studentName}"?`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch(`api/student/${studentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert('Student deleted successfully');
+        handleManageStudents(selectedInstituteForStudents);
+        fetchAllInstitutes();
+      } else {
+        alert(data.message || 'Failed to delete student');
+      }
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      alert('Failed to delete student');
+    }
+  };
+
+  const handleDeleteAllStudents = async () => {
+    if (!confirm(`Are you sure you want to delete ALL students from "${selectedInstituteForStudents.display_name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    if (!confirm('This will permanently delete all students and their data. Are you absolutely sure?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch(`api/student/institute/${encodeURIComponent(selectedInstituteForStudents.name)}/all`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert(data.message || 'All students deleted successfully');
+        handleManageStudents(selectedInstituteForStudents);
+        fetchAllInstitutes();
+      } else {
+        alert(data.message || 'Failed to delete students');
+      }
+    } catch (error) {
+      console.error('Error deleting students:', error);
+      alert('Failed to delete students');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
       {/* Header */}
@@ -596,6 +986,7 @@ const AdminDashboard = () => {
               {[
                 { id: 'exams', label: 'Manage Exams', icon: FileSpreadsheet },
                 { id: 'assign', label: 'Assign Tests', icon: UserCheck },
+                { id: 'institutes', label: 'Manage Institutes', icon: Building2 },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -1071,6 +1462,136 @@ const AdminDashboard = () => {
                 </div>
               </div>
             )}
+
+            {activeTab === 'institutes' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-2xl shadow-2xl border-2 border-[#E5E7EB] p-8">
+                  <div className="mb-8">
+                    <h2 className="text-3xl font-bold text-[#111827] mb-2 flex items-center">
+                      <Building2 className="mr-3 text-[#3B82F6]" size={32} />
+                      Manage Institutes
+                    </h2>
+                    <p className="text-[#374151] ml-11">Add, view, and manage institutes and their students</p>
+                  </div>
+
+                  {/* Add Institute Form */}
+                  <div className="mb-8 p-6 bg-[#F9FAFB] rounded-2xl border-2 border-[#E5E7EB] shadow-lg">
+                    <label className="block text-sm font-bold text-[#111827] mb-3 flex items-center">
+                      <Plus size={18} className="mr-2 text-[#3B82F6]" />
+                      Add New Institute
+                    </label>
+                    <div className="flex space-x-3">
+                      <input
+                        type="text"
+                        value={newInstituteName}
+                        onChange={(e) => setNewInstituteName(e.target.value)}
+                        placeholder="Enter institute name"
+                        className="flex-1 px-5 py-4 border-2 border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#3B82F6] bg-white text-[#111827] font-medium shadow-sm"
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            handleAddInstitute();
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={handleAddInstitute}
+                        disabled={isAddingInstitute || !newInstituteName.trim()}
+                        className={`px-6 py-4 rounded-xl font-bold transition-all flex items-center space-x-2 shadow-lg ${
+                          !isAddingInstitute && newInstituteName.trim()
+                            ? 'bg-[#3B82F6] hover:bg-blue-600 text-white hover:shadow-xl transform hover:-translate-y-0.5'
+                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        {isAddingInstitute && (
+                          <Loader2 className="animate-spin" size={20} />
+                        )}
+                        <Plus size={20} />
+                        <span>{isAddingInstitute ? 'Adding...' : 'Add'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Institutes List */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-bold text-[#111827] flex items-center">
+                        <Building2 size={22} className="mr-2 text-[#3B82F6]" />
+                        All Institutes
+                      </h3>
+                      {allInstitutes.length > 0 && (
+                        <span className="text-sm text-[#374151] bg-[#F9FAFB] px-3 py-1 rounded-full border border-[#E5E7EB]">
+                          {allInstitutes.length} institute{allInstitutes.length !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+
+                    {isLoadingAllInstitutes ? (
+                      <div className="flex items-center justify-center py-12 bg-[#F9FAFB] rounded-2xl border-2 border-[#E5E7EB]">
+                        <Loader2 className="animate-spin text-[#3B82F6]" size={32} />
+                        <span className="ml-3 text-[#374151] font-medium">Loading institutes...</span>
+                      </div>
+                    ) : allInstitutes.length === 0 ? (
+                      <div className="text-center py-16 bg-[#F9FAFB] rounded-2xl border-2 border-[#E5E7EB]">
+                        <Building2 className="mx-auto mb-4 text-gray-300" size={64} />
+                        <p className="text-[#111827] font-medium text-lg">No institutes found</p>
+                        <p className="text-[#374151] text-sm mt-2">Add your first institute using the form above</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {allInstitutes.map((institute) => (
+                          <div
+                            key={institute.id}
+                            className="border-2 border-[#E5E7EB] rounded-2xl p-6 bg-white hover:shadow-lg transition-all"
+                          >
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex-1">
+                                <h4 className="font-bold text-lg text-[#111827] mb-2">
+                                  {institute.display_name}
+                                </h4>
+                                <div className="space-y-1 text-sm text-[#374151]">
+                                  <p className="flex items-center">
+                                    <Users size={14} className="mr-2" />
+                                    {institute.student_count} student{institute.student_count !== 1 ? 's' : ''}
+                                  </p>
+                                  <p className="flex items-center">
+                                    <FileSpreadsheet size={14} className="mr-2" />
+                                    {institute.assigned_tests_count} test{institute.assigned_tests_count !== 1 ? 's' : ''} assigned
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleViewAssignedTests(institute)}
+                                className="flex-1 py-2 px-3 bg-blue-100 text-[#3B82F6] hover:bg-[#3B82F6] hover:text-white rounded-lg text-sm font-medium transition-colors"
+                              >
+                                <FileSpreadsheet size={16} className="inline mr-1" />
+                                Tests
+                              </button>
+                              <button
+                                onClick={() => handleManageStudents(institute)}
+                                className="flex-1 py-2 px-3 bg-green-100 text-green-600 hover:bg-green-600 hover:text-white rounded-lg text-sm font-medium transition-colors"
+                              >
+                                <Users size={16} className="inline mr-1" />
+                                Students
+                              </button>
+                              <button
+                                onClick={() => handleDeleteInstitute(institute.id, institute.display_name)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete Institute"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </main>
@@ -1244,6 +1765,276 @@ const AdminDashboard = () => {
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assigned Tests Modal */}
+      {showAssignedTestsModal && selectedInstituteForTests && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-[#3B82F6] to-blue-600 px-6 py-4 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-white">{selectedInstituteForTests.display_name}</h3>
+                <p className="text-blue-100 text-sm mt-1">Assigned Tests</p>
+              </div>
+              <button
+                onClick={() => setShowAssignedTestsModal(false)}
+                className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Assign New Test */}
+              <div className="p-4 bg-[#F9FAFB] rounded-xl border-2 border-[#E5E7EB]">
+                <label className="block text-sm font-bold text-[#111827] mb-3">
+                  Assign New Test to Institute
+                </label>
+                <div className="flex space-x-3">
+                  <select
+                    value={selectedTestForInstitute}
+                    onChange={(e) => setSelectedTestForInstitute(e.target.value)}
+                    className="flex-1 px-4 py-3 border-2 border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#3B82F6] bg-white text-[#111827] font-medium"
+                  >
+                    <option value="">-- Select a test --</option>
+                    {tests.map((test) => (
+                      <option key={test.id} value={test.id}>
+                        {test.name} ({test.questions} questions)
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleAssignTestToInstitute}
+                    disabled={!selectedTestForInstitute || isAssigningTestToInstitute}
+                    className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center space-x-2 ${
+                      selectedTestForInstitute && !isAssigningTestToInstitute
+                        ? 'bg-[#3B82F6] hover:bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    {isAssigningTestToInstitute && (
+                      <Loader2 className="animate-spin" size={16} />
+                    )}
+                    <span>{isAssigningTestToInstitute ? 'Assigning...' : 'Assign'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Assigned Tests List */}
+              <div>
+                <h4 className="text-sm font-bold text-[#111827] mb-3">Currently Assigned Tests</h4>
+                {isLoadingAssignedTests ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="animate-spin text-[#3B82F6]" size={32} />
+                    <span className="ml-3 text-[#374151]">Loading tests...</span>
+                  </div>
+                ) : assignedTests.length === 0 ? (
+                  <div className="text-center py-8 bg-[#F9FAFB] rounded-xl border-2 border-[#E5E7EB]">
+                    <FileSpreadsheet className="mx-auto mb-2 text-gray-300" size={48} />
+                    <p className="text-[#374151]">No tests assigned yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {assignedTests.map((test) => (
+                      <div
+                        key={test.id}
+                        className="flex items-center justify-between p-4 bg-white border-2 border-[#E5E7EB] rounded-xl hover:shadow-md transition-all"
+                      >
+                        <div className="flex-1">
+                          <h5 className="font-bold text-[#111827]">{test.title}</h5>
+                          <p className="text-sm text-[#374151]">
+                            {test.question_count} questions • {test.duration_minutes} mins
+                            {test.is_institute_level && (
+                              <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-600 rounded text-xs font-medium">
+                                Institute Level
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleUnassignTestFromInstitute(test.id, test.title)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Unassign Test"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-[#E5E7EB] flex justify-end">
+              <button
+                onClick={() => setShowAssignedTestsModal(false)}
+                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-[#111827] rounded-xl font-medium transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student Management Modal */}
+      {showStudentManagementModal && selectedInstituteForStudents && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-[#3B82F6] to-blue-600 px-6 py-4 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-white">{selectedInstituteForStudents.display_name}</h3>
+                <p className="text-blue-100 text-sm mt-1">Manage Students</p>
+              </div>
+              <button
+                onClick={() => setShowStudentManagementModal(false)}
+                className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Add Student Form */}
+              {showAddStudentForm ? (
+                <div className="p-4 bg-[#F9FAFB] rounded-xl border-2 border-[#E5E7EB]">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-sm font-bold text-[#111827]">Add New Student</h4>
+                    <button
+                      onClick={() => setShowAddStudentForm(false)}
+                      className="text-[#374151] hover:text-red-600 transition-colors"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <input
+                      type="text"
+                      placeholder="Full Name *"
+                      value={newStudentData.full_name}
+                      onChange={(e) => setNewStudentData({ ...newStudentData, full_name: e.target.value })}
+                      className="px-4 py-3 border-2 border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#3B82F6] bg-white text-[#111827]"
+                    />
+                    <input
+                      type="email"
+                      placeholder="Email *"
+                      value={newStudentData.email}
+                      onChange={(e) => setNewStudentData({ ...newStudentData, email: e.target.value })}
+                      className="px-4 py-3 border-2 border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#3B82F6] bg-white text-[#111827]"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Roll Number (Optional)"
+                      value={newStudentData.roll_number}
+                      onChange={(e) => setNewStudentData({ ...newStudentData, roll_number: e.target.value })}
+                      className="px-4 py-3 border-2 border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#3B82F6] bg-white text-[#111827]"
+                    />
+                    <input
+                      type="text"
+                      value={newStudentData.institute}
+                      disabled
+                      className="px-4 py-3 border-2 border-[#E5E7EB] rounded-xl bg-gray-100 text-[#374151]"
+                    />
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      onClick={() => setShowAddStudentForm(false)}
+                      className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-[#111827] rounded-lg font-medium transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleAddStudent}
+                      disabled={isAddingStudent}
+                      className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
+                        !isAddingStudent
+                          ? 'bg-[#3B82F6] hover:bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      }`}
+                    >
+                      {isAddingStudent && (
+                        <Loader2 className="animate-spin" size={16} />
+                      )}
+                      <span>{isAddingStudent ? 'Adding...' : 'Add Student'}</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center">
+                  <h4 className="text-sm font-bold text-[#111827]">Students List</h4>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setShowAddStudentForm(true)}
+                      className="px-4 py-2 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
+                    >
+                      <Plus size={16} />
+                      <span>Add Student</span>
+                    </button>
+                    {instituteStudentsForManagement.length > 0 && (
+                      <button
+                        onClick={handleDeleteAllStudents}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
+                      >
+                        <Trash2 size={16} />
+                        <span>Delete All</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Students List */}
+              <div>
+                {isLoadingStudentsForManagement ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="animate-spin text-[#3B82F6]" size={32} />
+                    <span className="ml-3 text-[#374151]">Loading students...</span>
+                  </div>
+                ) : instituteStudentsForManagement.length === 0 ? (
+                  <div className="text-center py-8 bg-[#F9FAFB] rounded-xl border-2 border-[#E5E7EB]">
+                    <Users className="mx-auto mb-2 text-gray-300" size={48} />
+                    <p className="text-[#374151]">No students found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {instituteStudentsForManagement.map((student) => (
+                      <div
+                        key={student.id}
+                        className="flex items-center justify-between p-4 bg-white border-2 border-[#E5E7EB] rounded-xl hover:shadow-md transition-all"
+                      >
+                        <div className="flex-1">
+                          <h5 className="font-bold text-[#111827]">{student.full_name}</h5>
+                          <p className="text-sm text-[#374151]">
+                            {student.email} • {student.roll_number || 'No roll number'}
+                            <span className="ml-2 text-xs">
+                              ({student.assigned_tests_count} test{student.assigned_tests_count !== 1 ? 's' : ''} assigned)
+                            </span>
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteStudent(student.id, student.full_name)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete Student"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-[#E5E7EB] flex justify-end">
+              <button
+                onClick={() => setShowStudentManagementModal(false)}
+                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-[#111827] rounded-xl font-medium transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

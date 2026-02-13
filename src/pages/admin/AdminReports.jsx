@@ -6,21 +6,21 @@ import { apiFetch } from '../../config/api';
 
 const AdminReports = () => {
     const navigate = useNavigate();
-    const [colleges, setColleges] = useState([]);
-    const [selectedColleges, setSelectedColleges] = useState([]);
+    const [institutes, setInstitutes] = useState([]);
+    const [selectedInstitutes, setSelectedInstitutes] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        fetchColleges();
+        fetchInstitutes();
     }, []);
 
-    const fetchColleges = async () => {
+    const fetchInstitutes = async () => {
         setIsLoading(true);
         try {
             const token = localStorage.getItem('adminToken');
-            const response = await apiFetch('api/export/colleges', {
+            const response = await apiFetch('api/export/institutes', {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -28,14 +28,14 @@ const AdminReports = () => {
             const data = await response.json();
 
             if (data.success) {
-                const options = data.colleges.map(c => ({ value: c, label: c }));
-                setColleges(options);
+                const options = data.institutes.map(i => ({ value: i, label: i }));
+                setInstitutes(options);
             } else {
-                setError('Failed to load colleges');
+                setError('Failed to load institutes');
             }
         } catch (err) {
-            console.error('Error fetching colleges:', err);
-            setError('Error loading college list');
+            console.error('Error fetching institutes:', err);
+            setError('Error loading institute list');
         } finally {
             setIsLoading(false);
         }
@@ -47,11 +47,11 @@ const AdminReports = () => {
         try {
             let queryParams = '';
 
-            if (selectedColleges.length > 0) {
-                const values = selectedColleges.map(c => c.value).join(',');
-                queryParams = `?colleges=${encodeURIComponent(values)}`;
+            if (selectedInstitutes.length > 0) {
+                const values = selectedInstitutes.map(i => i.value).join(',');
+                queryParams = `?institutes=${encodeURIComponent(values)}`;
             } else {
-                queryParams = '?colleges=ALL';
+                queryParams = '?institutes=ALL';
             }
 
             const token = localStorage.getItem('adminToken');
@@ -145,17 +145,17 @@ const AdminReports = () => {
                         <div className="space-y-8 max-w-3xl">
                             <div>
                                 <label className="block text-sm font-bold text-[#111827] mb-3">
-                                    Filter by College
+                                    Filter by Institute
                                     <span className="text-[#6B7280] font-normal ml-2 text-xs">(Leave empty to download all students)</span>
                                 </label>
                                 <Select
                                     isMulti
-                                    options={colleges}
-                                    value={selectedColleges}
-                                    onChange={setSelectedColleges}
+                                    options={institutes}
+                                    value={selectedInstitutes}
+                                    onChange={setSelectedInstitutes}
                                     className="basic-multi-select"
                                     classNamePrefix="select"
-                                    placeholder={isLoading ? "Loading colleges..." : "Select colleges..."}
+                                    placeholder={isLoading ? "Loading institutes..." : "Select institutes..."}
                                     isDisabled={isLoading}
                                     styles={{
                                         control: (base) => ({

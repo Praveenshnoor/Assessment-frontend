@@ -12,7 +12,6 @@ const Register = () => {
     institute: '',
     phone: '',
     address: '',
-    collegeName: '',
     course: '',
     specialization: '',
     password: '',
@@ -56,10 +55,6 @@ const Register = () => {
 
     if (!formData.address.trim()) {
       newErrors.address = 'Address is required';
-    }
-
-    if (!formData.collegeName.trim()) {
-      newErrors.collegeName = 'College name is required';
     }
 
     if (!formData.course.trim()) {
@@ -124,10 +119,9 @@ const Register = () => {
           full_name: formData.fullName.trim(),
           email: formData.email.trim(),
           roll_number: formData.rollNumber.trim(),
-          institute: formData.institute.trim().toLowerCase(),
+          institute: formData.institute.trim(),
           phone: formData.phone.trim(),
           address: formData.address.trim(),
-          college_name: formData.collegeName.trim(),
           course: formData.course.trim(),
           specialization: formData.specialization.trim()
         }),
@@ -314,31 +308,6 @@ const Register = () => {
                   <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
                 </svg>
                 {errors.address}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-              College Name <span className="text-red-600 font-bold">*</span>
-            </label>
-            <input
-              type="text"
-              name="collegeName"
-              className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.collegeName ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
-                }`}
-              placeholder="e.g., ABC Engineering College"
-              value={formData.collegeName}
-              onChange={handleChange}
-              disabled={isLoading}
-              autoComplete="organization"
-            />
-            {errors.collegeName && (
-              <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-                  <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
-                </svg>
-                {errors.collegeName}
               </span>
             )}
           </div>
