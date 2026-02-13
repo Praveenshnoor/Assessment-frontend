@@ -122,20 +122,6 @@ const Instructions = () => {
         console.log('Resuming existing progress with camera permission verified...');
       }
 
-      // Request fullscreen
-      try {
-        const element = document.documentElement;
-        if (element.requestFullscreen) {
-          await element.requestFullscreen();
-        } else if (element.webkitRequestFullscreen) {
-          await element.webkitRequestFullscreen();
-        } else if (element.msRequestFullscreen) {
-          await element.msRequestFullscreen();
-        }
-      } catch (err) {
-        console.error('Fullscreen request failed:', err);
-        // Don't block navigation if fullscreen fails
-      }
       
       navigate('/test');
     } catch (error) {

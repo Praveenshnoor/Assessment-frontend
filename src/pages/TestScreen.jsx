@@ -255,10 +255,10 @@ const TestScreen = () => {
         const data = await response.json();
         if (data.success && data.test && data.test.questions) {
           setQuestions(data.test.questions);
-          
+
           // Get test duration from backend
           const duration = data.test.duration || 60;
-          
+
           // Load saved progress if available
           if (data.savedProgress) {
             console.log('Loading saved progress:', data.savedProgress);
@@ -267,7 +267,7 @@ const TestScreen = () => {
             setMarkedForReview(new Set(data.savedProgress.markedForReview || []));
             setVisited(new Set(data.savedProgress.visitedQuestions || [0]));
             setWarningCount(data.savedProgress.warningCount || 0);
-            
+
             // Set time remaining from saved progress (in seconds)
             if (data.savedProgress.timeRemaining) {
               setInitialTimeRemaining(data.savedProgress.timeRemaining);
@@ -283,11 +283,11 @@ const TestScreen = () => {
           // Get student data from localStorage (stored as separate items)
           const studentId = localStorage.getItem('studentId') || 'unknown';
           const studentName = localStorage.getItem('studentName') || 'Student';
-          
+
           console.log('[Proctoring] Student ID:', studentId);
           console.log('[Proctoring] Student Name:', studentName);
           console.log('[Proctoring] Starting proctoring for:', studentName);
-          
+
           try {
             const proctoringResult = await startProctoring({
               studentId: studentId,
@@ -295,7 +295,7 @@ const TestScreen = () => {
               testId: testId,
               testTitle: data.test.title,
             });
-            
+
             if (proctoringResult.success) {
               console.log('[Proctoring] Successfully started');
             } else {
@@ -305,6 +305,17 @@ const TestScreen = () => {
           } catch (proctoringErr) {
             console.error('[Proctoring] Error starting proctoring:', proctoringErr);
             // Don't block test if proctoring fails
+          }
+
+          // Automatically enter fullscreen mode after component is ready
+          // This must be done on the test page itself (not before navigation)
+          console.log('[Fullscreen] Requesting fullscreen mode...');
+          try {
+            await enterFullscreen();
+            console.log('[Fullscreen] Fullscreen mode activated');
+          } catch (fullscreenErr) {
+            console.error('[Fullscreen] Failed to enter fullscreen:', fullscreenErr);
+            // Don't block test if fullscreen fails - the warning modal will show
           }
         } else {
           throw new Error('Invalid test data');
@@ -415,8 +426,8 @@ const TestScreen = () => {
   };
 
   const getQuestionStatus = (index) => {
-    if (answers[index] !== undefined) return 'answered';
     if (markedForReview.has(index)) return 'review';
+    if (answers[index] !== undefined) return 'answered';
     if (visited.has(index)) return 'visited';
     return 'not-visited';
   };
