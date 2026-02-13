@@ -361,10 +361,13 @@ const TestScreen = () => {
     window.addEventListener('popstate', blockBackButton);
 
     // Handle visibility change (tab switch, minimize, etc.)
+    // Note: We don't restart proctoring on visibility change to avoid request loops
+    // The proctoring hook handles camera state internally
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        console.log('[Proctoring] Page hidden - stopping proctoring');
-        stopProctoring();
+        console.log('[Proctoring] Page hidden');
+      } else {
+        console.log('[Proctoring] Page visible again');
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
