@@ -171,7 +171,7 @@ const AdminDashboard = () => {
               score: result.marks_obtained,
               total: result.total_marks,
               passingPercentage: result.passing_percentage || 50,
-              date: new Date(result.submitted_at).toLocaleDateString('en-US', { 
+              date: new Date(result.submitted_at).toLocaleDateString('en-IN', { 
                 year: 'numeric', 
                 month: 'short', 
                 day: 'numeric' 
