@@ -42,7 +42,7 @@ export const useProctoringSimple = (onCameraLost) => {
     }
   };
 
-  // Initialize Socket.io connection
+  // Initialize Socket.io connection with enhanced reliability
   const connectSocket = (studentData) => {
     if (socketRef.current?.connected) {
       return socketRef.current;
@@ -51,44 +51,166 @@ export const useProctoringSimple = (onCameraLost) => {
     const socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
+      reconnectionDelay: 2000, // Start with 2 second delay
+      reconnectionDelayMax: 10000, // Max 10 seconds between attempts
+      reconnectionAttempts: 10, // Try 10 times before giving up
+      timeout: 20000, // 20 second connection timeout
+      forceNew: true, // Force new connection
     });
 
+    // Connection success
     socket.on('connect', () => {
       console.log('[Proctoring] Connected to server');
       setIsConnected(true);
+      setError(null);
       
       // Join proctoring session
       socket.emit('student:join-proctoring', studentData);
     });
 
-    socket.on('disconnect', () => {
-      console.log('[Proctoring] Disconnected from server');
+    // Connection lost
+    socket.on('disconnect', (reason) => {
+      console.log('[Proctoring] Disconnected from server:', reason);
       setIsConnected(false);
+      
+      // Show user-friendly message based on reason
+      if (reason === 'io server disconnect') {
+        setError('Server disconnected you. Please refresh the page.');
+      } else if (reason === 'transport close') {
+        setError('Connection lost. Attempting to reconnect...');
+      }
     });
 
+    // Connection errors
     socket.on('connect_error', (err) => {
       console.error('[Proctoring] Connection error:', err);
       setError('Connection error. Retrying...');
     });
 
-    // Keepalive ping every 30 seconds
-    const keepaliveInterval = setInterval(() => {
-      if (socket.connected) {
-        socket.emit('ping');
-      }
-    }, 30000);
-
-    socket.on('pong', () => {
-      console.log('[Proctoring] Keepalive pong received');
+    // Reconnection attempts
+    socket.on('reconnect_attempt', (attemptNumber) => {
+      console.log(`[Proctoring] Reconnection attempt ${attemptNumber}`);
+      setError(`Reconnecting... (attempt ${attemptNumber})`);
     });
+
+    // Successful reconnection
+    socket.on('reconnect', (attemptNumber) => {
+      console.log(`[Proctoring] Reconnected after ${attemptNumber} attempts`);
+      setError(null);
+      
+      // Rejoin proctoring session after reconnection
+      socket.emit('student:join-proctoring', studentData);
+    });
+
+    // Failed to reconnect
+    socket.on('reconnect_failed', () => {
+      console.error('[Proctoring] Failed to reconnect');
+      setError('Failed to reconnect to server. Please refresh the page.');
+    });
+
+    // Server-side error messages
+    socket.on('join-error', (data) => {
+      console.error('[Proctoring] Join error:', data);
+      setError(data.message || 'Failed to join proctoring session');
+    });
+
+    socket.on('socket-error', (data) => {
+      console.error('[Proctoring] Socket error:', data);
+      setError(data.message || 'Connection error occurred');
+      
+      if (data.shouldReconnect) {
+        setTimeout(() => {
+          socket.connect();
+        }, 3000);
+      }
+    });
+
+    // Handle duplicate connection
+    socket.on('duplicate-connection', (data) => {
+      console.warn('[Proctoring] Duplicate connection detected:', data);
+      setError('Another exam session detected. This connection will close.');
+    });
+
+    // Handle connection timeout
+    socket.on('connection-timeout', (data) => {
+      console.warn('[Proctoring] Connection timeout:', data);
+      setError(data.message || 'Connection timeout');
+    });
+
+    // Health check system
+    socket.on('health-check', (data) => {
+      // Respond to server health check
+      socket.emit('health-check-response', {
+        timestamp: data.timestamp,
+        quality: navigator.onLine ? 'good' : 'poor',
+        studentId: studentData.studentId
+      });
+    });
+
+    // Enhanced keepalive with exponential backoff
+    let keepaliveInterval;
+    let keepaliveTimeout = 30000; // Start with 30 seconds
+    
+    const startKeepalive = () => {
+      keepaliveInterval = setInterval(() => {
+        if (socket.connected) {
+          const pingStart = Date.now();
+          
+          socket.emit('ping', (response) => {
+            const latency = Date.now() - pingStart;
+            console.log(`[Proctoring] Ping response: ${latency}ms`);
+            
+            // Adjust keepalive frequency based on latency
+            if (latency > 5000) { // High latency
+              keepaliveTimeout = 60000; // Reduce frequency
+            } else if (latency < 1000) { // Good latency
+              keepaliveTimeout = 30000; // Normal frequency
+            }
+          });
+          
+          // If no pong received in 10 seconds, consider connection problematic
+          setTimeout(() => {
+            if (socket.connected) {
+              console.warn('[Proctoring] No pong received, connection may be unstable');
+            }
+          }, 10000);
+        }
+      }, keepaliveTimeout);
+    };
+
+    socket.on('connect', startKeepalive);
+    
+    socket.on('disconnect', () => {
+      if (keepaliveInterval) {
+        clearInterval(keepaliveInterval);
+      }
+    });
+
+    // Network status monitoring
+    const handleOnline = () => {
+      console.log('[Proctoring] Network back online');
+      if (!socket.connected) {
+        socket.connect();
+      }
+    };
+
+    const handleOffline = () => {
+      console.log('[Proctoring] Network went offline');
+      setError('Network connection lost. Please check your internet connection.');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
     socketRef.current = socket;
     
-    // Cleanup interval on disconnect
+    // Cleanup listeners on disconnect
     socket.on('disconnect', () => {
-      clearInterval(keepaliveInterval);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      if (keepaliveInterval) {
+        clearInterval(keepaliveInterval);
+      }
     });
 
     return socket;
