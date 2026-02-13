@@ -415,15 +415,15 @@ const Dashboard = () => {
                         : 'bg-[#3B82F6] hover:bg-blue-600 text-white'
                     }`}
                   >
-                    {test.alreadyTaken 
-                      ? `Completed (${test.attemptsTaken}/${test.maxAttempts} attempts used)` 
+                    {test.alreadyTaken
+                      ? `Completed (${test.attemptsTaken}/${test.maxAttempts} attempts used)`
                       : test.testStatus === 'upcoming'
-                      ? `🕐 ${test.availabilityMessage}`
-                      : test.testStatus === 'expired'
-                      ? `⏰ ${test.availabilityMessage}`
-                      : testsWithProgress.has(test.id)
-                      ? '▶ Resume Test'
-                      : `Take Test (${test.attemptsRemaining} attempts left)`}
+                        ? `🕐 Available from ${new Date(test.startDateTime).toLocaleString()}`
+                        : test.testStatus === 'expired'
+                          ? `⏰ Expired on ${new Date(test.endDateTime).toLocaleString()}`
+                          : testsWithProgress.has(test.id)
+                            ? '▶ Resume Test'
+                              : `Take Test (${test.attemptsRemaining} attempts left)`}
                   </button>
                 </div>
               </div>

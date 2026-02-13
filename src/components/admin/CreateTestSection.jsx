@@ -148,8 +148,8 @@ const CreateTestSection = ({ onComplete }) => {
                     duration: duration,
                     maxAttempts: maxAttempts,
                     passingPercentage: passingPercentage,
-                    startDateTime: startDateTime,
-                    endDateTime: endDateTime,
+                    startDateTime: startDateTime ? new Date(startDateTime).toISOString() : null,
+                    endDateTime: endDateTime ? new Date(endDateTime).toISOString() : null,
                     status: 'draft', // Save as draft initially
                     questions: questions.map(q => ({
                         question: q.text,
@@ -195,8 +195,8 @@ const CreateTestSection = ({ onComplete }) => {
             formData.append('duration', duration);
             formData.append('maxAttempts', maxAttempts);
             formData.append('passingPercentage', passingPercentage);
-            formData.append('startDateTime', startDateTime);
-            formData.append('endDateTime', endDateTime);
+            formData.append('startDateTime', startDateTime ? new Date(startDateTime).toISOString() : '');
+            formData.append('endDateTime', endDateTime ? new Date(endDateTime).toISOString() : '');
             formData.append('status', 'draft'); // Save as draft initially
 
             const token = localStorage.getItem('adminToken');
