@@ -6,6 +6,7 @@ import Instructions from './pages/Instructions';
 import TestScreen from './pages/TestScreen';
 import Result from './pages/Results';
 import Feedback from './pages/Feedback';
+import LandingPage from './pages/LandingPage';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminReports from './pages/admin/AdminReports';
@@ -35,6 +36,7 @@ function App() {
     <Router>
       <Routes>
         {/* Public Routes */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/admin/login" element={<Navigate to="/login" replace />} />
@@ -52,8 +54,7 @@ function App() {
         <Route path="/admin/live-proctoring" element={<AdminRoute><LiveProctoring /></AdminRoute>} />
 
         {/* Default */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
