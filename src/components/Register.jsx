@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../config/api';
+import shnoorLogo from '../../public/favicon.png';
 
 
 const Register = () => {
@@ -49,8 +50,8 @@ const Register = () => {
 
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required';
-    } else if (!/^\d{10}$/.test(formData.phone)) {
-      newErrors.phone = 'Phone number must be exactly 10 digits';
+    } else if (!/^\d{10}$/.test(formData.phone.replace(/[^0-9]/g, ''))) {
+      newErrors.phone = 'Enter a valid 10-digit phone number';
     }
 
     if (!formData.address.trim()) {
@@ -119,7 +120,7 @@ const Register = () => {
           full_name: formData.fullName.trim(),
           email: formData.email.trim(),
           roll_number: formData.rollNumber.trim(),
-          institute: formData.institute.trim(),
+          institute: formData.institute.trim().toLowerCase(),
           phone: formData.phone.trim(),
           address: formData.address.trim(),
           course: formData.course.trim(),
@@ -159,14 +160,22 @@ const Register = () => {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 font-sans p-4 sm:p-6 overflow-auto">
       <div className="bg-white w-full max-w-[520px] p-6 sm:p-8 md:p-12 lg:p-14 flex flex-col justify-center rounded-lg shadow-xl border border-slate-200 relative my-4">
-        <div className="text-center mb-6 sm:mb-8 md:mb-10 flex-shrink-0">
-          <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-[0.15em] mb-3 sm:mb-4">
-            Secure Assessment Portal
+        <div className="text-center mb-6 flex-shrink-0">
+          <div className="flex items-center justify-center mb-2 gap-3">
+            <img
+              src={shnoorLogo}
+              alt="Shnoor Assessment Platform"
+              className="w-[55px] h-[50px] object-contain"
+            />
+            <div className="text-left">
+              <h1 className="brand-logo text-slate-900 text-xl md:text-2xl font-semibold mb-1 tracking-tight leading-tight">
+                SHNOOR International
+              </h1>
+              <p className="text-xs md:text-sm text-slate-500 font-medium tracking-[0.18em] uppercase">
+                Assessment Platform
+              </p>
+            </div>
           </div>
-          <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-slate-900 rounded-xl mx-auto mb-4 sm:mb-5 flex items-center justify-center text-white font-bold text-xl sm:text-2xl shadow-sm">
-            EX
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2 tracking-tight">Candidate Registration</h1>
           <p className="text-sm sm:text-[15px] text-slate-500 font-normal leading-relaxed px-2">
             Create your examination account
           </p>
@@ -270,7 +279,7 @@ const Register = () => {
               name="phone"
               className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.phone ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
                 }`}
-              placeholder="10-digit mobile number"
+              placeholder="e.g., 9876543210"
               value={formData.phone}
               onChange={handleChange}
               disabled={isLoading}
@@ -293,10 +302,9 @@ const Register = () => {
             </label>
             <textarea
               name="address"
-              rows="3"
-              className={`w-full px-4 sm:px-[18px] py-3 border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] resize-none ${errors.address ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
+              className={`w-full h-[100px] px-4 sm:px-[18px] py-3 border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] resize-none ${errors.address ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
                 }`}
-              placeholder="Enter your complete address"
+              placeholder="Enter your full address"
               value={formData.address}
               onChange={handleChange}
               disabled={isLoading}

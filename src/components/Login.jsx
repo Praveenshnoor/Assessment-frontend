@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { apiFetch } from '../config/api';
+import shnoorLogo from '../../public/favicon.png';
 
 
 const Login = () => {
@@ -139,14 +140,22 @@ const Login = () => {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 font-sans p-4 sm:p-6 overflow-auto">
       <div className="bg-white w-full max-w-[520px] p-6 sm:p-8 md:p-12 lg:p-14 flex flex-col justify-center rounded-lg shadow-xl border border-slate-200 relative my-4">
-        <div className="text-center mb-6 sm:mb-8 md:mb-10 flex-shrink-0">
-          <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-[0.15em] mb-3 sm:mb-4">
-            Secure Assessment Portal
+        <div className="text-center mb-6 flex-shrink-0">
+          <div className="flex items-center justify-center mb-2 gap-3">
+            <img
+              src={shnoorLogo}
+              alt="Shnoor Assessment Platform"
+              className="w-[55px] h-[50px] object-contain"
+            />
+            <div className="text-left">
+              <h1 className="brand-logo text-slate-900 text-xl md:text-2xl font-semibold mb-1 tracking-tight leading-tight">
+                SHNOOR International LLC
+              </h1>
+              <p className="text-xs md:text-sm text-slate-500 font-medium tracking-[0.18em] uppercase">
+                Assessment Platform
+              </p>
+            </div>
           </div>
-          <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-slate-900 rounded-xl mx-auto mb-4 sm:mb-5 flex items-center justify-center text-white font-bold text-xl sm:text-2xl shadow-sm">
-            EX
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2 tracking-tight">Login</h1>
           <p className="text-sm sm:text-[15px] text-slate-500 font-normal leading-relaxed px-2">
             Enter your credentials to access the examination
           </p>
