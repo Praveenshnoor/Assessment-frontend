@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { LogOut, Clock, BookOpen, AlertCircle, FileText, X } from 'lucide-react';
+import ExamSearchFilter from '../components/ExamSearchFilter';
 import { apiFetch } from '../config/api';
 
 const Dashboard = () => {
@@ -26,6 +27,15 @@ const Dashboard = () => {
   const [selectedTest, setSelectedTest] = useState(null);
   const [showJobModal, setShowJobModal] = useState(false);
   const [selectedJobRoleIndex, setSelectedJobRoleIndex] = useState(0);
+
+  // Search, Filter, Sort States
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({
+    published: 'all',
+    attempted: 'all',
+    dateRange: 'all'
+  });
+  const [sortBy, setSortBy] = useState('latest');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -131,6 +141,79 @@ const Dashboard = () => {
     setSelectedJobRoleIndex(0); // Reset to first role
     setShowJobModal(true);
   };
+
+  // Filter and Sort Tests
+  const getFilteredAndSortedTests = () => {
+    let filtered = [...availableTests];
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(test =>
+        test.title.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Attempted filter
+    if (filters.attempted === 'attempted') {
+      filtered = filtered.filter(test => test.alreadyTaken);
+    } else if (filters.attempted === 'not-attempted') {
+      filtered = filtered.filter(test => !test.alreadyTaken && test.attemptsTaken === 0);
+    } else if (filters.attempted === 'in-progress') {
+      filtered = filtered.filter(test => testsWithProgress.has(test.id));
+    }
+
+    // Date range filter (based on availability)
+    if (filters.dateRange !== 'all') {
+      const now = new Date();
+      filtered = filtered.filter(test => {
+        if (!test.startDateTime) return true;
+        const testDate = new Date(test.startDateTime);
+        switch (filters.dateRange) {
+          case 'today':
+            return testDate.toDateString() === now.toDateString();
+          case 'week':
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            return testDate >= weekAgo;
+          case 'month':
+            return testDate.getMonth() === now.getMonth() && testDate.getFullYear() === now.getFullYear();
+          case 'year':
+            return testDate.getFullYear() === now.getFullYear();
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Sort
+    switch (sortBy) {
+      case 'latest':
+        filtered.sort((a, b) => {
+          const dateA = new Date(a.startDateTime || 0);
+          const dateB = new Date(b.startDateTime || 0);
+          return dateB - dateA;
+        });
+        break;
+      case 'oldest':
+        filtered.sort((a, b) => {
+          const dateA = new Date(a.startDateTime || 0);
+          const dateB = new Date(b.startDateTime || 0);
+          return dateA - dateB;
+        });
+        break;
+      case 'duration-asc':
+        filtered.sort((a, b) => a.duration - b.duration);
+        break;
+      case 'duration-desc':
+        filtered.sort((a, b) => b.duration - a.duration);
+        break;
+      default:
+        break;
+    }
+
+    return filtered;
+  };
+
+  const filteredTests = getFilteredAndSortedTests();
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
@@ -307,8 +390,31 @@ const Dashboard = () => {
         )}
 
         {!loading && !error && availableTests.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-            {availableTests.map((test) => {
+          <>
+            <ExamSearchFilter
+              onSearchChange={setSearchTerm}
+              onFilterChange={setFilters}
+              onSortChange={setSortBy}
+              showPublishedFilter={false}
+              showAttemptedFilter={true}
+              resultCount={filteredTests.length}
+              sortOptions={[
+                { value: 'latest', label: 'Latest Available' },
+                { value: 'oldest', label: 'Oldest Available' },
+                { value: 'duration-asc', label: 'Shortest Duration' },
+                { value: 'duration-desc', label: 'Longest Duration' }
+              ]}
+            />
+
+            {filteredTests.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-xl border-2 border-[#E5E7EB] shadow-sm">
+                <BookOpen className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-[#111827]">No Tests Match Your Filters</h3>
+                <p className="text-[#374151] mt-2">Try adjusting your search or filters to see more tests.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                {filteredTests.map((test) => {
               // Determine card styling based on test status
               let cardBgColor = 'bg-white'; // Default: white (available)
               let cardBorderColor = 'border-[#3B82F6]';
@@ -430,6 +536,8 @@ const Dashboard = () => {
               );
             })}
           </div>
+            )}
+          </>
         )}
 
         {/* Info Section */}

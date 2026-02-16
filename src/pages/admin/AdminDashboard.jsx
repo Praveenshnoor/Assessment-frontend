@@ -6,6 +6,7 @@ import {
   Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video, Loader2, X, Building2
 } from 'lucide-react';
 import CreateTestSection from '../../components/admin/CreateTestSection';
+import ExamSearchFilter from '../../components/ExamSearchFilter';
 import { apiFetch } from '../../config/api';
 
 const AdminDashboard = () => {
@@ -63,9 +64,90 @@ const AdminDashboard = () => {
   });
   const [isAddingStudent, setIsAddingStudent] = useState(false);
 
+  // Search, Filter, Sort States
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({
+    published: 'all',
+    attempted: 'all',
+    dateRange: 'all'
+  });
+  const [sortBy, setSortBy] = useState('latest');
+
   // Derived state: Get students for the selected exam
   const selectedExamStudents = selectedExamId ? (studentsData[selectedExamId] || []) : [];
   const selectedExamDetails = tests.find(t => t.id === selectedExamId);
+
+  // Filter and Sort Tests
+  const getFilteredAndSortedTests = () => {
+    let filtered = [...tests];
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(test =>
+        test.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Published/Draft filter
+    if (filters.published !== 'all') {
+      filtered = filtered.filter(test =>
+        test.status === filters.published
+      );
+    }
+
+    // Attempted filter (based on attempts count)
+    if (filters.attempted === 'attempted') {
+      filtered = filtered.filter(test => test.attempts > 0);
+    } else if (filters.attempted === 'not-attempted') {
+      filtered = filtered.filter(test => test.attempts === 0);
+    }
+
+    // Date range filter
+    if (filters.dateRange !== 'all') {
+      const now = new Date();
+      filtered = filtered.filter(test => {
+        const testDate = new Date(test.date);
+        switch (filters.dateRange) {
+          case 'today':
+            return testDate.toDateString() === now.toDateString();
+          case 'week':
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            return testDate >= weekAgo;
+          case 'month':
+            return testDate.getMonth() === now.getMonth() && testDate.getFullYear() === now.getFullYear();
+          case 'year':
+            return testDate.getFullYear() === now.getFullYear();
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Sort
+    switch (sortBy) {
+      case 'most-attempted':
+        filtered.sort((a, b) => b.attempts - a.attempts);
+        break;
+      case 'latest':
+        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+        break;
+      case 'oldest':
+        filtered.sort((a, b) => new Date(a.date) - new Date(b.date));
+        break;
+      case 'duration-asc':
+        filtered.sort((a, b) => a.duration - b.duration);
+        break;
+      case 'duration-desc':
+        filtered.sort((a, b) => b.duration - a.duration);
+        break;
+      default:
+        break;
+    }
+
+    return filtered;
+  };
+
+  const filteredTests = getFilteredAndSortedTests();
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -161,8 +243,10 @@ const AdminDashboard = () => {
             
             if (!groupedResults[testId]) {
               groupedResults[testId] = [];
-              testStats[testId] = { totalScore: 0, count: 0 };
+              testStats[testId] = { totalScore: 0, count: 0, passed: 0 };
             }
+
+            const isPassed = result.percentage >= (result.passing_percentage || 50);
 
             groupedResults[testId].push({
               id: result.roll_number,
@@ -180,17 +264,24 @@ const AdminDashboard = () => {
 
             testStats[testId].totalScore += result.percentage;
             testStats[testId].count += 1;
+            if (isPassed) {
+              testStats[testId].passed += 1;
+            }
           }
         });
 
         setStudentsData(groupedResults);
 
-        // Update tests with attempts and average scores
+        // Update tests with attempts, average scores, and pass rate
         setTests(prevTests => prevTests.map(test => ({
           ...test,
           attempts: testStats[test.id]?.count || 0,
           avgScore: testStats[test.id]?.count 
             ? Math.round(testStats[test.id].totalScore / testStats[test.id].count)
+            : 0,
+          passedCount: testStats[test.id]?.passed || 0,
+          passRate: testStats[test.id]?.count 
+            ? Math.round((testStats[test.id].passed / testStats[test.id].count) * 100)
             : 0
         })));
       }
@@ -1060,6 +1151,57 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
+              {/* Compact Statistics Bar */}
+              {selectedExamStudents.length > 0 && (() => {
+                const scores = selectedExamStudents.map(s => Number(s.score) || 0);
+                const totals = selectedExamStudents.map(s => Number(s.total) || 0);
+                const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+                const highestScore = scores.length > 0 ? Math.max(...scores) : 0;
+                const lowestScore = scores.length > 0 ? Math.min(...scores) : 0;
+                const maxTotal = totals.length > 0 ? Math.max(...totals) : 0;
+                const passedCount = selectedExamStudents.filter(s => 
+                  (Number(s.score) / Number(s.total) * 100) >= (s.passingPercentage || 50)
+                ).length;
+                const passRate = selectedExamStudents.length > 0 ? (passedCount / selectedExamStudents.length) * 100 : 0;
+
+                return (
+                  <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 shadow-sm">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                      {/* Total Attempts */}
+                      <div className="text-center">
+                        <p className="text-xs text-gray-500 font-medium mb-1">Total Attempts</p>
+                        <p className="text-2xl font-bold text-gray-900">{selectedExamStudents.length}</p>
+                      </div>
+
+                      {/* Average Score */}
+                      <div className="text-center border-l border-gray-200">
+                        <p className="text-xs text-gray-500 font-medium mb-1">Average Score</p>
+                        <p className="text-2xl font-bold text-blue-600">{avgScore.toFixed(1)}/{maxTotal}</p>
+                      </div>
+
+                      {/* Highest Score */}
+                      <div className="text-center border-l border-gray-200">
+                        <p className="text-xs text-gray-500 font-medium mb-1">Highest Score</p>
+                        <p className="text-2xl font-bold text-green-600">{highestScore}/{maxTotal}</p>
+                      </div>
+
+                      {/* Lowest Score */}
+                      <div className="text-center border-l border-gray-200">
+                        <p className="text-xs text-gray-500 font-medium mb-1">Lowest Score</p>
+                        <p className="text-2xl font-bold text-orange-600">{lowestScore}/{maxTotal}</p>
+                      </div>
+
+                      {/* Pass Rate */}
+                      <div className="text-center border-l border-gray-200">
+                        <p className="text-xs text-gray-500 font-medium mb-1">Pass Rate</p>
+                        <p className="text-2xl font-bold text-emerald-600">{passRate.toFixed(0)}%</p>
+                        <p className="text-xs text-gray-400 mt-0.5">({passedCount}/{selectedExamStudents.length})</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="overflow-x-auto rounded-xl border-2 border-[#E5E7EB] shadow-lg">
                 <table className="w-full">
                   <thead className="bg-[#111827] text-white">
@@ -1152,8 +1294,32 @@ const AdminDashboard = () => {
                       <p className="text-sm mt-1">Click "Create Test" to add your first exam</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {tests.map((test) => (
+                    <>
+                      <ExamSearchFilter
+                        onSearchChange={setSearchTerm}
+                        onFilterChange={setFilters}
+                        onSortChange={setSortBy}
+                        showPublishedFilter={true}
+                        showAttemptedFilter={true}
+                        resultCount={filteredTests.length}
+                        sortOptions={[
+                          { value: 'latest', label: 'Latest Created' },
+                          { value: 'oldest', label: 'Oldest Created' },
+                          { value: 'most-attempted', label: 'Most Attempted' },
+                          { value: 'duration-asc', label: 'Shortest Duration' },
+                          { value: 'duration-desc', label: 'Longest Duration' }
+                        ]}
+                      />
+
+                      {filteredTests.length === 0 ? (
+                        <div className="text-center py-12 text-[#374151]">
+                          <FileSpreadsheet className="mx-auto mb-3 text-gray-300" size={48} />
+                          <p className="font-medium">No exams match your filters</p>
+                          <p className="text-sm mt-1">Try adjusting your search or filters</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {filteredTests.map((test) => (
                         <div
                           key={test.id}
                           className="bg-white border-2 border-[#E5E7EB] rounded-xl p-6 hover:shadow-lg hover:border-[#3B82F6] transition-all group relative"
@@ -1211,13 +1377,20 @@ const AdminDashboard = () => {
                           </div>
 
                           {/* Stats */}
-                          <div className="flex items-center justify-center pt-4 border-t border-[#E5E7EB] mb-4">
+                          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-[#E5E7EB] mb-4">
                             <div className="text-center">
                               <div className="flex items-center justify-center mb-1">
                                 <Users size={16} className="text-[#374151] mr-1" />
                                 <span className="text-lg font-bold text-[#111827]">{test.attempts}</span>
                               </div>
                               <p className="text-xs text-[#374151]">Attempted</p>
+                            </div>
+                            <div className="text-center">
+                              <div className="flex items-center justify-center mb-1">
+                                <CheckCircle size={16} className="text-green-600 mr-1" />
+                                <span className="text-lg font-bold text-green-600">{test.passedCount || 0}</span>
+                              </div>
+                              <p className="text-xs text-[#374151]">Passed ({test.passRate || 0}%)</p>
                             </div>
                           </div>
 
@@ -1248,6 +1421,8 @@ const AdminDashboard = () => {
                         </div>
                       ))}
                     </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
