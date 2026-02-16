@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Upload, FileText, Plus, Save, Trash2, ArrowLeft, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { apiFetch } from '../../config/api';
 
-const CreateTestSection = ({ onComplete }) => {
+const CreateTestSection = ({ onComplete, editingTest }) => {
     const [step, setStep] = useState('init'); // init, manual, bulk, success
     const [testTitle, setTestTitle] = useState('');
     const [jobRoles, setJobRoles] = useState([{ job_role: '', job_description: '' }]);
@@ -16,6 +16,8 @@ const CreateTestSection = ({ onComplete }) => {
     const [uploadedTestId, setUploadedTestId] = useState(null);
     const [uploadedTestName, setUploadedTestName] = useState('');
     const [isPublishing, setIsPublishing] = useState(false);
+    const [isLoadingTest, setIsLoadingTest] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
     
     // Name availability checker state
     const [nameAvailability, setNameAvailability] = useState({
@@ -31,11 +33,92 @@ const CreateTestSection = ({ onComplete }) => {
         correctOption: null // 0, 1, 2, 3
     });
 
-    // Check name availability when title changes
+    // Load test data when editing
+    useEffect(() => {
+        const loadTestData = async () => {
+            if (!editingTest) {
+                setIsEditMode(false);
+                return;
+            }
+
+            setIsEditMode(true);
+            setIsLoadingTest(true);
+
+            try {
+                const token = localStorage.getItem('adminToken');
+                const response = await apiFetch(`api/tests/${editingTest.id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    const test = data.test;
+                    setTestTitle(test.title);
+                    setDuration(test.duration || 60);
+                    setMaxAttempts(test.max_attempts || 1);
+                    setPassingPercentage(test.passing_percentage || 50);
+                    setStartDateTime(test.start_datetime ? new Date(test.start_datetime).toISOString().slice(0, 16) : '');
+                    setEndDateTime(test.end_datetime ? new Date(test.end_datetime).toISOString().slice(0, 16) : '');
+                    
+                    // Load job roles
+                    if (test.jobRoles && test.jobRoles.length > 0) {
+                        setJobRoles(test.jobRoles.map(r => ({
+                            job_role: r.job_role,
+                            job_description: r.job_description
+                        })));
+                    } else if (test.job_role) {
+                        setJobRoles([{
+                            job_role: test.job_role,
+                            job_description: test.description || ''
+                        }]);
+                    }
+
+                    // Load questions
+                    if (test.questions && test.questions.length > 0) {
+                        const loadedQuestions = test.questions.map((q, idx) => ({
+                            id: q.id || Date.now() + idx,
+                            text: q.question_text,
+                            options: [q.option_a, q.option_b, q.option_c || '', q.option_d || ''],
+                            correctOption: q.correct_option.charCodeAt(0) - 65 // Convert 'A', 'B', 'C', 'D' to 0, 1, 2, 3
+                        }));
+                        setQuestions(loadedQuestions);
+                    }
+
+                    setUploadedTestId(test.id);
+                    setNameAvailability({ checking: false, available: true, message: 'Current test name' });
+                    
+                    // Stay on init step to allow editing test details first
+                    setStep('init');
+                } else {
+                    alert(data.message || 'Failed to load test data');
+                    if (onComplete) onComplete();
+                }
+            } catch (error) {
+                console.error('Error loading test:', error);
+                alert('Failed to load test data');
+                if (onComplete) onComplete();
+            } finally {
+                setIsLoadingTest(false);
+            }
+        };
+
+        loadTestData();
+    }, [editingTest]);
+
+    // Check name availability when title changes (skip if editing and name hasn't changed)
     useEffect(() => {
         const checkNameAvailability = async () => {
             if (!testTitle.trim()) {
                 setNameAvailability({ checking: false, available: null, message: '' });
+                return;
+            }
+
+            // Skip check if editing and name hasn't changed
+            if (isEditMode && editingTest && testTitle === editingTest.name) {
+                setNameAvailability({ checking: false, available: true, message: 'Current test name' });
                 return;
             }
 
@@ -67,7 +150,7 @@ const CreateTestSection = ({ onComplete }) => {
         // Debounce the API call
         const timeoutId = setTimeout(checkNameAvailability, 500);
         return () => clearTimeout(timeoutId);
-    }, [testTitle]);
+    }, [testTitle, isEditMode, editingTest]);
 
     const handleStart = (mode) => {
         if (!testTitle.trim()) {
@@ -135,46 +218,86 @@ const CreateTestSection = ({ onComplete }) => {
         
         try {
             const token = localStorage.getItem('adminToken');
-            const response = await apiFetch('api/upload/manual', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    testName: testTitle,
-                    jobRoles: jobRoles,
-                    testDescription: testDescription,
-                    duration: duration,
-                    maxAttempts: maxAttempts,
-                    passingPercentage: passingPercentage,
-                    startDateTime: startDateTime ? new Date(startDateTime).toISOString() : null,
-                    endDateTime: endDateTime ? new Date(endDateTime).toISOString() : null,
-                    status: 'draft', // Save as draft initially
-                    questions: questions.map(q => ({
-                        question: q.text,
-                        optiona: q.options[0],
-                        optionb: q.options[1],
-                        optionc: q.options[2],
-                        optiond: q.options[3],
-                        correctoption: String.fromCharCode(65 + q.correctOption),
-                        marks: 1
-                    }))
-                })
-            });
+            
+            // Prepare question data
+            const questionData = questions.map(q => ({
+                question_text: q.text,
+                options: q.options,
+                correctOption: q.correctOption,
+                question: q.text,
+                optiona: q.options[0],
+                optionb: q.options[1],
+                optionc: q.options[2],
+                optiond: q.options[3],
+                correct_option: String.fromCharCode(65 + q.correctOption),
+                correctoption: String.fromCharCode(65 + q.correctOption),
+                marks: 1
+            }));
 
-            const data = await response.json();
+            let response, data;
 
-            if (response.ok && data.success) {
-                setUploadedTestId(data.testId);
-                setUploadedTestName(testTitle);
-                setStep('success');
+            if (isEditMode && uploadedTestId) {
+                // Update existing test
+                response = await apiFetch(`api/tests/${uploadedTestId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        testName: testTitle,
+                        jobRoles: jobRoles,
+                        duration: duration,
+                        maxAttempts: maxAttempts,
+                        passingPercentage: passingPercentage,
+                        startDateTime: startDateTime ? new Date(startDateTime).toISOString() : null,
+                        endDateTime: endDateTime ? new Date(endDateTime).toISOString() : null,
+                        questions: questionData
+                    })
+                });
+
+                data = await response.json();
+
+                if (response.ok && data.success) {
+                    alert('Test updated successfully!');
+                    if (onComplete) onComplete();
+                } else {
+                    alert(data.message || 'Failed to update test');
+                }
             } else {
-                alert(data.message || 'Failed to create test');
+                // Create new test
+                response = await apiFetch('api/upload/manual', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        testName: testTitle,
+                        jobRoles: jobRoles,
+                        duration: duration,
+                        maxAttempts: maxAttempts,
+                        passingPercentage: passingPercentage,
+                        startDateTime: startDateTime ? new Date(startDateTime).toISOString() : null,
+                        endDateTime: endDateTime ? new Date(endDateTime).toISOString() : null,
+                        status: 'draft', // Save as draft initially
+                        questions: questionData
+                    })
+                });
+
+                data = await response.json();
+
+                if (response.ok && data.success) {
+                    setUploadedTestId(data.testId);
+                    setUploadedTestName(testTitle);
+                    setStep('success');
+                } else {
+                    alert(data.message || 'Failed to create test');
+                }
             }
         } catch (error) {
             console.error('Submit error:', error);
-            alert('Failed to create test. Please try again.');
+            alert('Failed to save test. Please try again.');
         } finally {
             setIsUploading(false);
         }
@@ -184,44 +307,90 @@ const CreateTestSection = ({ onComplete }) => {
         const file = e.target.files[0];
         if (!file) return;
 
+        // Confirm replacement if in edit mode
+        if (isEditMode && questions.length > 0) {
+            const confirmed = confirm(
+                `⚠️ Warning: This will delete all ${questions.length} existing question${questions.length !== 1 ? 's' : ''} and replace them with the questions from the uploaded file.\n\nAre you sure you want to continue?`
+            );
+            if (!confirmed) {
+                e.target.value = ''; // Reset file input
+                return;
+            }
+        }
+
         setIsUploading(true);
         
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('testName', testTitle);
-            formData.append('jobRoles', JSON.stringify(jobRoles));
-            formData.append('testDescription', jobRoles[0]?.job_description || '');
-            formData.append('duration', duration);
-            formData.append('maxAttempts', maxAttempts);
-            formData.append('passingPercentage', passingPercentage);
-            formData.append('startDateTime', startDateTime ? new Date(startDateTime).toISOString() : '');
-            formData.append('endDateTime', endDateTime ? new Date(endDateTime).toISOString() : '');
-            formData.append('status', 'draft'); // Save as draft initially
-
             const token = localStorage.getItem('adminToken');
-            const response = await apiFetch('api/upload/questions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                body: formData
-            });
 
-            const data = await response.json();
+            if (isEditMode && uploadedTestId) {
+                // Edit mode: Update existing test with new questions from file
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('testName', testTitle);
+                formData.append('jobRoles', JSON.stringify(jobRoles));
+                formData.append('testDescription', jobRoles[0]?.job_description || '');
+                formData.append('duration', duration);
+                formData.append('maxAttempts', maxAttempts);
+                formData.append('passingPercentage', passingPercentage);
+                formData.append('startDateTime', startDateTime ? new Date(startDateTime).toISOString() : '');
+                formData.append('endDateTime', endDateTime ? new Date(endDateTime).toISOString() : '');
+                formData.append('testId', uploadedTestId); // Include test ID for update
 
-            if (response.ok && data.success) {
-                setUploadedTestId(data.testId);
-                setUploadedTestName(testTitle);
-                setStep('success');
+                const response = await apiFetch(`api/upload/questions/${uploadedTestId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    alert(`Test updated successfully! ${data.questionsCount} questions uploaded.`);
+                    if (onComplete) onComplete();
+                } else {
+                    alert(data.message || 'Failed to update test');
+                }
             } else {
-                alert(data.message || 'Failed to upload test');
+                // Create mode: Create new test
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('testName', testTitle);
+                formData.append('jobRoles', JSON.stringify(jobRoles));
+                formData.append('testDescription', jobRoles[0]?.job_description || '');
+                formData.append('duration', duration);
+                formData.append('maxAttempts', maxAttempts);
+                formData.append('passingPercentage', passingPercentage);
+                formData.append('startDateTime', startDateTime ? new Date(startDateTime).toISOString() : '');
+                formData.append('endDateTime', endDateTime ? new Date(endDateTime).toISOString() : '');
+                formData.append('status', 'draft'); // Save as draft initially
+
+                const response = await apiFetch('api/upload/questions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    setUploadedTestId(data.testId);
+                    setUploadedTestName(testTitle);
+                    setStep('success');
+                } else {
+                    alert(data.message || 'Failed to upload test');
+                }
             }
         } catch (error) {
             console.error('Upload error:', error);
             alert('Failed to upload test. Please try again.');
         } finally {
             setIsUploading(false);
+            e.target.value = ''; // Reset file input
         }
     };
 
@@ -274,7 +443,7 @@ const CreateTestSection = ({ onComplete }) => {
             {/* Step 1: Initialization */}
             {step === 'init' && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-3xl mx-auto">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Create New Assessment</h2>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">{isEditMode ? 'Edit Assessment' : 'Create New Assessment'}</h2>
 
                     <div className="space-y-6">
                         {/* Test Title */}
@@ -440,39 +609,104 @@ const CreateTestSection = ({ onComplete }) => {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                            <button
-                                onClick={() => handleStart('manual')}
-                                className={`p-6 border-2 rounded-xl text-left transition-all hover:border-slate-900 group ${
-                                    !testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking
-                                        ? 'opacity-50 cursor-not-allowed' 
-                                        : 'hover:shadow-md'
-                                }`}
-                                disabled={!testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking}
-                            >
-                                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
-                                    <Plus className="w-6 h-6 text-blue-600 group-hover:text-white" />
+                        {isEditMode ? (
+                            /* Edit Mode: Show options to edit manually or upload new file */
+                            <div className="pt-6">
+                                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-6">
+                                    <div className="flex items-center space-x-3 mb-3">
+                                        <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                                            <FileText className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-gray-900">Current Questions</h3>
+                                            <p className="text-sm text-gray-600">{questions.length} question{questions.length !== 1 ? 's' : ''} loaded</p>
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-gray-600">
+                                        Choose how you want to update the questions for this test.
+                                    </p>
                                 </div>
-                                <h3 className="font-bold text-gray-900 mb-1">Manual Entry</h3>
-                                <p className="text-sm text-gray-500">Add questions one by one with a simple form interface.</p>
-                            </button>
 
-                            <button
-                                onClick={() => handleStart('bulk')}
-                                className={`p-6 border-2 rounded-xl text-left transition-all hover:border-slate-900 group ${
-                                    !testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking
-                                        ? 'opacity-50 cursor-not-allowed' 
-                                        : 'hover:shadow-md'
-                                }`}
-                                disabled={!testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking}
-                            >
-                                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-green-600 transition-colors">
-                                    <Upload className="w-6 h-6 text-green-600 group-hover:text-white" />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                    <button
+                                        onClick={() => handleStart('manual')}
+                                        className="p-6 border-2 border-gray-200 rounded-xl text-left transition-all hover:border-blue-500 hover:shadow-lg group bg-white"
+                                    >
+                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
+                                            <FileText className="w-6 h-6 text-blue-600 group-hover:text-white" />
+                                        </div>
+                                        <h3 className="font-bold text-gray-900 mb-2">Edit Questions Manually</h3>
+                                        <p className="text-sm text-gray-600 mb-3">Edit existing questions, add new ones, or remove questions individually.</p>
+                                        <div className="flex items-center text-xs text-blue-600 font-medium">
+                                            <span>Edit {questions.length} question{questions.length !== 1 ? 's' : ''}</span>
+                                            <ArrowLeft size={14} className="ml-1 rotate-180" />
+                                        </div>
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleStart('bulk')}
+                                        className="p-6 border-2 border-gray-200 rounded-xl text-left transition-all hover:border-red-500 hover:shadow-lg group bg-white"
+                                    >
+                                        <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-red-600 transition-colors">
+                                            <Upload className="w-6 h-6 text-red-600 group-hover:text-white" />
+                                        </div>
+                                        <h3 className="font-bold text-gray-900 mb-2">Upload New Questions File</h3>
+                                        <p className="text-sm text-gray-600 mb-3">Replace all existing questions by uploading a new CSV/Excel file.</p>
+                                        <div className="flex items-center text-xs text-red-600 font-medium">
+                                            <AlertCircle size={14} className="mr-1" />
+                                            <span>Will replace {questions.length} question{questions.length !== 1 ? 's' : ''}</span>
+                                        </div>
+                                    </button>
                                 </div>
-                                <h3 className="font-bold text-gray-900 mb-1">Bulk Upload</h3>
-                                <p className="text-sm text-gray-500">Upload an Excel or CSV file containing multiple questions.</p>
-                            </button>
-                        </div>
+                                
+                                <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 flex items-start space-x-3">
+                                    <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                                    <div className="text-sm text-yellow-800">
+                                        <p className="font-semibold mb-1">Important:</p>
+                                        <ul className="list-disc list-inside space-y-1">
+                                            <li>Review test details above before proceeding</li>
+                                            <li>Uploading a new file will <strong>delete all existing questions</strong></li>
+                                            <li>Changes will be saved when you click "Update Assessment"</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            /* Create Mode: Show manual and bulk upload options */
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                                <button
+                                    onClick={() => handleStart('manual')}
+                                    className={`p-6 border-2 border-gray-200 rounded-xl text-left transition-all hover:border-blue-500 group bg-white ${
+                                        !testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking
+                                            ? 'opacity-50 cursor-not-allowed' 
+                                            : 'hover:shadow-md'
+                                    }`}
+                                    disabled={!testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking}
+                                >
+                                    <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
+                                        <Plus className="w-6 h-6 text-blue-600 group-hover:text-white" />
+                                    </div>
+                                    <h3 className="font-bold text-gray-900 mb-1">Manual Entry</h3>
+                                    <p className="text-sm text-gray-600">Add questions one by one with a simple form interface.</p>
+                                </button>
+
+                                <button
+                                    onClick={() => handleStart('bulk')}
+                                    className={`p-6 border-2 border-gray-200 rounded-xl text-left transition-all hover:border-blue-500 group bg-white ${
+                                        !testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking
+                                            ? 'opacity-50 cursor-not-allowed' 
+                                            : 'hover:shadow-md'
+                                    }`}
+                                    disabled={!testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking}
+                                >
+                                    <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
+                                        <Upload className="w-6 h-6 text-blue-600 group-hover:text-white" />
+                                    </div>
+                                    <h3 className="font-bold text-gray-900 mb-1">Bulk Upload</h3>
+                                    <p className="text-sm text-gray-600">Upload an Excel or CSV file containing multiple questions.</p>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -556,7 +790,7 @@ const CreateTestSection = ({ onComplete }) => {
                                     ) : (
                                         <>
                                             <Save size={20} />
-                                            <span>Save Assessment ({questions.length} Questions)</span>
+                                            <span>{isEditMode ? 'Update' : 'Save'} Assessment ({questions.length} Questions)</span>
                                         </>
                                     )}
                                 </button>
@@ -662,12 +896,12 @@ const CreateTestSection = ({ onComplete }) => {
                         </div>
 
                         {/* Success Message */}
-                        <h2 className="text-3xl font-bold text-gray-900 mb-3">Test Uploaded Successfully!</h2>
+                        <h2 className="text-3xl font-bold text-gray-900 mb-3">Test Saved as Draft!</h2>
                         <p className="text-lg text-gray-600 mb-2">"{uploadedTestName}"</p>
-                        <p className="text-sm text-gray-500 mb-8">Click the button below to publish this test and make it visible to students.</p>
+                        <p className="text-sm text-gray-500 mb-8">Your test has been saved as a draft. You can publish it now or later from the dashboard.</p>
 
-                        {/* Action Button */}
-                        <div className="space-y-4">
+                        {/* Action Buttons */}
+                        <div className="space-y-3">
                             <button
                                 onClick={handlePublish}
                                 disabled={isPublishing}
@@ -685,6 +919,17 @@ const CreateTestSection = ({ onComplete }) => {
                                     </>
                                 )}
                             </button>
+
+                            <button
+                                onClick={() => {
+                                    resetForm();
+                                    if (onComplete) onComplete();
+                                }}
+                                className="w-full py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors flex items-center justify-center space-x-2"
+                            >
+                                <ArrowLeft size={20} />
+                                <span>Save as Draft & Return to Dashboard</span>
+                            </button>
                         </div>
 
                         {/* Info Box */}
@@ -694,8 +939,11 @@ const CreateTestSection = ({ onComplete }) => {
                                     <FileText className="h-5 w-5 text-blue-600" />
                                 </div>
                                 <div className="text-sm text-blue-800">
-                                    <p className="font-bold mb-1">What happens next?</p>
-                                    <p className="text-blue-700">Once published, students will immediately see this test in their dashboard and can start taking it.</p>
+                                    <p className="font-bold mb-1">What's the difference?</p>
+                                    <ul className="text-blue-700 space-y-1 list-disc list-inside">
+                                        <li><span className="font-semibold">Draft:</span> Test is saved but not visible to students</li>
+                                        <li><span className="font-semibold">Published:</span> Students can immediately see and take the test</li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>

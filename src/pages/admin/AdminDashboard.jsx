@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, FileSpreadsheet, LogOut, Download, ArrowLeft, 
-  Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video, Loader2, X, Building2
+  Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video, Loader2, X, Building2, MoreVertical, Copy, AlertCircle
 } from 'lucide-react';
 import CreateTestSection from '../../components/admin/CreateTestSection';
 import ExamSearchFilter from '../../components/ExamSearchFilter';
@@ -13,6 +13,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('exams');
   const [showCreateTest, setShowCreateTest] = useState(false);
+  const [editingTest, setEditingTest] = useState(null);
   const [selectedExamId, setSelectedExamId] = useState(null);
   const [tests, setTests] = useState([]);
   const [studentsData, setStudentsData] = useState({});
@@ -72,6 +73,16 @@ const AdminDashboard = () => {
     dateRange: 'all'
   });
   const [sortBy, setSortBy] = useState('latest');
+
+  // 3-Dot Menu States
+  const [openMenuId, setOpenMenuId] = useState(null);
+
+  // Clone Test Modal States
+  const [showCloneModal, setShowCloneModal] = useState(false);
+  const [testToClone, setTestToClone] = useState(null);
+  const [cloneTestName, setCloneTestName] = useState('');
+  const [isCloning, setIsCloning] = useState(false);
+  const [cloneError, setCloneError] = useState('');
 
   // Derived state: Get students for the selected exam
   const selectedExamStudents = selectedExamId ? (studentsData[selectedExamId] || []) : [];
@@ -162,6 +173,17 @@ const AdminDashboard = () => {
       }
     }
   }, [navigate, activeTab]);
+
+  // Close dropdown menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openMenuId && !event.target.closest('.relative')) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openMenuId]);
 
   const fetchTests = async () => {
     try {
@@ -361,7 +383,13 @@ const AdminDashboard = () => {
 
   const handleCreateTestComplete = () => {
     setShowCreateTest(false);
+    setEditingTest(null);
     fetchTests(); // Refresh the list
+  };
+
+  const handleEditTest = (test) => {
+    setEditingTest(test);
+    setShowCreateTest(true);
   };
 
   const exportToExcel = async () => {
@@ -669,6 +697,68 @@ const AdminDashboard = () => {
     const newJobRoles = [...jobRoles];
     newJobRoles[index][field] = value;
     setJobRoles(newJobRoles);
+  };
+
+  // Clone Test Functions
+  const handleOpenCloneModal = (test) => {
+    setTestToClone(test);
+    setCloneTestName(`${test.name} (Copy)`);
+    setCloneError('');
+    setShowCloneModal(true);
+    setOpenMenuId(null);
+  };
+
+  const handleCloneTest = async () => {
+    if (!cloneTestName.trim()) {
+      setCloneError('Test name is required');
+      return;
+    }
+
+    if (cloneTestName.trim().length < 3) {
+      setCloneError('Test name must be at least 3 characters');
+      return;
+    }
+
+    // Check if test name already exists
+    const nameExists = tests.some(t => t.name.toLowerCase() === cloneTestName.trim().toLowerCase());
+    if (nameExists) {
+      setCloneError('A test with this name already exists. Please choose a different name.');
+      return;
+    }
+
+    try {
+      setIsCloning(true);
+      setCloneError('');
+      const token = localStorage.getItem('adminToken');
+      
+      const response = await apiFetch(`api/tests/${testToClone.id}/clone`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          new_title: cloneTestName.trim()
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert(`Test cloned successfully! New test: "${data.test.title}"`);
+        setShowCloneModal(false);
+        setTestToClone(null);
+        setCloneTestName('');
+        fetchTests(); // Refresh the test list
+      } else {
+        setCloneError(data.message || 'Failed to clone test');
+      }
+    } catch (error) {
+      console.error('Error cloning test:', error);
+      setCloneError(error.message || 'Failed to clone test');
+    } finally {
+      setIsCloning(false);
+    }
   };
 
   // Institute Management Functions
@@ -1101,14 +1191,17 @@ const AdminDashboard = () => {
           <div className="bg-white rounded-2xl shadow-2xl border-2 border-[#E5E7EB] p-8 mb-6">
             <div className="flex items-center justify-between mb-8">
               <button
-                onClick={() => setShowCreateTest(false)}
+                onClick={() => {
+                  setShowCreateTest(false);
+                  setEditingTest(null);
+                }}
                 className="flex items-center text-[#374151] hover:text-[#3B82F6] transition-colors group"
               >
                 <ArrowLeft size={22} className="mr-2 group-hover:-translate-x-1 transition-transform" />
-                <span className="font-medium">Back to Exams</span>
+                <span className="font-medium">{editingTest ? 'Cancel Editing' : 'Back to Exams'}</span>
               </button>
             </div>
-            <CreateTestSection onComplete={handleCreateTestComplete} />
+            <CreateTestSection onComplete={handleCreateTestComplete} editingTest={editingTest} />
           </div>
         ) : selectedExamId ? (
           /* Detail View: Student Results for a specific exam */
@@ -1324,7 +1417,7 @@ const AdminDashboard = () => {
                           key={test.id}
                           className="bg-white border-2 border-[#E5E7EB] rounded-xl p-6 hover:shadow-lg hover:border-[#3B82F6] transition-all group relative"
                         >
-                          {/* Status Badge and Job View Button */}
+                          {/* Status Badge and 3-Dot Menu */}
                           <div className="absolute top-4 right-4 flex items-center space-x-2">
                             {test.status === 'published' ? (
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -1341,16 +1434,47 @@ const AdminDashboard = () => {
                                 Draft
                               </span>
                             )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewJob(test);
-                              }}
-                              className="p-1.5 bg-blue-100 hover:bg-[#3B82F6] text-[#3B82F6] hover:text-white rounded-lg transition-colors"
-                              title="View/Edit Job Details"
-                            >
-                              <Eye size={14} />
-                            </button>
+                            
+                            {/* 3-Dot Menu */}
+                            <div className="relative">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenuId(openMenuId === test.id ? null : test.id);
+                                }}
+                                className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 rounded-lg transition-colors"
+                                title="More options"
+                              >
+                                <MoreVertical size={14} />
+                              </button>
+                              
+                              {/* Dropdown Menu */}
+                              {openMenuId === test.id && (
+                                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewJob(test);
+                                      setOpenMenuId(null);
+                                    }}
+                                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 flex items-center space-x-2 transition-colors"
+                                  >
+                                    <Eye size={14} />
+                                    <span>Test Details</span>
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenCloneModal(test);
+                                    }}
+                                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 flex items-center space-x-2 transition-colors border-t border-gray-100"
+                                  >
+                                    <Copy size={14} />
+                                    <span>Clone Test</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
 
                           {/* Header with Icon */}
@@ -1396,27 +1520,66 @@ const AdminDashboard = () => {
 
                           {/* Action Buttons */}
                           <div className="flex items-center space-x-2 pt-4 border-t border-[#E5E7EB]">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedExamId(test.id);
-                              }}
-                              className="flex-1 py-2 px-3 bg-blue-100 text-[#3B82F6] hover:bg-[#3B82F6] hover:text-white rounded-lg text-sm font-medium transition-colors"
-                              title="View Results"
-                            >
-                              <Eye size={18} className="inline mr-1" />
-                              View
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteTest(test.id);
-                              }}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete Test"
-                            >
-                              <Trash2 size={18} />
-                            </button>
+                            {test.status === 'draft' ? (
+                              <>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditTest(test);
+                                  }}
+                                  className="flex-1 py-2 px-3 bg-blue-100 text-blue-700 hover:bg-blue-600 hover:text-white rounded-lg text-sm font-medium transition-colors"
+                                  title="Edit Test"
+                                >
+                                  <Eye size={18} className="inline mr-1" />
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleTogglePublish(test.id, test.status);
+                                  }}
+                                  className="flex-1 py-2 px-3 bg-green-100 text-green-700 hover:bg-green-600 hover:text-white rounded-lg text-sm font-medium transition-colors"
+                                  title="Publish Test"
+                                >
+                                  <CheckCircle size={18} className="inline mr-1" />
+                                  Publish
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteTest(test.id);
+                                  }}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Delete Test"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedExamId(test.id);
+                                  }}
+                                  className="flex-1 py-2 px-3 bg-blue-100 text-[#3B82F6] hover:bg-[#3B82F6] hover:text-white rounded-lg text-sm font-medium transition-colors"
+                                  title="View Results"
+                                >
+                                  <Eye size={18} className="inline mr-1" />
+                                  View
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteTest(test.id);
+                                  }}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Delete Test"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -1451,12 +1614,18 @@ const AdminDashboard = () => {
                       className="w-full px-5 py-4 border-2 border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#3B82F6] bg-white text-[#111827] font-medium shadow-sm hover:border-[#3B82F6] transition-all cursor-pointer"
                     >
                       <option value="">-- Choose a test --</option>
-                      {tests.map((test) => (
+                      {tests.filter(test => test.status === 'published').map((test) => (
                         <option key={test.id} value={test.id}>
                           {test.name} ({test.questions} questions • {test.duration} mins)
                         </option>
                       ))}
                     </select>
+                    {tests.filter(test => test.status === 'published').length === 0 && (
+                      <p className="mt-2 text-sm text-orange-600 flex items-center">
+                        <AlertCircle size={16} className="mr-1" />
+                        No published tests available. Please publish a test first.
+                      </p>
+                    )}
                   </div>
 
                   {/* Selected Students Counter */}
@@ -1771,6 +1940,104 @@ const AdminDashboard = () => {
         )}
       </main>
 
+      {/* Clone Test Modal */}
+      {showCloneModal && testToClone && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="bg-gradient-to-r from-[#3B82F6] to-blue-600 px-6 py-4 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-white">Clone Test</h3>
+                <p className="text-blue-100 text-sm mt-1">Create a copy of "{testToClone.name}"</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowCloneModal(false);
+                  setTestToClone(null);
+                  setCloneTestName('');
+                  setCloneError('');
+                }}
+                className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
+                disabled={isCloning}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  New Test Name <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={cloneTestName}
+                  onChange={(e) => {
+                    setCloneTestName(e.target.value);
+                    setCloneError('');
+                  }}
+                  className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    cloneError ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="Enter new test name"
+                  disabled={isCloning}
+                  autoFocus
+                />
+                {cloneError && (
+                  <p className="mt-2 text-sm text-red-600 flex items-center">
+                    <XCircle size={14} className="mr-1" />
+                    {cloneError}
+                  </p>
+                )}
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> This will create a new test with:
+                </p>
+                <ul className="mt-2 text-sm text-blue-700 space-y-1 ml-4 list-disc">
+                  <li>All questions from the original test</li>
+                  <li>Same duration and settings</li>
+                  <li>Draft status (not published)</li>
+                  <li>No results or student assignments</li>
+                </ul>
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowCloneModal(false);
+                    setTestToClone(null);
+                    setCloneTestName('');
+                    setCloneError('');
+                  }}
+                  className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-medium transition-colors"
+                  disabled={isCloning}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCloneTest}
+                  className="flex-1 px-6 py-3 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-xl font-medium transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isCloning}
+                >
+                  {isCloning ? (
+                    <>
+                      <Loader2 className="animate-spin" size={18} />
+                      <span>Cloning...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={18} />
+                      <span>Clone Test</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Job Role/Description Modal */}
       {showJobModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1975,7 +2242,7 @@ const AdminDashboard = () => {
                     className="flex-1 px-4 py-3 border-2 border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#3B82F6] bg-white text-[#111827] font-medium"
                   >
                     <option value="">-- Select a test --</option>
-                    {tests.map((test) => (
+                    {tests.filter(test => test.status === 'published').map((test) => (
                       <option key={test.id} value={test.id}>
                         {test.name} ({test.questions} questions)
                       </option>
@@ -1993,9 +2260,15 @@ const AdminDashboard = () => {
                     {isAssigningTestToInstitute && (
                       <Loader2 className="animate-spin" size={16} />
                     )}
-                    <span>{isAssigningTestToInstitute ? 'Assigning...' : 'Assign'}</span>
+                    <span>{isAssigningTestToInstitute ? 'Assigning...' : 'Assign Test'}</span>
                   </button>
                 </div>
+                {tests.filter(test => test.status === 'published').length === 0 && (
+                  <p className="mt-2 text-sm text-orange-600 flex items-center">
+                    <AlertCircle size={16} className="mr-1" />
+                    No published tests available. Please publish a test first.
+                  </p>
+                )}
               </div>
 
               {/* Assigned Tests List */}
