@@ -15,6 +15,7 @@ const Register = () => {
     address: '',
     course: '',
     specialization: '',
+    resumeLink: '',
     password: '',
     confirmPassword: ''
   });
@@ -66,6 +67,14 @@ const Register = () => {
 
     if (!formData.specialization.trim()) {
       newErrors.specialization = 'Specialization is required';
+    }
+
+    // Resume link validation (optional field, but validate format if provided)
+    if (formData.resumeLink.trim()) {
+      const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+      if (!urlPattern.test(formData.resumeLink.trim())) {
+        newErrors.resumeLink = 'Enter a valid URL (e.g., https://drive.google.com/...)';
+      }
     }
 
     if (!formData.password) {
@@ -126,7 +135,8 @@ const Register = () => {
           phone: formData.phone.trim(),
           address: formData.address.trim(),
           course: formData.course.trim(),
-          specialization: formData.specialization.trim()
+          specialization: formData.specialization.trim(),
+          resume_link: formData.resumeLink.trim() || null
         }),
       });
 
@@ -368,6 +378,37 @@ const Register = () => {
                   <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
                 </svg>
                 {errors.specialization}
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
+              Resume Link <span className="text-slate-400 font-normal">(Optional)</span>
+            </label>
+            <input
+              type="url"
+              name="resumeLink"
+              className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.resumeLink ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
+                }`}
+              placeholder="https://drive.google.com/file/d/..."
+              value={formData.resumeLink}
+              onChange={handleChange}
+              disabled={isLoading}
+              autoComplete="url"
+            />
+            <p className="text-xs text-slate-500 flex items-start gap-1.5 mt-0.5">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0 mt-0.5">
+                <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM7 5v2h2V5H7zm0 3v5h2V8H7z" />
+              </svg>
+              <span>Please ensure the resume link is publicly accessible (Google Drive, Dropbox, etc.)</span>
+            </p>
+            {errors.resumeLink && (
+              <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
+                  <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
+                </svg>
+                {errors.resumeLink}
               </span>
             )}
           </div>
