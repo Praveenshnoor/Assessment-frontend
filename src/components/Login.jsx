@@ -122,8 +122,12 @@ const Login = () => {
     } catch (error) {
       console.error('Login error:', error);
 
+      // Handle timeout errors
+      if (error.name === 'AbortError') {
+        setApiError('Server is waking up. Please wait a moment and try again.');
+      }
       // Handle Firebase-specific errors
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         setApiError('Invalid email or password. Please try again.');
       } else if (error.code === 'auth/invalid-email') {
         setApiError('Invalid email address format.');
