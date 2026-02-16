@@ -69,8 +69,10 @@ const Register = () => {
       newErrors.specialization = 'Specialization is required';
     }
 
-    // Resume link validation (optional field, but validate format if provided)
-    if (formData.resumeLink.trim()) {
+    // Resume link validation (mandatory field)
+    if (!formData.resumeLink.trim()) {
+      newErrors.resumeLink = 'Resume link is required';
+    } else {
       const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
       if (!urlPattern.test(formData.resumeLink.trim())) {
         newErrors.resumeLink = 'Enter a valid URL (e.g., https://drive.google.com/...)';
@@ -136,7 +138,7 @@ const Register = () => {
           address: formData.address.trim(),
           course: formData.course.trim(),
           specialization: formData.specialization.trim(),
-          resume_link: formData.resumeLink.trim() || null
+          resume_link: formData.resumeLink.trim()
         }),
       });
 
@@ -384,7 +386,7 @@ const Register = () => {
 
           <div className="flex flex-col gap-2">
             <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-              Resume Link <span className="text-slate-400 font-normal">(Optional)</span>
+              Resume Link <span className="text-red-600 font-bold">*</span>
             </label>
             <input
               type="url"
