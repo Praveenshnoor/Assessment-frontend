@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../config/api';
 import shnoorLogo from '../../public/favicon.png';
@@ -24,6 +24,57 @@ const Register = () => {
   const [apiError, setApiError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Institute dropdown state
+  const [institutes, setInstitutes] = useState([]);
+  const [filteredInstitutes, setFilteredInstitutes] = useState([]);
+  const [instituteSearch, setInstituteSearch] = useState('');
+  const [showInstituteDropdown, setShowInstituteDropdown] = useState(false);
+  const instituteDropdownRef = useRef(null);
+  const instituteInputRef = useRef(null);
+
+  // Fetch institutes on component mount
+  useEffect(() => {
+    const fetchInstitutes = async () => {
+      try {
+        const response = await apiFetch('api/institutes/public', {
+          method: 'GET',
+        });
+        const data = await response.json();
+        if (data.success && data.institutes) {
+          setInstitutes(data.institutes);
+          setFilteredInstitutes(data.institutes);
+        }
+      } catch (error) {
+        console.error('Error fetching institutes:', error);
+      }
+    };
+    fetchInstitutes();
+  }, []);
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (instituteDropdownRef.current && !instituteDropdownRef.current.contains(event.target)) {
+        setShowInstituteDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter institutes based on search
+  useEffect(() => {
+    if (instituteSearch.trim() === '') {
+      setFilteredInstitutes(institutes);
+    } else {
+      const searchLower = instituteSearch.toLowerCase();
+      const filtered = institutes.filter(inst =>
+        inst.display_name.toLowerCase().includes(searchLower)
+      );
+      setFilteredInstitutes(filtered);
+    }
+  }, [instituteSearch, institutes]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -100,6 +151,26 @@ const Register = () => {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
     setApiError('');
+  };
+
+  const handleInstituteSearch = (e) => {
+    const value = e.target.value;
+    setInstituteSearch(value);
+    setFormData(prev => ({ ...prev, institute: value }));
+    setShowInstituteDropdown(true);
+    if (errors.institute) {
+      setErrors(prev => ({ ...prev, institute: '' }));
+    }
+    setApiError('');
+  };
+
+  const handleInstituteSelect = (institute) => {
+    setFormData(prev => ({ ...prev, institute: institute.display_name }));
+    setInstituteSearch(institute.display_name);
+    setShowInstituteDropdown(false);
+    if (errors.institute) {
+      setErrors(prev => ({ ...prev, institute: '' }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -258,30 +329,53 @@ const Register = () => {
 
           
 
-          <div className="flex flex-col gap-2">
-            <label className="text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
+          <div className="flex flex-col gap-2" ref={instituteDropdownRef}>
+            <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
               Institute/University <span className="text-red-600 font-bold">*</span>
             </label>
-            <input
-              type="text"
-              name="institute"
-              className={`w-full h-[52px] px-[18px] border-2 rounded-md text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-[15px] ${errors.institute ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
-                }`}
-              placeholder="e.g., MIT, Stanford University"
-              value={formData.institute}
-              onChange={handleChange}
-              disabled={isLoading}
-              autoComplete="organization"
-            />
+            <div className="relative">
+              <input
+                ref={instituteInputRef}
+                type="text"
+                name="institute"
+                className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.institute ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
+                  }`}
+                placeholder="Search and select your institute..."
+                value={instituteSearch || formData.institute}
+                onChange={handleInstituteSearch}
+                onFocus={() => setShowInstituteDropdown(true)}
+                disabled={isLoading}
+                autoComplete="off"
+              />
+              {showInstituteDropdown && filteredInstitutes.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white border-2 border-slate-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {filteredInstitutes.map((institute) => (
+                    <div
+                      key={institute.id}
+                      className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors duration-150 text-sm text-slate-900 border-b border-slate-100 last:border-b-0"
+                      onClick={() => handleInstituteSelect(institute)}
+                    >
+                      {institute.display_name}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {showInstituteDropdown && filteredInstitutes.length === 0 && instituteSearch && (
+                <div className="absolute z-50 w-full mt-1 bg-white border-2 border-slate-200 rounded-md shadow-lg">
+                  <div className="px-4 py-3 text-sm text-slate-500 italic">
+                    No institutes found. Contact admin to add your institute.
+                  </div>
+                </div>
+              )}
+            </div>
             {errors.institute && (
-              <span className="text-red-600 text-[13px] font-medium flex items-center gap-1.5 mt-1">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
                   <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
                 </svg>
                 {errors.institute}
               </span>
             )}
-            <span className="text-xs text-slate-400 italic mt-1">Enter your institute or university name</span>
           </div>
 
           <div className="flex flex-col gap-2">
