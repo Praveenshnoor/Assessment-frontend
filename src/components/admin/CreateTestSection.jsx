@@ -783,7 +783,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                 <button
                                     onClick={handleManualSubmit}
                                     disabled={questions.length === 0 || isUploading}
-                                    className={`w-full py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors shadow-sm flex items-center justify-center space-x-2 ${questions.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    className={`w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors shadow-sm flex items-center justify-center space-x-2 ${questions.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     {isUploading ? (
                                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -798,7 +798,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         </div>
 
                         {/* Preview Side */}
-                        <div className="bg-gray-50 rounded-xl p-4 h-fit max-h-[600px] overflow-y-auto">
+                        <div className="bg-gray-50 rounded-xl p-4 h-fit max-h-[600px] overflow-y-auto border border-gray-200">
                             <h3 className="font-bold text-gray-900 mb-4 sticky top-0 bg-gray-50 pb-2">Added Questions</h3>
                             {questions.length === 0 ? (
                                 <div className="text-center py-8 text-gray-400">
@@ -821,7 +821,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                             <p className="text-sm font-medium text-gray-900 mb-2 line-clamp-2">{q.text}</p>
                                             <div className="space-y-1">
                                                 {q.options.map((opt, i) => (
-                                                    <div key={i} className={`text-xs px-2 py-1 rounded ${q.correctOption === i ? 'bg-green-100 text-green-700 font-medium' : 'text-gray-500'}`}>
+                                                    <div key={i} className={`text-xs px-2 py-1 rounded ${q.correctOption === i ? 'bg-green-100 text-green-700 font-medium' : 'text-gray-600'}`}>
                                                         {opt}
                                                     </div>
                                                 ))}
@@ -848,10 +848,10 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         </div>
                     </div>
 
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-slate-900 transition-colors relative">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-blue-500 transition-colors relative">
                         {isUploading && (
                             <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                             </div>
                         )}
 
@@ -861,7 +861,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         <p className="text-gray-600 mb-2">Drag and drop your Excel/CSV file here</p>
                         <p className="text-sm text-gray-400 mb-6">Supported formats: .csv, .xlsx, .xls</p>
 
-                        <label className="inline-flex items-center px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg cursor-pointer transition-colors shadow-sm">
+                        <label className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg cursor-pointer transition-colors shadow-sm">
                             <Upload size={18} className="mr-2" />
                             Select File
                             <input
@@ -905,7 +905,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                             <button
                                 onClick={handlePublish}
                                 disabled={isPublishing}
-                                className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isPublishing ? (
                                     <>
