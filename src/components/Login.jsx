@@ -193,7 +193,7 @@ const Login = () => {
               type="email"
               className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.email ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
                 }`}
-              placeholder="Enter your institutional email"
+              placeholder="Enter your email"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);

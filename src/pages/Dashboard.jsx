@@ -372,6 +372,7 @@ const Dashboard = () => {
         {loading && (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3B82F6]"></div>
+            <span className="ml-3 text-[#374151]">Loading...</span>
           </div>
         )}
 

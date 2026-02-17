@@ -84,6 +84,15 @@ const AdminDashboard = () => {
   const [isCloning, setIsCloning] = useState(false);
   const [cloneError, setCloneError] = useState('');
 
+  // Violations Tab States
+  const [violations, setViolations] = useState([]);
+  const [flaggedStudents, setFlaggedStudents] = useState([]);
+  const [violationSummary, setViolationSummary] = useState([]);
+  const [violationsByStudent, setViolationsByStudent] = useState([]);
+  const [selectedTestForViolations, setSelectedTestForViolations] = useState('');
+  const [isLoadingViolations, setIsLoadingViolations] = useState(false);
+  const [violationFilter, setViolationFilter] = useState('all'); // all, high, medium, low
+
   // Derived state: Get students for the selected exam
   const selectedExamStudents = selectedExamId ? (studentsData[selectedExamId] || []) : [];
   const selectedExamDetails = tests.find(t => t.id === selectedExamId);
@@ -171,8 +180,11 @@ const AdminDashboard = () => {
       if (activeTab === 'institutes') {
         fetchAllInstitutes();
       }
+      if (activeTab === 'violations' && selectedTestForViolations) {
+        fetchViolations();
+      }
     }
-  }, [navigate, activeTab]);
+  }, [navigate, activeTab, selectedTestForViolations]);
 
   // Close dropdown menu when clicking outside
   useEffect(() => {
@@ -1116,6 +1128,62 @@ const AdminDashboard = () => {
     }
   };
 
+  // Fetch AI Violations
+  const fetchViolations = async () => {
+    if (!selectedTestForViolations) return;
+
+    try {
+      setIsLoadingViolations(true);
+      const token = localStorage.getItem('adminToken');
+      
+      // Fetch violations, flagged students, summary, and by-student data in parallel
+      const [violationsRes, flaggedRes, summaryRes, byStudentRes] = await Promise.all([
+        apiFetch(`api/proctoring/violations/test/${selectedTestForViolations}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        apiFetch(`api/proctoring/violations/flagged/${selectedTestForViolations}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        apiFetch(`api/proctoring/violations/summary/${selectedTestForViolations}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        apiFetch(`api/proctoring/violations/by-student/${selectedTestForViolations}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
+
+      const violationsData = await violationsRes.json();
+      const flaggedData = await flaggedRes.json();
+      const summaryData = await summaryRes.json();
+      const byStudentData = await byStudentRes.json();
+
+      if (violationsData.success) {
+        setViolations(violationsData.violations);
+      }
+      if (flaggedData.success) {
+        setFlaggedStudents(flaggedData.flaggedStudents);
+      }
+      if (summaryData.success) {
+        setViolationSummary(summaryData.summary);
+      }
+      if (byStudentData.success) {
+        setViolationsByStudent(byStudentData.students);
+      }
+    } catch (error) {
+      console.error('Error fetching violations:', error);
+    } finally {
+      setIsLoadingViolations(false);
+    }
+  };
+
+  // Get filtered violations
+  const getFilteredViolations = () => {
+    if (violationFilter === 'all') return violations;
+    return violations.filter(v => v.severity === violationFilter);
+  };
+
+  const filteredViolations = getFilteredViolations();
+
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
       {/* Header */}
@@ -1168,6 +1236,7 @@ const AdminDashboard = () => {
                 { id: 'exams', label: 'Manage Exams', icon: FileSpreadsheet },
                 { id: 'assign', label: 'Assign Tests', icon: UserCheck },
                 { id: 'institutes', label: 'Manage Institutes', icon: Building2 },
+                { id: 'violations', label: 'Violations', icon: AlertCircle },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -1378,7 +1447,7 @@ const AdminDashboard = () => {
                   {loading ? (
                     <div className="flex justify-center items-center py-12">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3B82F6]"></div>
-                      <span className="ml-3 text-[#374151]">Loading exams...</span>
+                      <span className="ml-3 text-[#374151]">Loading...</span>
                     </div>
                   ) : tests.length === 0 ? (
                     <div className="text-center py-12 text-[#374151]">
@@ -1936,6 +2005,176 @@ const AdminDashboard = () => {
                 </div>
               </div>
             )}
+
+            {/* Violations Tab */}
+            {activeTab === 'violations' && (
+              <div className="space-y-6">
+                {/* Header */}
+                <div className="bg-white rounded-2xl shadow-2xl border-2 border-[#E5E7EB] p-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-[#111827] flex items-center">
+                        <AlertCircle className="mr-2 text-red-600" size={28} />
+                        Violations
+                      </h2>
+                      <p className="text-sm text-[#374151] mt-1">Monitor detected suspicious activities during exams</p>
+                    </div>
+                  </div>
+
+                  {/* Test Selector */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-bold text-[#111827] mb-2">
+                      Select Test to View Violations
+                    </label>
+                    <select
+                      value={selectedTestForViolations}
+                      onChange={(e) => setSelectedTestForViolations(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#3B82F6] bg-white text-[#111827] font-medium"
+                    >
+                      <option value="">-- Select a test --</option>
+                      {tests.map((test) => (
+                        <option key={test.id} value={test.id}>
+                          {test.name} ({test.attempts} attempts)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {selectedTestForViolations && (
+                    <>
+                      {/* Flagged Students */}
+                      {flaggedStudents.length > 0 && (
+                        <div className="mb-6">
+                          <h3 className="text-lg font-bold text-[#111827] mb-4 flex items-center">
+                            <AlertCircle className="mr-2 text-red-600" size={20} />
+                            Flagged Students (3+ High Severity Violations)
+                          </h3>
+                          <div className="space-y-3">
+                            {flaggedStudents.map((student) => (
+                              <div
+                                key={student.student_id}
+                                className="p-4 bg-red-50 border-2 border-red-200 rounded-xl"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1">
+                                    <h4 className="font-bold text-[#111827]">{student.student_name}</h4>
+                                    <p className="text-sm text-[#374151]">{student.student_email}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-2xl font-bold text-red-600">{student.total_violations}</p>
+                                    <p className="text-xs text-[#374151]">Total Violations</p>
+                                  </div>
+                                </div>
+                                <div className="mt-3 flex space-x-4 text-sm">
+                                  <span className="px-3 py-1 bg-red-600 text-white rounded-full font-medium">
+                                    High: {student.high_severity_count}
+                                  </span>
+                                  <span className="px-3 py-1 bg-orange-600 text-white rounded-full font-medium">
+                                    Medium: {student.medium_severity_count}
+                                  </span>
+                                  <span className="text-[#374151]">
+                                    Last: {new Date(student.last_violation).toLocaleString()}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Student Violations Table */}
+                      {isLoadingViolations ? (
+                        <div className="flex items-center justify-center py-12">
+                          <Loader2 className="animate-spin text-[#3B82F6]" size={32} />
+                          <span className="ml-3 text-[#374151]">Loading violations...</span>
+                        </div>
+                      ) : violationsByStudent.length === 0 ? (
+                        <div className="text-center py-12 bg-[#F9FAFB] rounded-xl border-2 border-[#E5E7EB]">
+                          <CheckCircle className="mx-auto mb-2 text-green-500" size={48} />
+                          <p className="text-[#111827] font-medium">No violations detected</p>
+                          <p className="text-sm text-[#374151] mt-1">All students followed exam guidelines</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <h3 className="text-lg font-bold text-[#111827] mb-4">
+                            Student Violations Summary
+                          </h3>
+                          <table className="w-full border-collapse">
+                            <thead>
+                              <tr className="bg-[#F9FAFB] border-b-2 border-[#E5E7EB]">
+                                <th className="px-4 py-3 text-left text-sm font-bold text-[#111827]">Student ID</th>
+                                <th className="px-4 py-3 text-left text-sm font-bold text-[#111827]">Name</th>
+                                <th className="px-4 py-3 text-left text-sm font-bold text-[#111827]">Email</th>
+                                <th className="px-4 py-3 text-left text-sm font-bold text-[#111827]">Phone</th>
+                                <th className="px-4 py-3 text-center text-sm font-bold text-[#111827]">No Face</th>
+                                <th className="px-4 py-3 text-center text-sm font-bold text-[#111827]">Multiple Faces</th>
+                                <th className="px-4 py-3 text-center text-sm font-bold text-[#111827]">Phone Detected</th>
+                                <th className="px-4 py-3 text-center text-sm font-bold text-[#111827]">Looking Down</th>
+                                <th className="px-4 py-3 text-center text-sm font-bold text-[#111827]">Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {violationsByStudent.map((student, idx) => (
+                                <tr 
+                                  key={student.student_id}
+                                  className={`border-b border-[#E5E7EB] hover:bg-[#F9FAFB] ${
+                                    student.total_violations >= 5 ? 'bg-red-50' : ''
+                                  }`}
+                                >
+                                  <td className="px-4 py-3 text-sm text-[#374151]">{student.student_id}</td>
+                                  <td className="px-4 py-3 text-sm font-medium text-[#111827]">{student.student_name}</td>
+                                  <td className="px-4 py-3 text-sm text-[#374151]">{student.student_email}</td>
+                                  <td className="px-4 py-3 text-sm text-[#374151]">{student.student_phone || 'N/A'}</td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${
+                                      student.no_face_count > 0 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'
+                                    }`}>
+                                      {student.no_face_count}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${
+                                      student.multiple_faces_count > 0 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'
+                                    }`}>
+                                      {student.multiple_faces_count}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${
+                                      student.phone_detected_count > 0 ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'
+                                    }`}>
+                                      {student.phone_detected_count}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${
+                                      student.looking_down_count > 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'
+                                    }`}>
+                                      {student.looking_down_count}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${
+                                      student.total_violations >= 5 
+                                        ? 'bg-red-600 text-white' 
+                                        : student.total_violations >= 3
+                                        ? 'bg-orange-600 text-white'
+                                        : 'bg-blue-100 text-blue-700'
+                                    }`}>
+                                      {student.total_violations}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </>
         )}
       </main>
@@ -2277,7 +2516,7 @@ const AdminDashboard = () => {
                 {isLoadingAssignedTests ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="animate-spin text-[#3B82F6]" size={32} />
-                    <span className="ml-3 text-[#374151]">Loading tests...</span>
+                    <span className="ml-3 text-[#374151]">Loading...</span>
                   </div>
                 ) : assignedTests.length === 0 ? (
                   <div className="text-center py-8 bg-[#F9FAFB] rounded-xl border-2 border-[#E5E7EB]">

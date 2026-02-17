@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useTimer } from '../hooks/useTimer';
 import { useFullscreen } from '../hooks/useFullscreen';
 import { useTabSwitch } from '../hooks/useTabSwitch';
-import { useProctoringSimple } from '../hooks/useProctoringSimple';
+import { useProctoringWithAI } from '../hooks/useProctoringWithAI';
 import FullscreenWarning from '../components/FullscreenWarning';
+import AIViolationAlert from '../components/AIViolationAlert';
 import {
   Clock,
   AlertTriangle,
@@ -12,7 +13,8 @@ import {
   ChevronRight,
   Flag,
   CheckCircle,
-  Monitor
+  Monitor,
+  Shield
 } from 'lucide-react';
 import { apiFetch } from '../config/api';
 
@@ -32,6 +34,8 @@ const TestScreen = () => {
   const [initialTimeRemaining, setInitialTimeRemaining] = useState(3600); // Default 60 minutes in seconds
   const [hasStarted, setHasStarted] = useState(false);
   const [testDetails, setTestDetails] = useState(null);
+  const [currentAIViolation, setCurrentAIViolation] = useState(null);
+  const [aiViolationCount, setAiViolationCount] = useState(0);
 
   const {
     isFullscreen,
@@ -67,11 +71,38 @@ const TestScreen = () => {
     });
   }, [navigate, stopTimer]);
 
-  // Proctoring hook - pass camera loss handler
+  // Handle AI violations
+  const handleAIViolation = useCallback((violation) => {
+    console.log('[AI Violation Detected]', violation);
+    
+    // Show alert to student
+    setCurrentAIViolation(violation);
+    setAiViolationCount(prev => prev + 1);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+      setCurrentAIViolation(null);
+    }, 5000);
+    
+    // If too many high-severity violations, terminate exam
+    if (violation.severity === 'high') {
+      const highSeverityCount = aiViolationCount + 1;
+      
+      if (highSeverityCount >= 5) {
+        alert('⚠️ EXAM TERMINATED\n\nMultiple cheating attempts detected by AI monitoring system.\n\nYour exam has been flagged and submitted automatically.');
+        submitTest('ai_violation_limit');
+      }
+    }
+  }, [aiViolationCount]);
+
+  // Proctoring hook with AI - pass camera loss and AI violation handlers
   const {
     startProctoring,
     stopProctoring,
-  } = useProctoringSimple(handleCameraLost);
+    isModelLoaded,
+    detectionActive,
+    violations
+  } = useProctoringWithAI(handleCameraLost, handleAIViolation);
 
   // Submit test function - defined early so it can be used by other callbacks
   const submitTest = useCallback(async (reason = 'manual') => {
@@ -542,6 +573,14 @@ const TestScreen = () => {
         </div>
       )}
 
+      {/* AI Violation Alert */}
+      {currentAIViolation && (
+        <AIViolationAlert 
+          violation={currentAIViolation}
+          onDismiss={() => setCurrentAIViolation(null)}
+        />
+      )}
+
       {/* Top Bar */}
       <header className="bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -568,6 +607,14 @@ const TestScreen = () => {
                 <Monitor size={18} />
                 <span className="text-sm font-medium hidden sm:inline">
                   {isFullscreen ? 'Fullscreen' : 'Exit FS'}
+                </span>
+              </div>
+
+              {/* AI Detection Status */}
+              <div className={`flex items-center space-x-2 px-3 py-2 rounded-lg ${detectionActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+                <Shield size={18} />
+                <span className="text-sm font-medium hidden sm:inline">
+                  {isModelLoaded ? (detectionActive ? 'AI Active' : 'AI Ready') : 'Loading AI...'}
                 </span>
               </div>
 
@@ -626,13 +673,31 @@ const TestScreen = () => {
           </div>
 
           <div className="mt-auto p-4 bg-blue-50 border-t border-blue-100">
-            <div className="flex items-start space-x-2">
-              <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-blue-800">
-                Warning count: <span className="font-bold">{warningCount}/3</span>
-                <br />
-                {warningCount > 0 && "Avoid switching tabs!"}
-              </p>
+            <div className="space-y-2">
+              <div className="flex items-start space-x-2">
+                <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-blue-800">
+                  Tab switches: <span className="font-bold">{warningCount}/3</span>
+                  <br />
+                  {warningCount > 0 && "Avoid switching tabs!"}
+                </p>
+              </div>
+              
+              {/* AI Violation Summary */}
+              {(violations.multipleFaces > 0 || violations.noFace > 0 || violations.phoneDetected > 0) && (
+                <div className="pt-2 border-t border-blue-200">
+                  <p className="text-xs font-semibold text-blue-900 mb-1">AI Detections:</p>
+                  {violations.multipleFaces > 0 && (
+                    <p className="text-xs text-red-700">• Multiple faces: {violations.multipleFaces}</p>
+                  )}
+                  {violations.noFace > 0 && (
+                    <p className="text-xs text-orange-700">• Face absent: {violations.noFace}</p>
+                  )}
+                  {violations.phoneDetected > 0 && (
+                    <p className="text-xs text-red-700">• Phone detected: {violations.phoneDetected}</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </aside>
