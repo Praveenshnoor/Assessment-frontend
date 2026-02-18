@@ -157,6 +157,15 @@ const AdminReports = () => {
                                     classNamePrefix="select"
                                     placeholder={isLoading ? "Loading institutes..." : "Select institutes..."}
                                     isDisabled={isLoading}
+                                    isSearchable={true}
+                                    isClearable={true}
+                                    closeMenuOnSelect={false}
+                                    menuPosition="fixed"
+                                    menuPlacement="auto"
+                                    filterOption={(option, inputValue) => {
+                                        // Case-insensitive filtering
+                                        return option.label.toLowerCase().includes(inputValue.toLowerCase());
+                                    }}
                                     styles={{
                                         control: (base) => ({
                                             ...base,
@@ -167,6 +176,45 @@ const AdminReports = () => {
                                             '&:hover': {
                                                 borderColor: '#3B82F6'
                                             }
+                                        }),
+                                        menu: (base) => ({
+                                            ...base,
+                                            maxHeight: '300px',
+                                            zIndex: 9999,
+                                        }),
+                                        menuList: (base) => ({
+                                            ...base,
+                                            maxHeight: '300px',
+                                            overflowY: 'auto',
+                                            '::-webkit-scrollbar': {
+                                                width: '8px',
+                                            },
+                                            '::-webkit-scrollbar-track': {
+                                                background: '#f1f1f1',
+                                                borderRadius: '10px',
+                                            },
+                                            '::-webkit-scrollbar-thumb': {
+                                                background: '#888',
+                                                borderRadius: '10px',
+                                            },
+                                            '::-webkit-scrollbar-thumb:hover': {
+                                                background: '#555',
+                                            },
+                                        }),
+                                        menuPortal: (base) => ({
+                                            ...base,
+                                            zIndex: 9999,
+                                        }),
+                                        option: (base, state) => ({
+                                            ...base,
+                                            backgroundColor: state.isSelected 
+                                                ? '#3B82F6' 
+                                                : state.isFocused 
+                                                ? '#EFF6FF' 
+                                                : 'white',
+                                            color: state.isSelected ? 'white' : '#111827',
+                                            cursor: 'pointer',
+                                            padding: '10px 12px',
                                         }),
                                         multiValue: (base) => ({
                                             ...base,
@@ -187,6 +235,7 @@ const AdminReports = () => {
                                             },
                                         }),
                                     }}
+                                    menuPortalTarget={document.body}
                                 />
                             </div>
 

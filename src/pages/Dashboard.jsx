@@ -421,7 +421,10 @@ const Dashboard = () => {
               let cardBorderColor = 'border-[#3B82F6]';
               let cardOpacity = 'opacity-100';
               
-              if (test.testStatus === 'expired' || test.alreadyTaken) {
+              if (test.isMockTest) {
+                cardBgColor = 'bg-green-50';
+                cardBorderColor = 'border-green-400';
+              } else if (test.testStatus === 'expired' || test.alreadyTaken) {
                 cardBgColor = 'bg-gray-100';
                 cardBorderColor = 'border-gray-300';
                 cardOpacity = 'opacity-75';
@@ -437,16 +440,28 @@ const Dashboard = () => {
               >
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <span className={`inline-block px-3 py-1 ${
-                      test.testStatus === 'expired' || test.alreadyTaken 
-                        ? 'bg-gray-300 text-gray-700' 
-                        : test.testStatus === 'upcoming'
-                        ? 'bg-orange-200 text-orange-800'
-                        : 'bg-blue-100 text-[#3B82F6]'
-                    } rounded-full text-xs font-semibold mb-2`}>
-                      {test.subject}
-                    </span>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`inline-block px-3 py-1 ${
+                        test.isMockTest
+                          ? 'bg-green-100 text-green-700'
+                          : test.testStatus === 'expired' || test.alreadyTaken
+                          ? 'bg-gray-300 text-gray-700'
+                          : test.testStatus === 'upcoming'
+                          ? 'bg-orange-200 text-orange-800'
+                          : 'bg-blue-100 text-[#3B82F6]'
+                      } rounded-full text-xs font-semibold`}>
+                        {test.subject}
+                      </span>
+                      {test.isMockTest && (
+                        <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold border border-emerald-300">
+                          🎯 Mock Test
+                        </span>
+                      )}
+                    </div>
                     <h3 className="text-lg font-bold text-[#111827]">{test.title}</h3>
+                    {test.isMockTest && (
+                      <p className="text-xs text-green-600 mt-1">Practice test to get familiar with the platform</p>
+                    )}
                     {test.alreadyTaken && (
                       <span className="inline-block mt-2 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
                         All Attempts Used ({test.attemptsTaken}/{test.maxAttempts})

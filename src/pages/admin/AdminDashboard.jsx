@@ -1594,13 +1594,14 @@ const AdminDashboard = () => {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleEditTest(test);
+                                    setEditingTest(test);
+                                    setShowCreateTest(true);
                                   }}
                                   className="flex-1 py-2 px-3 bg-blue-100 text-blue-700 hover:bg-blue-600 hover:text-white rounded-lg text-sm font-medium transition-colors"
-                                  title="Edit Test"
+                                  title="View Test"
                                 >
                                   <Eye size={18} className="inline mr-1" />
-                                  Edit
+                                  View
                                 </button>
                                 <button
                                   onClick={(e) => {

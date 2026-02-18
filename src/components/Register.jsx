@@ -27,11 +27,8 @@ const Register = () => {
 
   // Institute dropdown state
   const [institutes, setInstitutes] = useState([]);
-  const [filteredInstitutes, setFilteredInstitutes] = useState([]);
-  const [instituteSearch, setInstituteSearch] = useState('');
   const [showInstituteDropdown, setShowInstituteDropdown] = useState(false);
   const instituteDropdownRef = useRef(null);
-  const instituteInputRef = useRef(null);
 
   // Fetch institutes on component mount
   useEffect(() => {
@@ -43,7 +40,6 @@ const Register = () => {
         const data = await response.json();
         if (data.success && data.institutes) {
           setInstitutes(data.institutes);
-          setFilteredInstitutes(data.institutes);
         }
       } catch (error) {
         console.error('Error fetching institutes:', error);
@@ -62,19 +58,6 @@ const Register = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // Filter institutes based on search
-  useEffect(() => {
-    if (instituteSearch.trim() === '') {
-      setFilteredInstitutes(institutes);
-    } else {
-      const searchLower = instituteSearch.toLowerCase();
-      const filtered = institutes.filter(inst =>
-        inst.display_name.toLowerCase().includes(searchLower)
-      );
-      setFilteredInstitutes(filtered);
-    }
-  }, [instituteSearch, institutes]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -98,8 +81,6 @@ const Register = () => {
     }
     if (!formData.institute.trim()) {
       newErrors.institute = 'Institute/University is required';
-    } else if (formData.institute.length < 3) {
-      newErrors.institute = 'Institute name must be at least 3 characters';
     }
 
     if (!formData.phone.trim()) {
@@ -153,47 +134,62 @@ const Register = () => {
     setApiError('');
   };
 
-  const handleInstituteSearch = (e) => {
-    const value = e.target.value;
-    setInstituteSearch(value);
-    setFormData(prev => ({ ...prev, institute: value }));
-    setShowInstituteDropdown(true);
-    if (errors.institute) {
-      setErrors(prev => ({ ...prev, institute: '' }));
-    }
-    setApiError('');
-  };
-
   const handleInstituteSelect = (institute) => {
     setFormData(prev => ({ ...prev, institute: institute.display_name }));
-    setInstituteSearch(institute.display_name);
     setShowInstituteDropdown(false);
     if (errors.institute) {
       setErrors(prev => ({ ...prev, institute: '' }));
     }
   };
 
+  const handleInstituteInputClick = () => {
+    setShowInstituteDropdown(true);
+  };
+
+  const clearInstituteSelection = () => {
+    setFormData(prev => ({ ...prev, institute: '' }));
+    setShowInstituteDropdown(false);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setApiError('');
 
-    if (!validateForm()) return;
+    console.log('=== REGISTRATION STARTED ===');
+    console.log('Form data:', {
+      fullName: formData.fullName,
+      email: formData.email,
+      rollNumber: formData.rollNumber,
+      institute: formData.institute,
+      hasResumeLink: !!formData.resumeLink
+    });
 
+    if (!validateForm()) {
+      console.log('❌ Form validation failed');
+      return;
+    }
+
+    console.log('✅ Form validation passed');
     setIsLoading(true);
 
     try {
       // Step 1: Register user in Firebase
+      console.log('Step 1: Creating Firebase user...');
       const { createUserWithEmailAndPassword, auth } = await import('../config/firebase');
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
         formData.password
       );
+      console.log('✅ Firebase user created:', userCredential.user.uid);
 
       // Step 2: Get Firebase ID token
+      console.log('Step 2: Getting Firebase token...');
       const idToken = await userCredential.user.getIdToken();
+      console.log('✅ Firebase token obtained');
 
       // Step 3: Send user data to backend with Firebase token
+      console.log('Step 3: Sending data to backend...');
       const response = await apiFetch('api/register', {
         method: 'POST',
         headers: {
@@ -214,18 +210,22 @@ const Register = () => {
       });
 
       const data = await response.json();
+      console.log('Backend response:', data);
 
       if (!response.ok) {
         throw new Error(data.message || 'Registration failed');
       }
 
+      console.log('✅ Registration successful!');
       // Success: Navigate to login page
       navigate('/login', {
         state: { message: 'Registration successful. Please sign in to begin.' }
       });
 
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('❌ Registration error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
 
       // Handle Firebase-specific errors
       if (error.code === 'auth/email-already-in-use') {
@@ -334,36 +334,53 @@ const Register = () => {
               Institute/University <span className="text-red-600 font-bold">*</span>
             </label>
             <div className="relative">
-              <input
-                ref={instituteInputRef}
-                type="text"
-                name="institute"
-                className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.institute ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
-                  }`}
-                placeholder="Search and select your institute..."
-                value={instituteSearch || formData.institute}
-                onChange={handleInstituteSearch}
-                onFocus={() => setShowInstituteDropdown(true)}
-                disabled={isLoading}
-                autoComplete="off"
-              />
-              {showInstituteDropdown && filteredInstitutes.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-white border-2 border-slate-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                  {filteredInstitutes.map((institute) => (
-                    <div
-                      key={institute.id}
-                      className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors duration-150 text-sm text-slate-900 border-b border-slate-100 last:border-b-0"
-                      onClick={() => handleInstituteSelect(institute)}
+              <div
+                className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 cursor-pointer flex items-center justify-between ${
+                  errors.institute ? 'border-red-600 bg-red-50' : 'border-slate-200 hover:border-blue-400'
+                } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => !isLoading && handleInstituteInputClick()}
+              >
+                <span className={formData.institute ? 'text-slate-900' : 'text-slate-400 text-sm sm:text-[15px]'}>
+                  {formData.institute || 'Click to select your institute...'}
+                </span>
+                <div className="flex items-center gap-2">
+                  {formData.institute && !isLoading && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearInstituteSelection();
+                      }}
+                      className="text-slate-400 hover:text-red-600 transition-colors"
                     >
-                      {institute.display_name}
-                    </div>
-                  ))}
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
+                      </svg>
+                    </button>
+                  )}
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className={`text-slate-400 transition-transform ${showInstituteDropdown ? 'rotate-180' : ''}`}>
+                    <path d="M4.427 5.427a.5.5 0 0 0 0 .707l3 3a.5.5 0 0 0 .707 0l3-3a.5.5 0 1 0-.707-.707L8 7.793 5.573 5.427a.5.5 0 0 0-.707 0z"/>
+                  </svg>
                 </div>
-              )}
-              {showInstituteDropdown && filteredInstitutes.length === 0 && instituteSearch && (
+              </div>
+              {showInstituteDropdown && (
                 <div className="absolute z-50 w-full mt-1 bg-white border-2 border-slate-200 rounded-md shadow-lg">
-                  <div className="px-4 py-3 text-sm text-slate-500 italic">
-                    No institutes found. Contact admin to add your institute.
+                  <div className="max-h-60 overflow-y-auto">
+                    {institutes.length > 0 ? (
+                      institutes.map((institute) => (
+                        <div
+                          key={institute.id}
+                          className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors duration-150 text-sm text-slate-900 border-b border-slate-100 last:border-b-0"
+                          onClick={() => handleInstituteSelect(institute)}
+                        >
+                          {institute.display_name}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-4 py-3 text-sm text-slate-500 italic">
+                        No institutes available.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

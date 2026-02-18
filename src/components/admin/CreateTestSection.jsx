@@ -18,6 +18,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
     const [isPublishing, setIsPublishing] = useState(false);
     const [isLoadingTest, setIsLoadingTest] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
+    const [viewMode, setViewMode] = useState(false); // New state for view mode
     
     // Name availability checker state
     const [nameAvailability, setNameAvailability] = useState({
@@ -38,10 +39,12 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
         const loadTestData = async () => {
             if (!editingTest) {
                 setIsEditMode(false);
+                setViewMode(false);
                 return;
             }
 
             setIsEditMode(true);
+            setViewMode(true); // Start in view mode when editing
             setIsLoadingTest(true);
 
             try {
@@ -443,7 +446,18 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
             {/* Step 1: Initialization */}
             {step === 'init' && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-3xl mx-auto">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">{isEditMode ? 'Edit Assessment' : 'Create New Assessment'}</h2>
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-2xl font-bold text-gray-900">{isEditMode ? (viewMode ? 'View Assessment' : 'Edit Assessment') : 'Create New Assessment'}</h2>
+                        {viewMode && (
+                            <button
+                                onClick={() => setViewMode(false)}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
+                            >
+                                <FileText size={18} />
+                                <span>Edit</span>
+                            </button>
+                        )}
+                    </div>
 
                     <div className="space-y-6">
                         {/* Test Title */}
@@ -454,7 +468,9 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                     type="text"
                                     value={testTitle}
                                     onChange={(e) => setTestTitle(e.target.value)}
+                                    disabled={viewMode}
                                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent pr-10 ${
+                                        viewMode ? 'bg-gray-100 cursor-not-allowed' :
                                         nameAvailability.available === false 
                                             ? 'border-red-300 bg-red-50' 
                                             : nameAvailability.available === true 
@@ -495,14 +511,16 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <label className="block text-sm font-medium text-gray-700">Job Roles & Descriptions *</label>
-                                <button
-                                    type="button"
-                                    onClick={handleAddJobRole}
-                                    className="flex items-center space-x-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
-                                >
-                                    <Plus size={16} />
-                                    <span>Add Role</span>
-                                </button>
+                                {!viewMode && (
+                                    <button
+                                        type="button"
+                                        onClick={handleAddJobRole}
+                                        className="flex items-center space-x-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-100 transition-colors text-sm font-medium"
+                                    >
+                                        <Plus size={16} />
+                                        <span>Add Role</span>
+                                    </button>
+                                )}
                             </div>
                             
                             {jobRoles.map((role, index) => (
@@ -511,7 +529,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                         <span className="text-sm font-semibold text-gray-700">
                                             Role {index + 1} {index === 0 && <span className="text-blue-600">(Default)</span>}
                                         </span>
-                                        {jobRoles.length > 1 && (
+                                        {!viewMode && jobRoles.length > 1 && (
                                             <button
                                                 type="button"
                                                 onClick={() => handleRemoveJobRole(index)}
@@ -528,7 +546,8 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                             type="text"
                                             value={role.job_role}
                                             onChange={(e) => handleJobRoleChange(index, 'job_role', e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                                            disabled={viewMode}
+                                            className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent ${viewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                             placeholder="e.g., Senior Software Engineer, Junior Developer"
                                             required
                                         />
@@ -539,7 +558,8 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                             value={role.job_description}
                                             onChange={(e) => handleJobRoleChange(index, 'job_description', e.target.value)}
                                             rows={4}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent resize-y"
+                                            disabled={viewMode}
+                                            className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent resize-y ${viewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                             placeholder="Enter job description, requirements, responsibilities..."
                                             required
                                         />
@@ -558,7 +578,8 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                     value={duration}
                                     onChange={(e) => setDuration(parseInt(e.target.value) || 60)}
                                     min="1"
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                                    disabled={viewMode}
+                                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent ${viewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                     required
                                 />
                             </div>
@@ -569,7 +590,8 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                     value={maxAttempts}
                                     onChange={(e) => setMaxAttempts(parseInt(e.target.value) || 1)}
                                     min="1"
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                                    disabled={viewMode}
+                                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent ${viewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                     required
                                 />
                             </div>
@@ -579,9 +601,10 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                     type="number"
                                     value={passingPercentage}
                                     onChange={(e) => setPassingPercentage(parseInt(e.target.value) || 50)}
+                                    disabled={viewMode}
+                                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent ${viewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                     min="0"
                                     max="100"
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent"
                                     required
                                 />
                             </div>
@@ -595,7 +618,8 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                     type="datetime-local"
                                     value={startDateTime}
                                     onChange={(e) => setStartDateTime(e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                                    disabled={viewMode}
+                                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent ${viewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                 />
                             </div>
                             <div>
@@ -604,7 +628,8 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                     type="datetime-local"
                                     value={endDateTime}
                                     onChange={(e) => setEndDateTime(e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                                    disabled={viewMode}
+                                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent ${viewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                 />
                             </div>
                         </div>
@@ -622,54 +647,60 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                             <p className="text-sm text-gray-600">{questions.length} question{questions.length !== 1 ? 's' : ''} loaded</p>
                                         </div>
                                     </div>
-                                    <p className="text-sm text-gray-600">
-                                        Choose how you want to update the questions for this test.
-                                    </p>
+                                    {!viewMode && (
+                                        <p className="text-sm text-gray-600">
+                                            Choose how you want to update the questions for this test.
+                                        </p>
+                                    )}
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                    <button
-                                        onClick={() => handleStart('manual')}
-                                        className="p-6 border-2 border-gray-200 rounded-xl text-left transition-all hover:border-blue-500 hover:shadow-lg group bg-white"
-                                    >
-                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
-                                            <FileText className="w-6 h-6 text-blue-600 group-hover:text-white" />
-                                        </div>
-                                        <h3 className="font-bold text-gray-900 mb-2">Edit Questions Manually</h3>
-                                        <p className="text-sm text-gray-600 mb-3">Edit existing questions, add new ones, or remove questions individually.</p>
-                                        <div className="flex items-center text-xs text-blue-600 font-medium">
-                                            <span>Edit {questions.length} question{questions.length !== 1 ? 's' : ''}</span>
-                                            <ArrowLeft size={14} className="ml-1 rotate-180" />
-                                        </div>
-                                    </button>
+                                {!viewMode && (
+                                    <>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                            <button
+                                                onClick={() => handleStart('manual')}
+                                                className="p-6 border-2 border-gray-200 rounded-xl text-left transition-all hover:border-blue-500 hover:shadow-lg group bg-white"
+                                            >
+                                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
+                                                    <FileText className="w-6 h-6 text-blue-600 group-hover:text-white" />
+                                                </div>
+                                                <h3 className="font-bold text-gray-900 mb-2">Edit Questions Manually</h3>
+                                                <p className="text-sm text-gray-600 mb-3">Edit existing questions, add new ones, or remove questions individually.</p>
+                                                <div className="flex items-center text-xs text-blue-600 font-medium">
+                                                    <span>Edit {questions.length} question{questions.length !== 1 ? 's' : ''}</span>
+                                                    <ArrowLeft size={14} className="ml-1 rotate-180" />
+                                                </div>
+                                            </button>
 
-                                    <button
-                                        onClick={() => handleStart('bulk')}
-                                        className="p-6 border-2 border-gray-200 rounded-xl text-left transition-all hover:border-red-500 hover:shadow-lg group bg-white"
-                                    >
-                                        <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-red-600 transition-colors">
-                                            <Upload className="w-6 h-6 text-red-600 group-hover:text-white" />
+                                            <button
+                                                onClick={() => handleStart('bulk')}
+                                                className="p-6 border-2 border-gray-200 rounded-xl text-left transition-all hover:border-red-500 hover:shadow-lg group bg-white"
+                                            >
+                                                <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-red-600 transition-colors">
+                                                    <Upload className="w-6 h-6 text-red-600 group-hover:text-white" />
+                                                </div>
+                                                <h3 className="font-bold text-gray-900 mb-2">Upload New Questions File</h3>
+                                                <p className="text-sm text-gray-600 mb-3">Replace all existing questions by uploading a new CSV/Excel file.</p>
+                                                <div className="flex items-center text-xs text-red-600 font-medium">
+                                                    <AlertCircle size={14} className="mr-1" />
+                                                    <span>Will replace {questions.length} question{questions.length !== 1 ? 's' : ''}</span>
+                                                </div>
+                                            </button>
                                         </div>
-                                        <h3 className="font-bold text-gray-900 mb-2">Upload New Questions File</h3>
-                                        <p className="text-sm text-gray-600 mb-3">Replace all existing questions by uploading a new CSV/Excel file.</p>
-                                        <div className="flex items-center text-xs text-red-600 font-medium">
-                                            <AlertCircle size={14} className="mr-1" />
-                                            <span>Will replace {questions.length} question{questions.length !== 1 ? 's' : ''}</span>
+                                        
+                                        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 flex items-start space-x-3">
+                                            <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                                            <div className="text-sm text-yellow-800">
+                                                <p className="font-semibold mb-1">Important:</p>
+                                                <ul className="list-disc list-inside space-y-1">
+                                                    <li>Review test details above before proceeding</li>
+                                                    <li>Uploading a new file will <strong>delete all existing questions</strong></li>
+                                                    <li>Changes will be saved when you click "Update Assessment"</li>
+                                                </ul>
+                                            </div>
                                         </div>
-                                    </button>
-                                </div>
-                                
-                                <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 flex items-start space-x-3">
-                                    <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                                    <div className="text-sm text-yellow-800">
-                                        <p className="font-semibold mb-1">Important:</p>
-                                        <ul className="list-disc list-inside space-y-1">
-                                            <li>Review test details above before proceeding</li>
-                                            <li>Uploading a new file will <strong>delete all existing questions</strong></li>
-                                            <li>Changes will be saved when you click "Update Assessment"</li>
-                                        </ul>
-                                    </div>
-                                </div>
+                                    </>
+                                )}
                             </div>
                         ) : (
                             /* Create Mode: Show manual and bulk upload options */

@@ -38,7 +38,7 @@ export const useAICheatingDetection = (onViolation) => {
           delegate: 'GPU'
         },
         runningMode: 'VIDEO',
-        minDetectionConfidence: 0.3
+        minDetectionConfidence: 0.6
       });
       faceDetectorRef.current = faceDetector;
 
