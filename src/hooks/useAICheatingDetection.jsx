@@ -23,40 +23,74 @@ export const useAICheatingDetection = (onViolation) => {
   // Configuration
   const DETECTION_INTERVAL = 2000;
   const NO_FACE_THRESHOLD = 3000;
-  const VIOLATION_COOLDOWN = 10000; // 10 seconds between same violation type
+  const VIOLATION_COOLDOWN = 5000; // 5 seconds between same violation type (reduced from 10s)
 
-  // Load MediaPipe models
+  // Load MediaPipe models with retry logic
   const loadModels = useCallback(async () => {
-    try {
-      const vision = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
-      );
+    console.log('[AI Detection] 🚀 loadModels() called');
+    const maxRetries = 3;
+    let retryCount = 0;
+    
+    while (retryCount < maxRetries) {
+      try {
+        console.log(`[AI Detection] Loading models... (Attempt ${retryCount + 1}/${maxRetries})`);
+        
+        const vision = await FilesetResolver.forVisionTasks(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+        );
 
-      const faceDetector = await FaceDetector.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite',
-          delegate: 'GPU'
-        },
-        runningMode: 'VIDEO',
-        minDetectionConfidence: 0.6
-      });
-      faceDetectorRef.current = faceDetector;
+        // Load face detector with retry
+        console.log('[AI Detection] Loading face detector...');
+        const faceDetector = await FaceDetector.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite',
+            delegate: 'CPU' // Changed from GPU to CPU for better compatibility
+          },
+          runningMode: 'VIDEO',
+          minDetectionConfidence: 0.4 // Lowered from 0.5 for better multi-face detection
+        });
+        faceDetectorRef.current = faceDetector;
+        console.log('[AI Detection] ✅ Face detector loaded');
 
-      const objectDetector = await ObjectDetector.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite',
-          delegate: 'GPU'
-        },
-        runningMode: 'VIDEO',
-        scoreThreshold: 0.2,
-        maxResults: 5
-      });
-      objectDetectorRef.current = objectDetector;
+        // Load object detector with retry
+        console.log('[AI Detection] Loading object detector...');
+        const objectDetector = await ObjectDetector.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite',
+            delegate: 'CPU' // Changed from GPU to CPU for better compatibility
+          },
+          runningMode: 'VIDEO',
+          scoreThreshold: 0.3, // Increased from 0.2 for fewer false positives
+          maxResults: 5
+        });
+        objectDetectorRef.current = objectDetector;
+        console.log('[AI Detection] ✅ Object detector loaded');
 
-      setIsModelLoaded(true);
-    } catch (error) {
-      console.error('[AI Detection] Error loading models:', error);
-      setIsModelLoaded(false);
+        console.log('[AI Detection] ✅✅ All models loaded successfully');
+        setIsModelLoaded(true);
+        return true; // Success - exit retry loop
+        
+      } catch (error) {
+        retryCount++;
+        console.error(`[AI Detection] ❌ Failed to load models (Attempt ${retryCount}/${maxRetries}):`, error);
+        console.error('[AI Detection] Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+        
+        if (retryCount < maxRetries) {
+          // Wait before retrying (exponential backoff)
+          const waitTime = Math.min(1000 * Math.pow(2, retryCount), 5000);
+          console.log(`[AI Detection] Retrying in ${waitTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        } else {
+          console.error('[AI Detection] ❌❌ Failed to load models after all retries. AI detection disabled.');
+          console.error('[AI Detection] Final error:', error);
+          setIsModelLoaded(false);
+          return false;
+        }
+      }
     }
   }, []);
 
@@ -73,19 +107,27 @@ export const useAICheatingDetection = (onViolation) => {
   const detectMultipleFaces = useCallback((detections) => {
     const faceCount = detections.detections.length;
     
+    // Always log face count for debugging
+    if (faceCount !== 1) {
+      console.log(`[AI] 👥 Face count: ${faceCount}`);
+    }
+    
     if (faceCount > 1) {
       const now = Date.now();
       const lastTime = lastViolationTimeRef.current['multiple_faces'] || 0;
       
       if ((now - lastTime) >= VIOLATION_COOLDOWN) {
         lastViolationTimeRef.current['multiple_faces'] = now;
-        console.log(`[AI] ⚠️ MULTIPLE FACES: ${faceCount}`);
+        console.log(`[AI] ⚠️⚠️ MULTIPLE FACES VIOLATION: ${faceCount} faces detected!`);
         return {
           type: 'multiple_faces',
           count: faceCount,
           severity: 'high',
           message: `${faceCount} faces detected - Only one person allowed during exam`
         };
+      } else {
+        const timeLeft = Math.ceil((VIOLATION_COOLDOWN - (now - lastTime)) / 1000);
+        console.log(`[AI] Multiple faces detected but cooldown active (${timeLeft}s remaining)`);
       }
     }
 
@@ -98,35 +140,43 @@ export const useAICheatingDetection = (onViolation) => {
     if (faceCount === 0) {
       if (!noFaceTimerRef.current) {
         noFaceTimerRef.current = Date.now();
-        console.log('[AI] No face - timer started');
+        console.log('[AI] ⚠️ No face detected - timer started');
       }
       
       noFaceDurationRef.current = Date.now() - noFaceTimerRef.current;
       const durationSeconds = Math.floor(noFaceDurationRef.current / 1000);
       
-      console.log(`[AI] No face duration: ${durationSeconds}s`);
-      
       if (noFaceDurationRef.current >= NO_FACE_THRESHOLD) {
         const now = Date.now();
         const lastTime = lastViolationTimeRef.current['no_face'] || 0;
         
+        // Check if enough time has passed since last violation
         if ((now - lastTime) >= VIOLATION_COOLDOWN) {
           lastViolationTimeRef.current['no_face'] = now;
-          console.log('[AI] ⚠️ NO FACE VIOLATION TRIGGERED');
+          console.log('[AI] ⚠️⚠️ NO FACE VIOLATION TRIGGERED');
+          
+          // Reset timer after reporting so it can trigger again if face still missing
+          noFaceTimerRef.current = now;
+          
           return {
             type: 'no_face',
             duration: noFaceDurationRef.current,
             severity: 'high',
             message: `No face detected for ${durationSeconds} seconds - Student must be visible`
           };
+        } else {
+          // Still in cooldown, log but don't report
+          const timeLeft = Math.ceil((VIOLATION_COOLDOWN - (now - lastTime)) / 1000);
+          console.log(`[AI] No face still detected but cooldown active (${timeLeft}s remaining)`);
         }
       }
     } else {
+      // Face detected - reset timer
       if (noFaceTimerRef.current) {
-        console.log('[AI] Face detected - timer reset');
+        console.log('[AI] ✅ Face detected again - timer reset');
+        noFaceTimerRef.current = null;
+        noFaceDurationRef.current = 0;
       }
-      noFaceTimerRef.current = null;
-      noFaceDurationRef.current = 0;
     }
 
     return null;
@@ -218,8 +268,20 @@ export const useAICheatingDetection = (onViolation) => {
       const faceDetections = faceDetectorRef.current.detectForVideo(video, now);
       const objectDetections = objectDetectorRef.current.detectForVideo(video, now);
       
-      // Debug: Log face count
-      console.log(`[AI] Faces: ${faceDetections.detections.length}`);
+      const faceCount = faceDetections.detections.length;
+      
+      // Only log when face count is abnormal (not 1)
+      if (faceCount !== 1) {
+        console.log(`[AI] 👥 Face count: ${faceCount}`);
+        if (faceDetections.detections.length > 0) {
+          faceDetections.detections.forEach((face, idx) => {
+            const confidence = face.categories?.[0]?.score || 0;
+            console.log(`[AI]   Face ${idx + 1}: confidence ${(confidence * 100).toFixed(1)}%`);
+          });
+        }
+      }
+      
+      // Silent mode - no logging for normal single-face detection
       
       lastFrameTimeRef.current = now;
 
@@ -231,7 +293,7 @@ export const useAICheatingDetection = (onViolation) => {
       ].filter(v => v !== null);
 
       if (violations.length > 0) {
-        console.log(`[AI] ⚠️ ${violations.length} violation(s):`, violations.map(v => v.type));
+        console.log(`[AI] ⚠️⚠️ ${violations.length} violation(s):`, violations.map(v => v.type));
         violations.forEach(violation => {
           setViolations(prev => {
             const newViolations = { ...prev };
@@ -253,31 +315,44 @@ export const useAICheatingDetection = (onViolation) => {
         });
       }
     } catch (error) {
-      console.error('[AI Detection] Error during detection:', error);
+      console.error('[AI Detection] ❌ Error during detection:', error);
     }
   }, [detectMultipleFaces, detectNoFace, detectPhone, detectLookingDown, onViolation]);
 
   const startDetection = useCallback(async (videoElement) => {
-    if (!isModelLoaded) {
+    console.log('[AI] startDetection called');
+    console.log('[AI] isModelLoaded:', isModelLoaded);
+    console.log('[AI] faceDetectorRef:', !!faceDetectorRef.current);
+    console.log('[AI] objectDetectorRef:', !!objectDetectorRef.current);
+    
+    // Wait for models to load
+    if (!faceDetectorRef.current || !objectDetectorRef.current) {
+      console.log('[AI] Waiting for models to load...');
       let waitCount = 0;
-      const maxWait = 20;
+      const maxWait = 30; // Increased from 20 to 30
       
       while (!faceDetectorRef.current || !objectDetectorRef.current) {
         if (waitCount >= maxWait) {
+          console.error('[AI] ❌ Models not loaded after waiting');
           return false;
         }
         await new Promise(resolve => setTimeout(resolve, 500));
         waitCount++;
+        console.log(`[AI] Waiting for models... ${waitCount}/${maxWait}`);
       }
     }
 
     try {
       videoRef.current = videoElement;
+      console.log('[AI] Video element assigned, readyState:', videoElement.readyState);
       
+      // Wait for video to be ready
       if (videoElement.readyState < videoElement.HAVE_ENOUGH_DATA) {
+        console.log('[AI] Waiting for video to be ready...');
         await new Promise((resolve) => {
           const checkReady = () => {
             if (videoElement.readyState >= videoElement.HAVE_ENOUGH_DATA) {
+              console.log('[AI] Video ready!');
               resolve();
             } else {
               setTimeout(checkReady, 100);
@@ -290,13 +365,13 @@ export const useAICheatingDetection = (onViolation) => {
       detectionActiveRef.current = true;
       detectionIntervalRef.current = setInterval(runDetection, DETECTION_INTERVAL);
       
-      console.log('[AI] ✅ Detection started - checking every 2s');
+      console.log('[AI] ✅✅ Detection started successfully - checking every 2s');
       return true;
     } catch (error) {
-      console.error('[AI Detection] Error starting detection:', error);
+      console.error('[AI Detection] ❌ Error starting detection:', error);
       return false;
     }
-  }, [runDetection]);
+  }, [runDetection, isModelLoaded]);
 
   const stopDetection = useCallback(() => {
     if (detectionIntervalRef.current) {
@@ -309,6 +384,44 @@ export const useAICheatingDetection = (onViolation) => {
     lastViolationTimeRef.current = {};
     detectionActiveRef.current = false;
   }, []);
+
+  // Manual test function - can be called from console
+  const testViolation = useCallback((type = 'multiple_faces') => {
+    console.log(`[AI] 🧪 Testing violation: ${type}`);
+    const testViolations = {
+      multiple_faces: {
+        type: 'multiple_faces',
+        count: 2,
+        severity: 'high',
+        message: '2 faces detected - Only one person allowed during exam'
+      },
+      no_face: {
+        type: 'no_face',
+        duration: 3000,
+        severity: 'high',
+        message: 'No face detected for 3 seconds - Student must be visible'
+      },
+      phone_detected: {
+        type: 'phone_detected',
+        confidence: 0.85,
+        severity: 'high',
+        message: 'Mobile device detected (85% confidence) - Not allowed during exam'
+      }
+    };
+
+    const violation = testViolations[type];
+    if (violation && onViolation) {
+      onViolation(violation);
+    }
+  }, [onViolation]);
+
+  // Expose test function to window for console testing (only log once)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !window.testAIViolation) {
+      window.testAIViolation = testViolation;
+      console.log('[AI] 🧪 Test function available: window.testAIViolation("multiple_faces")');
+    }
+  }, [testViolation]);
 
   useEffect(() => {
     loadModels();
@@ -324,6 +437,7 @@ export const useAICheatingDetection = (onViolation) => {
     violations,
     startDetection,
     stopDetection,
-    loadModels
+    loadModels,
+    testViolation // Export test function
   };
 };

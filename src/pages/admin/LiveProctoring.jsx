@@ -20,20 +20,56 @@ const LiveProctoring = () => {
       return;
     }
 
-    // Initialize Socket.io
+    console.log('[Admin] Initializing Socket.IO connection to:', SOCKET_URL);
+
+    // Initialize Socket.io with polling only (WebSocket upgrade causes issues)
     const socket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
+      transports: ['polling'], // Use polling only
       reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5,
+      timeout: 30000,
+      forceNew: true,
+      upgrade: false, // Disable upgrade
+      autoConnect: true
     });
 
+    // Connection event handlers
     socket.on('connect', () => {
       console.log('[Admin] Connected to proctoring server');
+      console.log('[Admin] Socket ID:', socket.id);
+      console.log('[Admin] Transport:', socket.io.engine.transport.name);
       setIsConnected(true);
+      
+      // Join monitoring room
       socket.emit('admin:join-monitoring');
+      console.log('[Admin] Sent admin:join-monitoring event');
     });
 
-    socket.on('disconnect', () => {
-      console.log('[Admin] Disconnected from proctoring server');
+    socket.on('connect_error', (error) => {
+      console.error('[Admin] Connection error:', error);
+      console.error('[Admin] Error message:', error.message);
+      console.error('[Admin] Error type:', error.type);
+      console.error('[Admin] Error description:', error.description);
+      setIsConnected(false);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('[Admin] Disconnected from proctoring server. Reason:', reason);
+      setIsConnected(false);
+    });
+
+    socket.on('reconnect', (attemptNumber) => {
+      console.log('[Admin] Reconnected after', attemptNumber, 'attempts');
+      setIsConnected(true);
+    });
+
+    socket.on('reconnect_error', (error) => {
+      console.error('[Admin] Reconnection error:', error);
+    });
+
+    socket.on('reconnect_failed', () => {
+      console.error('[Admin] Reconnection failed after all attempts');
       setIsConnected(false);
     });
 

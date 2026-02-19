@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Connection Test</title>
+    <script src="https://cdn.socket.io/4.8.3/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>Socket.IO Connection Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="logs"></div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const logsDiv = document.getElementById('logs');
+        
+        function log(message) {
+            console.log(message);
+            logsDiv.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+        }
+        
+        const SOCKET_URL = 'http://localhost:5000';
+        
+        log('Attempting to connect to: ' + SOCKET_URL);
+        
+        const socket = io(SOCKET_URL, {
+            transports: ['polling', 'websocket'],
+            reconnection: true,
+            timeout: 20000,
+            forceNew: true,
+            withCredentials: true
+        });
+        
+        socket.on('connect', () => {
+            statusDiv.innerHTML = '✅ Connected';
+            statusDiv.style.color = 'green';
+            log('✅ Connected successfully!');
+            log('Socket ID: ' + socket.id);
+            log('Transport: ' + socket.io.engine.transport.name);
+            
+            // Test admin join
+            socket.emit('admin:join-monitoring');
+            log('📡 Sent admin:join-monitoring event');
+        });
+        
+        socket.on('connect_error', (error) => {
+            statusDiv.innerHTML = '❌ Connection Error';
+            statusDiv.style.color = 'red';
+            log('❌ Connection error: ' + error.message);
+            log('Error type: ' + error.type);
+            log('Error description: ' + error.description);
+        });
+        
+        socket.on('disconnect', (reason) => {
+            statusDiv.innerHTML = '🔌 Disconnected';
+            statusDiv.style.color = 'orange';
+            log('🔌 Disconnected. Reason: ' + reason);
+        });
+        
+        socket.on('active-sessions', (sessions) => {
+            log('📋 Received active sessions: ' + sessions.length + ' sessions');
+        });
+        
+        socket.on('monitoring-config', (config) => {
+            log('⚙️ Received monitoring config: ' + JSON.stringify(config));
+        });
+        
+        // Add transport upgrade logging
+        socket.io.on('upgrade', () => {
+            log('🚀 Transport upgraded to: ' + socket.io.engine.transport.name);
+        });
+        
+        socket.io.on('upgradeError', (error) => {
+            log('❌ Transport upgrade error: ' + error.message);
+        });
+    </script>
+</body>
+</html>

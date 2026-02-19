@@ -3,10 +3,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, FileSpreadsheet, LogOut, Download, ArrowLeft, 
-  Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video, Loader2, X, Building2, MoreVertical, Copy, AlertCircle
+  Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video, Loader2, X, Building2, MoreVertical, Copy, AlertCircle, Pencil, MessageSquare, Star, TrendingUp, BarChart3
 } from 'lucide-react';
 import CreateTestSection from '../../components/admin/CreateTestSection';
 import ExamSearchFilter from '../../components/ExamSearchFilter';
+import ViewTestDetailsModal from '../../components/admin/ViewTestDetailsModal';
+import EditTestDetailsModal from '../../components/admin/EditTestDetailsModal';
 import { apiFetch } from '../../config/api';
 
 const AdminDashboard = () => {
@@ -84,6 +86,15 @@ const AdminDashboard = () => {
   const [isCloning, setIsCloning] = useState(false);
   const [cloneError, setCloneError] = useState('');
 
+  // View/Edit Test Details Modal States
+  const [showViewDetailsModal, setShowViewDetailsModal] = useState(false);
+  const [showEditDetailsModal, setShowEditDetailsModal] = useState(false);
+  const [selectedTestForDetails, setSelectedTestForDetails] = useState(null);
+  const [detailViewTab, setDetailViewTab] = useState('results'); // 'results' or 'feedback'
+  const [feedbackData, setFeedbackData] = useState([]);
+  const [feedbackStats, setFeedbackStats] = useState(null);
+  const [loadingFeedback, setLoadingFeedback] = useState(false);
+
   // Violations Tab States
   const [violations, setViolations] = useState([]);
   const [flaggedStudents, setFlaggedStudents] = useState([]);
@@ -96,6 +107,34 @@ const AdminDashboard = () => {
   // Derived state: Get students for the selected exam
   const selectedExamStudents = selectedExamId ? (studentsData[selectedExamId] || []) : [];
   const selectedExamDetails = tests.find(t => t.id === selectedExamId);
+
+  // Fetch feedback when feedback tab is selected
+  useEffect(() => {
+    if (selectedExamId && detailViewTab === 'feedback') {
+      fetchFeedback();
+    }
+  }, [selectedExamId, detailViewTab]);
+
+  const fetchFeedback = async () => {
+    setLoadingFeedback(true);
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/feedback/test/${selectedExamId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setFeedbackData(data.feedbacks || []);
+        setFeedbackStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Error fetching feedback:', error);
+    } finally {
+      setLoadingFeedback(false);
+    }
+  };
 
   // Filter and Sort Tests
   const getFilteredAndSortedTests = () => {
@@ -711,6 +750,26 @@ const AdminDashboard = () => {
     setJobRoles(newJobRoles);
   };
 
+  // View/Edit Test Details Functions
+  const handleViewTestDetails = (test) => {
+    setSelectedTestForDetails(test);
+    setShowViewDetailsModal(true);
+    setOpenMenuId(null);
+  };
+
+  const handleEditTestDetails = (test) => {
+    setSelectedTestForDetails(test);
+    setShowEditDetailsModal(true);
+    setOpenMenuId(null);
+  };
+
+  const handleSaveTestDetails = () => {
+    setShowEditDetailsModal(false);
+    setSelectedTestForDetails(null);
+    fetchTests(); // Refresh the test list
+    alert('Test details updated successfully!');
+  };
+
   // Clone Test Functions
   const handleOpenCloneModal = (test) => {
     setTestToClone(test);
@@ -1265,9 +1324,9 @@ const AdminDashboard = () => {
                   setEditingTest(null);
                 }}
                 className="flex items-center text-[#374151] hover:text-[#3B82F6] transition-colors group"
+                title={editingTest ? 'Cancel Editing' : 'Back to Exams'}
               >
-                <ArrowLeft size={22} className="mr-2 group-hover:-translate-x-1 transition-transform" />
-                <span className="font-medium">{editingTest ? 'Cancel Editing' : 'Back to Exams'}</span>
+                <ArrowLeft size={22} className="group-hover:-translate-x-1 transition-transform" />
               </button>
             </div>
             <CreateTestSection onComplete={handleCreateTestComplete} editingTest={editingTest} />
@@ -1277,7 +1336,10 @@ const AdminDashboard = () => {
           <div className="bg-white rounded-2xl shadow-2xl border-2 border-[#E5E7EB] overflow-hidden">
             <div className="p-8">
               <button
-                onClick={() => setSelectedExamId(null)}
+                onClick={() => {
+                  setSelectedExamId(null);
+                  setDetailViewTab('results');
+                }}
                 className="flex items-center text-[#374151] hover:text-[#3B82F6] mb-8 transition-colors group"
               >
                 <ArrowLeft size={22} className="mr-2 group-hover:-translate-x-1 transition-transform" />
@@ -1311,6 +1373,32 @@ const AdminDashboard = () => {
                     <span>Export to Excel</span>
                   </button>
                 </div>
+              </div>
+
+              {/* Results / Feedback Tabs */}
+              <div className="flex space-x-2 mb-6">
+                <button
+                  onClick={() => setDetailViewTab('results')}
+                  className={`px-6 py-3 rounded-lg font-medium transition-all ${
+                    detailViewTab === 'results'
+                      ? 'bg-[#3B82F6] text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <Users size={18} className="inline mr-2" />
+                  Results
+                </button>
+                <button
+                  onClick={() => setDetailViewTab('feedback')}
+                  className={`px-6 py-3 rounded-lg font-medium transition-all ${
+                    detailViewTab === 'feedback'
+                      ? 'bg-[#3B82F6] text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <MessageSquare size={18} className="inline mr-2" />
+                  Feedback
+                </button>
               </div>
 
               {/* Compact Statistics Bar */}
@@ -1364,61 +1452,193 @@ const AdminDashboard = () => {
                 );
               })()}
 
-              <div className="overflow-x-auto rounded-xl border-2 border-[#E5E7EB] shadow-lg">
-                <table className="w-full">
-                  <thead className="bg-[#111827] text-white">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Student ID</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Student Name</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Email</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Date Attempted</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Score</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-[#E5E7EB]">
-                    {selectedExamStudents.length > 0 ? (
-                      selectedExamStudents.map((student, idx) => {
-                        const percentage = (student.score / student.total * 100);
-                        const passingPercentage = student.passingPercentage || 50;
-                        const isPassed = percentage >= passingPercentage;
-                        return (
-                          <tr key={idx} className="hover:bg-[#F9FAFB]">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#111827]">{student.id}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-[#111827]">{student.name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-[#374151]">{student.email || 'N/A'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-[#374151]">{student.date}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <span className={`font-bold ${isPassed ? 'text-green-600' : 'text-red-600'}`}>
-                                  {student.score}
-                                </span>
-                                <span className="text-[#374151] text-xs ml-1">/ {student.total}</span>
-                                <span className="text-[#374151] text-xs ml-2">({percentage.toFixed(1)}%)</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                isPassed 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
-                                {isPassed ? 'Pass' : 'Fail'}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
+              {/* Results Tab Content */}
+              {detailViewTab === 'results' && (
+                <div className="overflow-x-auto rounded-xl border-2 border-[#E5E7EB] shadow-lg">
+                  <table className="w-full">
+                    <thead className="bg-[#111827] text-white">
                       <tr>
-                        <td colSpan="6" className="px-6 py-12 text-center text-[#374151]">
-                          No students have attempted this exam yet.
-                        </td>
+                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Student ID</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Student Name</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Email</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Date Attempted</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Score</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Status</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-[#E5E7EB]">
+                      {selectedExamStudents.length > 0 ? (
+                        selectedExamStudents.map((student, idx) => {
+                          const percentage = (student.score / student.total * 100);
+                          const passingPercentage = student.passingPercentage || 50;
+                          const isPassed = percentage >= passingPercentage;
+                          return (
+                            <tr key={idx} className="hover:bg-[#F9FAFB]">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#111827]">{student.id}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-[#111827]">{student.name}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-[#374151]">{student.email || 'N/A'}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-[#374151]">{student.date}</td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <span className={`font-bold ${isPassed ? 'text-green-600' : 'text-red-600'}`}>
+                                    {student.score}
+                                  </span>
+                                  <span className="text-[#374151] text-xs ml-1">/ {student.total}</span>
+                                  <span className="text-[#374151] text-xs ml-2">({percentage.toFixed(1)}%)</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                  isPassed 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {isPassed ? 'Pass' : 'Fail'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan="6" className="px-6 py-12 text-center text-[#374151]">
+                            No students have attempted this exam yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Feedback Tab Content */}
+              {detailViewTab === 'feedback' && (
+                <div>
+                  {loadingFeedback ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="animate-spin text-[#3B82F6]" size={48} />
+                    </div>
+                  ) : feedbackData.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-gray-200">
+                      <MessageSquare size={48} className="mx-auto text-gray-300 mb-3" />
+                      <p className="text-gray-500 text-lg">No feedback submitted yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Feedback Statistics */}
+                      {feedbackStats && (
+                        <div className="grid grid-cols-3 gap-4 mb-6">
+                          <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <TrendingUp size={20} className="text-blue-600" />
+                              <span className="text-2xl font-bold text-blue-600">
+                                {feedbackStats.averageRating}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700 font-medium">Average Rating</p>
+                            <p className="text-xs text-gray-500">{feedbackStats.totalFeedbacks} responses</p>
+                          </div>
+
+                          <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-4">
+                            <BarChart3 size={20} className="text-green-600 mb-2" />
+                            <p className="text-sm text-gray-700 font-medium mb-2">Difficulty</p>
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-xs">
+                                <span className="text-gray-600">Easy:</span>
+                                <span className="font-medium text-green-600">{feedbackStats.difficultyBreakdown.Easy}</span>
+                              </div>
+                              <div className="flex justify-between text-xs">
+                                <span className="text-gray-600">Medium:</span>
+                                <span className="font-medium text-yellow-600">{feedbackStats.difficultyBreakdown.Medium}</span>
+                              </div>
+                              <div className="flex justify-between text-xs">
+                                <span className="text-gray-600">Hard:</span>
+                                <span className="font-medium text-red-600">{feedbackStats.difficultyBreakdown.Hard}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-lg p-4">
+                            <Star size={20} className="text-yellow-600 mb-2" />
+                            <p className="text-sm text-gray-700 font-medium mb-2">Rating Distribution</p>
+                            <div className="space-y-1">
+                              {[5, 4, 3, 2, 1].map(rating => (
+                                <div key={rating} className="flex items-center text-xs">
+                                  <span className="text-gray-600 w-8">{rating}★</span>
+                                  <div className="flex-1 bg-gray-200 rounded-full h-2 mx-2">
+                                    <div 
+                                      className="bg-yellow-500 h-2 rounded-full"
+                                      style={{ 
+                                        width: `${feedbackStats.totalFeedbacks > 0 
+                                          ? (feedbackStats.ratingBreakdown[rating] / feedbackStats.totalFeedbacks) * 100 
+                                          : 0}%` 
+                                      }}
+                                    ></div>
+                                  </div>
+                                  <span className="font-medium text-gray-700 w-6">{feedbackStats.ratingBreakdown[rating]}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Individual Feedback Cards */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-bold text-gray-900 mb-4">Student Feedback</h3>
+                        {feedbackData.map((feedback, idx) => (
+                          <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
+                            <div className="flex justify-between items-start mb-3">
+                              <div>
+                                <p className="font-semibold text-gray-900">{feedback.student_name || 'Anonymous'}</p>
+                                <p className="text-sm text-gray-500">{feedback.student_email}</p>
+                              </div>
+                              <div className="text-right">
+                                {feedback.rating && (
+                                  <div className="flex space-x-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <Star
+                                        key={star}
+                                        size={16}
+                                        className={star <= feedback.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {new Date(feedback.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+
+                            {feedback.difficulty && (
+                              <div className="mb-3">
+                                <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                                  feedback.difficulty === 'Easy' ? 'bg-green-100 text-green-700' :
+                                  feedback.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  Difficulty: {feedback.difficulty}
+                                </span>
+                              </div>
+                            )}
+
+                            {feedback.feedback_text && (
+                              <div className="bg-gray-50 rounded-lg p-3">
+                                <p className="text-sm text-gray-700 whitespace-pre-wrap">{feedback.feedback_text}</p>
+                              </div>
+                            )}
+
+                            {!feedback.rating && !feedback.difficulty && !feedback.feedback_text && (
+                              <p className="text-sm text-gray-400 italic">No detailed feedback provided</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -1520,27 +1740,45 @@ const AdminDashboard = () => {
                               {/* Dropdown Menu */}
                               {openMenuId === test.id && (
                                 <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleViewJob(test);
-                                      setOpenMenuId(null);
-                                    }}
-                                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 flex items-center space-x-2 transition-colors"
-                                  >
-                                    <Eye size={14} />
-                                    <span>Test Details</span>
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenCloneModal(test);
-                                    }}
-                                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 flex items-center space-x-2 transition-colors border-t border-gray-100"
-                                  >
-                                    <Copy size={14} />
-                                    <span>Clone Test</span>
-                                  </button>
+                                  {/* For draft tests, only show Clone option */}
+                                  {test.status === 'draft' ? (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenCloneModal(test);
+                                      }}
+                                      className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 flex items-center space-x-2 transition-colors"
+                                    >
+                                      <Copy size={14} />
+                                      <span>Clone Test</span>
+                                    </button>
+                                  ) : (
+                                    <>
+                                      {/* View Details - Available for published tests */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleViewTestDetails(test);
+                                        }}
+                                        className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 flex items-center space-x-2 transition-colors"
+                                      >
+                                        <Eye size={14} />
+                                        <span>View Details</span>
+                                      </button>
+                                      
+                                      {/* Clone Test */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleOpenCloneModal(test);
+                                        }}
+                                        className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 flex items-center space-x-2 transition-colors border-t border-gray-100"
+                                      >
+                                        <Copy size={14} />
+                                        <span>Clone Test</span>
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -2110,7 +2348,8 @@ const AdminDashboard = () => {
                                 <th className="px-4 py-3 text-center text-sm font-bold text-[#111827]">No Face</th>
                                 <th className="px-4 py-3 text-center text-sm font-bold text-[#111827]">Multiple Faces</th>
                                 <th className="px-4 py-3 text-center text-sm font-bold text-[#111827]">Phone Detected</th>
-                                <th className="px-4 py-3 text-center text-sm font-bold text-[#111827]">Looking Down</th>
+                                <th className="px-4 py-3 text-center text-sm font-bold text-[#111827]">Loud Noise</th>
+                                <th className="px-4 py-3 text-center text-sm font-bold text-[#111827]">Voice Detected</th>
                                 <th className="px-4 py-3 text-center text-sm font-bold text-[#111827]">Total</th>
                               </tr>
                             </thead>
@@ -2149,9 +2388,16 @@ const AdminDashboard = () => {
                                   </td>
                                   <td className="px-4 py-3 text-center">
                                     <span className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${
-                                      student.looking_down_count > 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'
+                                      student.loud_noise_count > 0 ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'
                                     }`}>
-                                      {student.looking_down_count}
+                                      {student.loud_noise_count || 0}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${
+                                      student.voice_detected_count > 0 ? 'bg-pink-100 text-pink-700' : 'bg-gray-100 text-gray-500'
+                                    }`}>
+                                      {student.voice_detected_count || 0}
                                     </span>
                                   </td>
                                   <td className="px-4 py-3 text-center">
@@ -2276,6 +2522,30 @@ const AdminDashboard = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* View Test Details Modal */}
+      {showViewDetailsModal && selectedTestForDetails && (
+        <ViewTestDetailsModal
+          test={selectedTestForDetails}
+          onClose={() => {
+            setShowViewDetailsModal(false);
+            setSelectedTestForDetails(null);
+          }}
+          onEdit={handleEditTestDetails}
+        />
+      )}
+
+      {/* Edit Test Details Modal */}
+      {showEditDetailsModal && selectedTestForDetails && (
+        <EditTestDetailsModal
+          test={selectedTestForDetails}
+          onClose={() => {
+            setShowEditDetailsModal(false);
+            setSelectedTestForDetails(null);
+          }}
+          onSave={handleSaveTestDetails}
+        />
       )}
 
       {/* Job Role/Description Modal */}
@@ -2441,9 +2711,11 @@ const AdminDashboard = () => {
                   </button>
                   <button
                     onClick={() => setIsEditingJob(true)}
-                    className="px-6 py-3 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-xl font-medium transition-colors"
+                    className="px-6 py-3 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-xl font-medium transition-colors flex items-center space-x-2"
+                    title="Edit Roles"
                   >
-                    Edit Roles
+                    <Pencil size={18} />
+                    <span>Edit</span>
                   </button>
                 </>
               )}

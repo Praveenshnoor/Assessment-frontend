@@ -69,8 +69,8 @@ const Instructions = () => {
     const token = localStorage.getItem('studentAuthToken');
 
     try {
-      // CRITICAL: Request camera permission BEFORE starting/resuming exam
-      console.log('Requesting camera permission...');
+      // CRITICAL: Request camera AND microphone permission BEFORE starting/resuming exam
+      console.log('Requesting camera and microphone permissions...');
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -78,15 +78,35 @@ const Instructions = () => {
             height: { ideal: 480 },
             facingMode: 'user'
           },
-          audio: false
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: false
+          }
         });
         
-        // Stop the stream immediately - we just needed to check permission
+        // Check if both camera and microphone are available
+        const videoTracks = stream.getVideoTracks();
+        const audioTracks = stream.getAudioTracks();
+        
+        if (videoTracks.length === 0) {
+          stream.getTracks().forEach(track => track.stop());
+          alert('⚠️ Camera Access Required\n\nYou must allow camera access to take this exam.\n\nPlease:\n1. Click the camera icon in your browser address bar\n2. Allow camera access\n3. Refresh the page and try again');
+          return;
+        }
+        
+        if (audioTracks.length === 0) {
+          stream.getTracks().forEach(track => track.stop());
+          alert('⚠️ Microphone Access Required\n\nYou must allow microphone access to take this exam.\n\nPlease:\n1. Click the microphone icon in your browser address bar\n2. Allow microphone access\n3. Refresh the page and try again');
+          return;
+        }
+        
+        // Stop the stream immediately - we just needed to check permissions
         stream.getTracks().forEach(track => track.stop());
-        console.log('Camera permission granted');
-      } catch (cameraError) {
-        console.error('Camera permission denied:', cameraError);
-        alert('⚠️ Camera Access Required\n\nYou must allow camera access to take this exam.\n\nPlease:\n1. Click the camera icon in your browser address bar\n2. Allow camera access\n3. Refresh the page and try again');
+        console.log('Camera and microphone permissions granted');
+      } catch (permissionError) {
+        console.error('Camera/Microphone permission denied:', permissionError);
+        alert('⚠️ Camera and Microphone Access Required\n\nYou must allow both camera and microphone access to take this exam.\n\nPlease:\n1. Click the camera/microphone icons in your browser address bar\n2. Allow both camera and microphone access\n3. Refresh the page and try again');
         return; // Block exam from starting
       }
 
@@ -140,6 +160,11 @@ const Instructions = () => {
       icon: <Monitor className="w-6 h-6 text-green-600" />,
       title: 'Fullscreen Mode',
       description: 'Fullscreen mode is mandatory throughout the examination. Exiting fullscreen will trigger a warning.'
+    },
+    {
+      icon: <Shield className="w-6 h-6 text-red-600" />,
+      title: 'Camera & Microphone Required',
+      description: 'Camera and microphone access are mandatory for proctoring. The exam will not start without both permissions.'
     },
     {
       icon: <AlertTriangle className="w-6 h-6 text-orange-600" />,

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Upload, FileText, Plus, Save, Trash2, ArrowLeft, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, FileText, Plus, Save, Trash2, ArrowLeft, CheckCircle, AlertCircle, Loader2, Pencil } from 'lucide-react';
 import { apiFetch } from '../../config/api';
 
 const CreateTestSection = ({ onComplete, editingTest }) => {
@@ -212,7 +212,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
     };
 
     const handleManualSubmit = async () => {
-        if (questions.length === 0) {
+        if (questions.length === 0 && step === 'manual') {
             alert('Please add at least one question');
             return;
         }
@@ -263,7 +263,9 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
 
                 if (response.ok && data.success) {
                     alert('Test updated successfully!');
-                    if (onComplete) onComplete();
+                    // Go back to view mode instead of dashboard
+                    setViewMode(true);
+                    setStep('init');
                 } else {
                     alert(data.message || 'Failed to update test');
                 }
@@ -351,10 +353,27 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    alert(`Test updated successfully! ${data.questionsCount} questions uploaded.`);
-                    if (onComplete) onComplete();
+                    alert(`Questions uploaded successfully! ${data.questionsCount} questions added. Click "Save Changes" to save.`);
+                    // Reload test data to show new questions
+                    const testResponse = await apiFetch(`api/tests/${uploadedTestId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    const testData = await testResponse.json();
+                    if (testResponse.ok && testData.success && testData.test.questions) {
+                        const loadedQuestions = testData.test.questions.map((q, idx) => ({
+                            id: q.id || Date.now() + idx,
+                            text: q.question_text,
+                            options: [q.option_a, q.option_b, q.option_c || '', q.option_d || ''],
+                            correctOption: q.correct_option.charCodeAt(0) - 65
+                        }));
+                        setQuestions(loadedQuestions);
+                    }
+                    // Stay in edit mode (init step) to allow saving
+                    setStep('init');
                 } else {
-                    alert(data.message || 'Failed to update test');
+                    alert(data.message || 'Failed to upload questions');
                 }
             } else {
                 // Create mode: Create new test
@@ -453,7 +472,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                 onClick={() => setViewMode(false)}
                                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
                             >
-                                <FileText size={18} />
+                                <Pencil size={18} />
                                 <span>Edit</span>
                             </button>
                         )}
@@ -688,16 +707,44 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                             </button>
                                         </div>
                                         
-                                        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 flex items-start space-x-3">
+                                        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 flex items-start space-x-3 mb-6">
                                             <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                                             <div className="text-sm text-yellow-800">
                                                 <p className="font-semibold mb-1">Important:</p>
                                                 <ul className="list-disc list-inside space-y-1">
                                                     <li>Review test details above before proceeding</li>
                                                     <li>Uploading a new file will <strong>delete all existing questions</strong></li>
-                                                    <li>Changes will be saved when you click "Update Assessment"</li>
+                                                    <li>Changes will be saved when you click "Save Changes"</li>
                                                 </ul>
                                             </div>
+                                        </div>
+
+                                        {/* Save Changes and Cancel Buttons */}
+                                        <div className="flex items-center space-x-3">
+                                            <button
+                                                onClick={handleManualSubmit}
+                                                disabled={isUploading}
+                                                className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors shadow-sm flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {isUploading ? (
+                                                    <>
+                                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                                        <span>Saving...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Save size={20} />
+                                                        <span>Save Changes</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={() => setViewMode(true)}
+                                                disabled={isUploading}
+                                                className="px-6 py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Cancel
+                                            </button>
                                         </div>
                                     </>
                                 )}
@@ -811,20 +858,34 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                             </button>
 
                             <div className="pt-6 border-t border-gray-200">
-                                <button
-                                    onClick={handleManualSubmit}
-                                    disabled={questions.length === 0 || isUploading}
-                                    className={`w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors shadow-sm flex items-center justify-center space-x-2 ${questions.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                >
-                                    {isUploading ? (
-                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                                    ) : (
-                                        <>
-                                            <Save size={20} />
-                                            <span>{isEditMode ? 'Update' : 'Save'} Assessment ({questions.length} Questions)</span>
-                                        </>
+                                <div className="flex items-center space-x-3">
+                                    <button
+                                        onClick={handleManualSubmit}
+                                        disabled={questions.length === 0 || isUploading}
+                                        className={`flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors shadow-sm flex items-center justify-center space-x-2 ${questions.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    >
+                                        {isUploading ? (
+                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                        ) : (
+                                            <>
+                                                <Save size={20} />
+                                                <span>{isEditMode ? 'Save Changes' : 'Save'} ({questions.length} Questions)</span>
+                                            </>
+                                        )}
+                                    </button>
+                                    {isEditMode && (
+                                        <button
+                                            onClick={() => {
+                                                setStep('init');
+                                                setViewMode(true);
+                                            }}
+                                            disabled={isUploading}
+                                            className="px-6 py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Cancel
+                                        </button>
                                     )}
-                                </button>
+                                </div>
                             </div>
                         </div>
 

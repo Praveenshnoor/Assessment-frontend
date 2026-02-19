@@ -1,4 +1,4 @@
-import { Users, UserX, Smartphone, Eye } from 'lucide-react';
+import { Users, UserX, Smartphone, Eye, Volume2, VideoOff } from 'lucide-react';
 
 const AIViolationAlert = ({ violation, onDismiss }) => {
   const getIcon = () => {
@@ -10,6 +10,11 @@ const AIViolationAlert = ({ violation, onDismiss }) => {
       case 'phone_detected':
       case 'looking_down':
         return <Smartphone className="w-6 h-6" />;
+      case 'loud_noise':
+      case 'voice_detected':
+        return <Volume2 className="w-6 h-6" />;
+      case 'video_blur':
+        return <VideoOff className="w-6 h-6" />;
       default:
         return <Eye className="w-6 h-6" />;
     }
@@ -38,6 +43,12 @@ const AIViolationAlert = ({ violation, onDismiss }) => {
         return 'Mobile detected';
       case 'looking_down':
         return 'Looking down detected';
+      case 'loud_noise':
+        return 'Sound detected';
+      case 'voice_detected':
+        return 'Sound detected';
+      case 'video_blur':
+        return 'Blur video';
       default:
         return 'Suspicious activity detected';
     }

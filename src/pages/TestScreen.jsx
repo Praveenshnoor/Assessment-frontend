@@ -101,7 +101,8 @@ const TestScreen = () => {
     stopProctoring,
     isModelLoaded,
     detectionActive,
-    violations
+    violations,
+    microphonePermissionGranted
   } = useProctoringWithAI(handleCameraLost, handleAIViolation);
 
   // Submit test function - defined early so it can be used by other callbacks
@@ -142,13 +143,23 @@ const TestScreen = () => {
       console.log('Response data:', data);
 
       if (data.success) {
+        // Store testId for feedback submission
+        localStorage.setItem('lastTestId', testId);
+        
+        // Get studentId for feedback
+        const studentId = localStorage.getItem('studentId');
+        
         // Clear test-specific data
         localStorage.removeItem('selectedTestId');
 
-        // Navigate to results with backend response
+        // Navigate to results with backend response, testId, and studentId
         navigate('/result', {
           state: {
-            result: data.result,
+            result: { 
+              ...data.result, 
+              testId: parseInt(testId), 
+              studentId: studentId 
+            },
             submissionReason: reason
           }
         });
@@ -611,11 +622,24 @@ const TestScreen = () => {
               </div>
 
               {/* AI Detection Status */}
-              <div className={`flex items-center space-x-2 px-3 py-2 rounded-lg ${detectionActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+              <div className={`flex items-center space-x-2 px-3 py-2 rounded-lg ${
+                detectionActive 
+                  ? 'bg-blue-100 text-blue-700' 
+                  : isModelLoaded 
+                    ? 'bg-yellow-100 text-yellow-700' 
+                    : 'bg-gray-100 text-gray-500'
+              }`}>
                 <Shield size={18} />
                 <span className="text-sm font-medium hidden sm:inline">
-                  {isModelLoaded ? (detectionActive ? 'AI Active' : 'AI Ready') : 'Loading AI...'}
+                  {detectionActive 
+                    ? 'AI Active' 
+                    : isModelLoaded 
+                      ? 'AI Ready' 
+                      : 'Loading AI...'}
                 </span>
+                {!isModelLoaded && (
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-500"></div>
+                )}
               </div>
 
               {/* Timer and Info - Submit button removed, now floating at bottom-right */}

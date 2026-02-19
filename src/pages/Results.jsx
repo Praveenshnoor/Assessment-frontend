@@ -39,11 +39,49 @@ const Result = () => {
     const handleSubmitFeedback = async () => {
         setIsSubmitting(true);
         
-        // Simulate API call - you can add actual backend endpoint later
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        setFeedbackSubmitted(true);
-        setIsSubmitting(false);
+        try {
+            // Get studentId and testId from result object or fallback to localStorage
+            const studentId = result.studentId || localStorage.getItem('studentId');
+            const testId = result.testId || parseInt(localStorage.getItem('lastTestId'));
+            
+            if (!studentId || !testId) {
+                alert('Missing student or test information. Please try submitting the exam again.');
+                setIsSubmitting(false);
+                return;
+            }
+            
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/feedback`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    studentId: studentId,
+                    testId: testId,
+                    rating: rating,
+                    difficulty: difficulty,
+                    feedbackText: feedback,
+                    submissionReason: submissionReason
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                setFeedbackSubmitted(true);
+                // Redirect to dashboard after 2 seconds
+                setTimeout(() => {
+                    navigate('/dashboard');
+                }, 2000);
+            } else {
+                alert('Failed to submit feedback: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error submitting feedback:', error);
+            alert('Failed to submit feedback. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleSkipFeedback = () => {
