@@ -9,6 +9,7 @@ import CreateTestSection from '../../components/admin/CreateTestSection';
 import ExamSearchFilter from '../../components/ExamSearchFilter';
 import ViewTestDetailsModal from '../../components/admin/ViewTestDetailsModal';
 import EditTestDetailsModal from '../../components/admin/EditTestDetailsModal';
+import BulkStudentUpload from '../../components/admin/BulkStudentUpload';
 import { apiFetch } from '../../config/api';
 
 const AdminDashboard = () => {
@@ -1295,6 +1296,7 @@ const AdminDashboard = () => {
                 { id: 'exams', label: 'Manage Exams', icon: FileSpreadsheet },
                 { id: 'assign', label: 'Assign Tests', icon: UserCheck },
                 { id: 'institutes', label: 'Manage Institutes', icon: Building2 },
+                { id: 'bulk-upload', label: 'Bulk Upload Students', icon: Users },
                 { id: 'violations', label: 'Violations', icon: AlertCircle },
               ].map((tab) => (
                 <button
@@ -2242,6 +2244,13 @@ const AdminDashboard = () => {
                     )}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Bulk Upload Students Tab */}
+            {activeTab === 'bulk-upload' && (
+              <div className="space-y-6">
+                <BulkStudentUpload />
               </div>
             )}
 
