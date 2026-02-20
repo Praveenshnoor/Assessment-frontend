@@ -48,7 +48,8 @@ const AdminReports = () => {
             let queryParams = '';
 
             if (selectedInstitutes.length > 0) {
-                const values = selectedInstitutes.map(i => i.value).join(',');
+                // Use pipe separator instead of comma to avoid conflicts with institute names containing commas
+                const values = selectedInstitutes.map(i => i.value).join('|');
                 queryParams = `?institutes=${encodeURIComponent(values)}`;
             } else {
                 queryParams = '?institutes=ALL';
