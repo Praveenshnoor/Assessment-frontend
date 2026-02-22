@@ -6,6 +6,7 @@ import { useTabSwitch } from '../hooks/useTabSwitch';
 import { useProctoringWithAI } from '../hooks/useProctoringWithAI';
 import FullscreenWarning from '../components/FullscreenWarning';
 import AIViolationAlert from '../components/AIViolationAlert';
+import Editor from '@monaco-editor/react';
 import {
   Clock,
   AlertTriangle,
@@ -17,17 +18,53 @@ import {
   Shield
 } from 'lucide-react';
 import { apiFetch } from '../config/api';
+import codeExecutionAPI from '../services/codeExecutionAPI';
 
 // Questions will be fetched from API
 
 const TestScreen = () => {
   const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
+  const [codingQuestions, setCodingQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
+  const [codingConsoleOutput, setCodingConsoleOutput] = useState({}); // Store console output per question
   const [markedForReview, setMarkedForReview] = useState(new Set());
+  
+  // Resizable panel states
+  const [leftPanelWidth, setLeftPanelWidth] = useState(33); // percentage
+  const [consolePanelHeight, setConsolePanelHeight] = useState(256); // pixels
+  const [isResizingHorizontal, setIsResizingHorizontal] = useState(false);
+  const [isResizingVertical, setIsResizingVertical] = useState(false);
+
+  // Starter code templates for each language
+  const getStarterCode = (language) => {
+    const templates = {
+      java: `public class Solution {
+    public static void main(String[] args) {
+        // Write your code here
+        System.out.println("Hello World");
+    }
+}`,
+      python: `def solution():
+    # Write your code here
+    print("Hello World")
+
+if __name__ == "__main__":
+    solution()`,
+      cpp: `#include <iostream>
+using namespace std;
+
+int main() {
+    // Write your code here
+    cout << "Hello World" << endl;
+    return 0;
+}`
+    };
+    return templates[language] || templates.java;
+  };
   const [visited, setVisited] = useState(new Set([0]));
   const [warningCount, setWarningCount] = useState(0);
   const [showTabWarning, setShowTabWarning] = useState(false);
@@ -36,6 +73,9 @@ const TestScreen = () => {
   const [testDetails, setTestDetails] = useState(null);
   const [currentAIViolation, setCurrentAIViolation] = useState(null);
   const [aiViolationCount, setAiViolationCount] = useState(0);
+
+  // Calculate total questions (MCQ + Coding)
+  const totalQuestions = questions.length + codingQuestions.length;
 
   const {
     isFullscreen,
@@ -352,13 +392,18 @@ const TestScreen = () => {
 
         const data = await response.json();
         if (data.success && data.test && data.test.questions) {
+          console.log('Test data received:', data.test);
+          console.log('MCQ Questions:', data.test.questions.length);
+          console.log('Coding Questions:', data.test.codingQuestions);
+          
           setQuestions(data.test.questions);
+          setCodingQuestions(data.test.codingQuestions || []);
           
           // Store test details for instruction screen
           setTestDetails({
             title: data.test.title || 'Assessment',
             duration: data.test.duration || 60,
-            totalQuestions: data.test.questions.length
+            totalQuestions: data.test.questions.length + (data.test.codingQuestions?.length || 0)
           });
 
           // Get test duration from backend
@@ -403,10 +448,12 @@ const TestScreen = () => {
             }
 
             try {
+              // Enter fullscreen on resume
               await enterFullscreen();
-              console.log('[Fullscreen] Fullscreen mode resumed');
+              console.log('[Fullscreen] Fullscreen mode activated on resume');
             } catch (fullscreenErr) {
               console.error('[Fullscreen] Failed to resume fullscreen:', fullscreenErr);
+              // Don't block - the warning modal will show
             }
           } else {
             // No saved progress, use full duration
@@ -504,7 +551,7 @@ const TestScreen = () => {
   };
 
   const handleNext = () => {
-    if (currentQuestion < questions.length - 1) {
+    if (currentQuestion < totalQuestions - 1) {
       handleNavigate(currentQuestion + 1);
     }
   };
@@ -527,6 +574,80 @@ const TestScreen = () => {
     });
   };
 
+  // Horizontal resize handler (left panel width)
+  const handleHorizontalMouseDown = (e) => {
+    e.preventDefault();
+    setIsResizingHorizontal(true);
+  };
+
+  useEffect(() => {
+    const handleHorizontalMouseMove = (e) => {
+      if (!isResizingHorizontal) return;
+      
+      const container = document.querySelector('.coding-container');
+      if (!container) return;
+      
+      const containerRect = container.getBoundingClientRect();
+      const newWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
+      
+      // Limit between 20% and 50%
+      if (newWidth >= 20 && newWidth <= 50) {
+        setLeftPanelWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingHorizontal(false);
+    };
+
+    if (isResizingHorizontal) {
+      document.addEventListener('mousemove', handleHorizontalMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleHorizontalMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingHorizontal]);
+
+  // Vertical resize handler (console height)
+  const handleVerticalMouseDown = (e) => {
+    e.preventDefault();
+    setIsResizingVertical(true);
+  };
+
+  useEffect(() => {
+    const handleVerticalMouseMove = (e) => {
+      if (!isResizingVertical) return;
+      
+      const container = document.querySelector('.code-editor-container');
+      if (!container) return;
+      
+      const containerRect = container.getBoundingClientRect();
+      const newHeight = containerRect.bottom - e.clientY;
+      
+      // Limit between 100px and 500px
+      if (newHeight >= 100 && newHeight <= 500) {
+        setConsolePanelHeight(newHeight);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingVertical(false);
+    };
+
+    if (isResizingVertical) {
+      document.addEventListener('mousemove', handleVerticalMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleVerticalMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingVertical]);
+
   const getQuestionStatus = (index) => {
     const isAnswered = answers[index] !== undefined;
     const isMarked = markedForReview.has(index);
@@ -547,7 +668,7 @@ const TestScreen = () => {
     );
   }
 
-  if (error || questions.length === 0) {
+  if (error || totalQuestions === 0) {
     return (
       <div className="h-screen bg-gray-100 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
@@ -565,7 +686,11 @@ const TestScreen = () => {
     );
   }
 
-  const currentQ = questions[currentQuestion];
+  // Determine if current question is MCQ or Coding
+  const isCodingQuestion = currentQuestion >= questions.length;
+  const currentQ = isCodingQuestion 
+    ? codingQuestions[currentQuestion - questions.length]
+    : questions[currentQuestion];
 
   return (
     <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
@@ -602,7 +727,7 @@ const TestScreen = () => {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-gray-900">Java Programming Mock Test</h1>
-                <p className="text-xs text-gray-500">Question {currentQuestion + 1} of {questions.length}</p>
+                <p className="text-xs text-gray-500">Question {currentQuestion + 1} of {totalQuestions}</p>
               </div>
             </div>
 
@@ -654,30 +779,69 @@ const TestScreen = () => {
         <aside className="w-64 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
           <div className="p-4 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900 mb-3">Question Palette</h3>
-            <div className="grid grid-cols-5 gap-2">
-              {questions.map((_, index) => {
-                const status = getQuestionStatus(index);
-                let bgClass = 'bg-gray-100 text-gray-600'; // not-visited
-                if (status === 'answered') bgClass = 'bg-green-500 text-white';
-                else if (status === 'review') bgClass = 'bg-yellow-500 text-white';
-                else if (status === 'visited') bgClass = 'bg-gray-300 text-gray-700';
+            
+            {/* MCQ Questions */}
+            {questions.length > 0 && (
+              <>
+                <p className="text-xs text-gray-500 mb-2">MCQ Questions</p>
+                <div className="grid grid-cols-5 gap-2 mb-4">
+                  {questions.map((_, index) => {
+                    const status = getQuestionStatus(index);
+                    let bgClass = 'bg-gray-100 text-gray-600'; // not-visited
+                    if (status === 'answered') bgClass = 'bg-green-500 text-white';
+                    else if (status === 'review') bgClass = 'bg-yellow-500 text-white';
+                    else if (status === 'visited') bgClass = 'bg-gray-300 text-gray-700';
 
-                return (
-                  <button
-                    key={index}
-                    onClick={() => handleNavigate(index)}
-                    className={`
-                      w-10 h-10 rounded-lg font-semibold text-sm transition-all
-                      ${bgClass}
-                      ${currentQuestion === index ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
-                      hover:opacity-80
-                    `}
-                  >
-                    {index + 1}
-                  </button>
-                );
-              })}
-            </div>
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => handleNavigate(index)}
+                        className={`
+                          w-10 h-10 rounded-lg font-semibold text-sm transition-all
+                          ${bgClass}
+                          ${currentQuestion === index ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
+                          hover:opacity-80
+                        `}
+                      >
+                        {index + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* Coding Questions */}
+            {codingQuestions.length > 0 && (
+              <>
+                <p className="text-xs text-gray-500 mb-2">Coding Questions</p>
+                <div className="grid grid-cols-5 gap-2">
+                  {codingQuestions.map((_, index) => {
+                    const actualIndex = questions.length + index;
+                    const status = getQuestionStatus(actualIndex);
+                    let bgClass = 'bg-gray-100 text-gray-600'; // not-visited
+                    if (status === 'answered') bgClass = 'bg-purple-500 text-white';
+                    else if (status === 'review') bgClass = 'bg-yellow-500 text-white';
+                    else if (status === 'visited') bgClass = 'bg-gray-300 text-gray-700';
+
+                    return (
+                      <button
+                        key={actualIndex}
+                        onClick={() => handleNavigate(actualIndex)}
+                        className={`
+                          w-10 h-10 rounded-lg font-semibold text-sm transition-all
+                          ${bgClass}
+                          ${currentQuestion === actualIndex ? 'ring-2 ring-purple-500 ring-offset-2' : ''}
+                          hover:opacity-80
+                        `}
+                      >
+                        C{index + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
 
           <div className="p-4 space-y-3">
@@ -692,7 +856,7 @@ const TestScreen = () => {
             </div>
             <div className="flex items-center space-x-2 text-sm">
               <div className="w-4 h-4 bg-gray-300 rounded"></div>
-              <span className="text-gray-600">Not Answered ({questions.length - Object.keys(answers).length})</span>
+              <span className="text-gray-600">Not Answered ({totalQuestions - Object.keys(answers).length})</span>
             </div>
           </div>
 
@@ -726,8 +890,9 @@ const TestScreen = () => {
           </div>
         </aside>
 
-        {/* Main Question Area */}
-        <main className="flex-1 overflow-y-auto p-6">
+        {/* Main Question Area - MCQ */}
+        {!isCodingQuestion && (
+          <main className="flex-1 overflow-y-auto p-6 bg-gray-100">
           <div className="max-w-4xl mx-auto">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
               {/* Question Header */}
@@ -757,86 +922,543 @@ const TestScreen = () => {
                 </button>
               </div>
 
-              {/* Question Text */}
-              <div className="mb-8">
-                <p className="text-lg text-gray-900 leading-relaxed whitespace-pre-wrap font-medium">
-                  {currentQ.question}
-                </p>
-              </div>
+              {/* Question Content - MCQ or Coding */}
+              {!isCodingQuestion ? (
+                <>
+                  {/* MCQ Question Text */}
+                  <div className="mb-8">
+                    <p className="text-lg text-gray-900 leading-relaxed whitespace-pre-wrap font-medium">
+                      {currentQ.question}
+                    </p>
+                  </div>
 
-              {/* Options */}
-              <div className="space-y-3">
-                {currentQ.options.map((option, index) => (
-                  <label
-                    key={index}
-                    className={`
-                      flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all
-                      ${answers[currentQuestion] === index
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}
-                    `}
-                  >
-                    <input
-                      type="radio"
-                      name={`question-${currentQuestion}`}
-                      checked={answers[currentQuestion] === index}
-                      onChange={() => handleAnswerSelect(index)}
-                      className="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500"
-                    />
-                    <span className="ml-4 text-gray-700 font-medium">{option}</span>
-                    {answers[currentQuestion] === index && (
-                      <CheckCircle className="ml-auto w-5 h-5 text-blue-600" />
-                    )}
-                  </label>
-                ))}
-              </div>
+                  {/* MCQ Options */}
+                  <div className="space-y-3">
+                    {currentQ.options.map((option, index) => (
+                      <label
+                        key={index}
+                        className={`
+                          flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all
+                          ${answers[currentQuestion] === index
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}
+                        `}
+                      >
+                        <input
+                          type="radio"
+                          name={`question-${currentQuestion}`}
+                          checked={answers[currentQuestion] === index}
+                          onChange={() => handleAnswerSelect(index)}
+                          className="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500"
+                        />
+                        <span className="ml-4 text-gray-700 font-medium">{option}</span>
+                        {answers[currentQuestion] === index && (
+                          <CheckCircle className="ml-auto w-5 h-5 text-blue-600" />
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </div>
 
-            {/* Navigation Buttons */}
-            <div className="flex justify-between items-center">
-              <button
-                onClick={handlePrevious}
-                disabled={currentQuestion === 0}
-                className={`
-                  flex items-center space-x-2 px-6 py-3 rounded-lg font-semibold transition-colors
-                  ${currentQuestion === 0
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-white border-2 border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'}
-                `}
-              >
-                <ChevronLeft size={20} />
-                <span>Previous</span>
-              </button>
-
-              <div className="flex space-x-3">
+            {/* Navigation Buttons - Only for MCQ */}
+            {!isCodingQuestion && (
+              <div className="flex justify-between items-center">
                 <button
-                  onClick={async () => {
-                    await saveProgressNow(); // Save before skipping
-                    handleNext();
-                  }}
-                  className="px-6 py-3 border-2 border-gray-300 text-gray-600 rounded-lg font-semibold hover:border-gray-400 hover:bg-gray-50 transition-colors"
+                  onClick={handlePrevious}
+                  disabled={currentQuestion === 0}
+                  className={`
+                    flex items-center space-x-2 px-6 py-3 rounded-lg font-semibold transition-colors
+                    ${currentQuestion === 0
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-white border-2 border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'}
+                  `}
                 >
-                  Skip
+                  <ChevronLeft size={20} />
+                  <span>Previous</span>
                 </button>
 
-                <button
-                  onClick={async () => {
-                    if (answers[currentQuestion] !== undefined) {
-                      await saveProgressNow(); // Save before moving to next
+                <div className="flex space-x-3">
+                  <button
+                    onClick={async () => {
+                      await saveProgressNow(); // Save before skipping
                       handleNext();
-                    } else {
-                      alert('Please select an answer or click Skip');
-                    }
-                  }}
-                  className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors shadow-sm"
-                >
-                  <span>Save & Next</span>
-                  <ChevronRight size={20} />
-                </button>
+                    }}
+                    className="px-6 py-3 border-2 border-gray-300 text-gray-600 rounded-lg font-semibold hover:border-gray-400 hover:bg-gray-50 transition-colors"
+                  >
+                    Skip
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      if (answers[currentQuestion] !== undefined) {
+                        await saveProgressNow(); // Save before moving to next
+                        handleNext();
+                      } else {
+                        alert('Please select an answer or click Skip');
+                      }
+                    }}
+                    className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors shadow-sm"
+                  >
+                    <span>Save & Next</span>
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </main>
+        )}
+
+        {/* Coding Question - Split Screen Layout */}
+        {isCodingQuestion && (
+          <main className="flex-1 flex bg-gray-100 overflow-hidden coding-container">
+            {/* Left Panel - Problem Description */}
+            <div 
+              className="bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0"
+              style={{ width: `${leftPanelWidth}%`, minWidth: '20%', maxWidth: '50%' }}
+            >
+              <div className="p-6">
+                {/* Title */}
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">{currentQ.title}</h3>
+                  <div className="flex items-center space-x-2">
+                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">
+                      MEDIUM
+                    </span>
+                  </div>
+                </div>
+
+                    {/* Description */}
+                    <div className="mb-6">
+                      <h4 className="text-sm font-semibold text-gray-500 uppercase mb-2">Description</h4>
+                      <div className="text-gray-700 text-sm leading-relaxed">
+                        <pre className="whitespace-pre-wrap font-sans">{currentQ.description}</pre>
+                      </div>
+                    </div>
+
+                    {/* Examples */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-500 uppercase mb-3">Examples</h4>
+                      <div className="space-y-4">
+                        {currentQ.testCases && currentQ.testCases.map((testCase, index) => (
+                          <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div className="mb-3">
+                              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Input</p>
+                              <div className="bg-gray-800 text-gray-100 p-3 rounded font-mono text-sm">
+                                {testCase.input}
+                              </div>
+                            </div>
+                            <div className="mb-3">
+                              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Output</p>
+                              <div className="bg-gray-800 text-gray-100 p-3 rounded font-mono text-sm">
+                                {testCase.output}
+                              </div>
+                            </div>
+                            {testCase.explanation && (
+                              <div>
+                                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Explanation</p>
+                                <p className="text-sm text-gray-600">{testCase.explanation}</p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Horizontal Resize Handle */}
+                <div
+                  className="w-1 bg-gray-300 hover:bg-blue-500 cursor-col-resize flex-shrink-0 transition-colors"
+                  onMouseDown={handleHorizontalMouseDown}
+                  style={{ cursor: 'col-resize' }}
+                />
+
+                {/* Right Panel - Code Editor */}
+                <div className="flex-1 flex flex-col bg-gray-900 code-editor-container min-w-0">
+                  {/* Editor Header */}
+                  <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
+                    <select
+                      value={answers[currentQuestion]?.language || 'java'}
+                      onChange={(e) => {
+                        const newLanguage = e.target.value;
+                        setAnswers(prev => {
+                          const currentAnswer = prev[currentQuestion] || {};
+                          const currentLang = currentAnswer.language || 'java';
+                          
+                          const updatedCodes = {
+                            ...currentAnswer.codes,
+                            [currentLang]: currentAnswer.code || currentAnswer.codes?.[currentLang] || getStarterCode(currentLang)
+                          };
+                          
+                          const newCode = updatedCodes[newLanguage] || getStarterCode(newLanguage);
+                          
+                          return {
+                            ...prev,
+                            [currentQuestion]: {
+                              language: newLanguage,
+                              code: newCode,
+                              codes: updatedCodes
+                            }
+                          };
+                        });
+                      }}
+                      className="px-3 py-1.5 bg-gray-700 text-gray-200 text-sm rounded border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="java">Java</option>
+                      <option value="python">Python</option>
+                      <option value="cpp">C++</option>
+                    </select>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={async () => {
+                          const currentAnswer = answers[currentQuestion];
+                          const currentLang = currentAnswer?.language || 'java';
+                          const currentCode = currentAnswer?.code || currentAnswer?.codes?.[currentLang] || getStarterCode(currentLang);
+                          
+                          if (!currentCode.trim()) {
+                            alert('Please write some code first!');
+                            return;
+                          }
+
+                          setCodingConsoleOutput(prev => ({
+                            ...prev,
+                            [currentQuestion]: {
+                              running: true,
+                              results: []
+                            }
+                          }));
+                          
+                          try {
+                            // Get test cases for this question
+                            const testCases = currentQ.testCases || currentQ.publicTestCases || [];
+                            
+                            if (testCases.length === 0) {
+                              // No test cases, just run the code
+                              const result = await codeExecutionAPI.executeCode(currentCode, currentLang);
+                              
+                              setCodingConsoleOutput(prev => ({
+                                ...prev,
+                                [currentQuestion]: {
+                                  running: false,
+                                  results: [{
+                                    testCase: 1,
+                                    input: 'No input',
+                                    expectedOutput: 'N/A',
+                                    actualOutput: result.output || result.error,
+                                    passed: result.success,
+                                    executionTime: result.executionTime + 'ms',
+                                    error: result.error
+                                  }],
+                                  timestamp: new Date().toLocaleTimeString()
+                                }
+                              }));
+                            } else {
+                              // Run against test cases
+                              const evaluation = await codeExecutionAPI.evaluateWithTestCases(
+                                currentCode, 
+                                currentLang, 
+                                testCases.map(tc => ({
+                                  input: tc.input,
+                                  expected_output: tc.output || tc.expectedOutput,
+                                  is_hidden: tc.isHidden || false
+                                }))
+                              );
+                              
+                              const results = evaluation.testResults.map((result, idx) => ({
+                                testCase: idx + 1,
+                                input: result.input,
+                                expectedOutput: result.expectedOutput,
+                                actualOutput: result.actualOutput,
+                                passed: result.passed,
+                                executionTime: result.executionTime + 'ms',
+                                error: result.error
+                              }));
+                              
+                              setCodingConsoleOutput(prev => ({
+                                ...prev,
+                                [currentQuestion]: {
+                                  running: false,
+                                  results: results,
+                                  summary: evaluation.summary,
+                                  timestamp: new Date().toLocaleTimeString()
+                                }
+                              }));
+                            }
+                          } catch (error) {
+                            console.error('Code execution error:', error);
+                            setCodingConsoleOutput(prev => ({
+                              ...prev,
+                              [currentQuestion]: {
+                                running: false,
+                                results: [{
+                                  testCase: 1,
+                                  input: 'Error',
+                                  expectedOutput: 'N/A',
+                                  actualOutput: error.message,
+                                  passed: false,
+                                  executionTime: '0ms',
+                                  error: error.message
+                                }],
+                                timestamp: new Date().toLocaleTimeString()
+                              }
+                            }));
+                          }
+                        }}
+                        disabled={codingConsoleOutput[currentQuestion]?.running}
+                        className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                      >
+                        <span>▶</span>
+                        <span>{codingConsoleOutput[currentQuestion]?.running ? 'Running...' : 'Run'}</span>
+                      </button>
+                      <button 
+                        onClick={async () => {
+                          const currentAnswer = answers[currentQuestion];
+                          const currentLang = currentAnswer?.language || 'java';
+                          const currentCode = currentAnswer?.code || currentAnswer?.codes?.[currentLang] || getStarterCode(currentLang);
+                          
+                          if (!currentCode.trim()) {
+                            alert('Please write some code first!');
+                            return;
+                          }
+
+                          // Save the coding answer
+                          setAnswers(prev => ({
+                            ...prev,
+                            [currentQuestion]: {
+                              ...currentAnswer,
+                              language: currentLang,
+                              code: currentCode,
+                              codes: {
+                                ...currentAnswer?.codes,
+                                [currentLang]: currentCode
+                              },
+                              submitted: true,
+                              submittedAt: new Date().toISOString()
+                            }
+                          }));
+
+                          // Save progress to backend
+                          await saveProgressNow();
+                          alert('Code submitted successfully!');
+                        }}
+                        className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded font-medium transition-colors"
+                      >
+                        Submit
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Code Editor */}
+                  <div className="flex-1 overflow-hidden">
+                    <Editor
+                      height="100%"
+                      language={(() => {
+                        const currentAnswer = answers[currentQuestion];
+                        const lang = currentAnswer?.language || 'java';
+                        // Map to Monaco language identifiers
+                        return lang === 'cpp' ? 'cpp' : lang;
+                      })()}
+                      value={(() => {
+                        const currentAnswer = answers[currentQuestion];
+                        if (!currentAnswer) {
+                          return getStarterCode('java');
+                        }
+                        const currentLang = currentAnswer.language || 'java';
+                        return currentAnswer.code || currentAnswer.codes?.[currentLang] || getStarterCode(currentLang);
+                      })()}
+                      onChange={(value) => {
+                        setAnswers(prev => {
+                          const currentAnswer = prev[currentQuestion] || {};
+                          const currentLang = currentAnswer.language || 'java';
+                          
+                          return {
+                            ...prev,
+                            [currentQuestion]: {
+                              ...currentAnswer,
+                              language: currentLang,
+                              code: value,
+                              codes: {
+                                ...currentAnswer.codes,
+                                [currentLang]: value
+                              }
+                            }
+                          };
+                        });
+                      }}
+                      theme="vs-dark"
+                      options={{
+                        minimap: { enabled: false },
+                        fontSize: 14,
+                        lineNumbers: 'on',
+                        roundedSelection: false,
+                        scrollBeyondLastLine: false,
+                        automaticLayout: true,
+                        tabSize: 4,
+                        wordWrap: 'off',
+                        autoClosingBrackets: 'always',
+                        autoClosingQuotes: 'always',
+                        formatOnPaste: true,
+                        formatOnType: true,
+                        suggestOnTriggerCharacters: true,
+                        acceptSuggestionOnEnter: 'on',
+                        quickSuggestions: true,
+                        parameterHints: { enabled: true },
+                        bracketPairColorization: { enabled: true },
+                        guides: {
+                          bracketPairs: true,
+                          indentation: true
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Vertical Resize Handle */}
+                  <div
+                    className="h-1 bg-gray-700 hover:bg-blue-500 cursor-row-resize flex-shrink-0 transition-colors"
+                    onMouseDown={handleVerticalMouseDown}
+                    style={{ cursor: 'row-resize' }}
+                  />
+
+                  {/* Test Cases / Console Tabs */}
+                  <div 
+                    className="border-t border-gray-700 flex flex-col"
+                    style={{ height: `${consolePanelHeight}px` }}
+                  >
+                    <div className="flex items-center space-x-4 px-4 py-2 bg-gray-800 border-b border-gray-700">
+                      <button className="text-sm font-medium text-blue-400 border-b-2 border-blue-400 pb-2">
+                        Test Cases
+                      </button>
+                      <button className="text-sm font-medium text-gray-400 hover:text-gray-200 pb-2">
+                        Console
+                      </button>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto p-4 bg-gray-800">
+                      {codingConsoleOutput[currentQuestion]?.running ? (
+                        <div className="flex items-center space-x-2 text-yellow-400">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
+                          <span className="text-sm">Running test cases...</span>
+                        </div>
+                      ) : codingConsoleOutput[currentQuestion]?.results ? (
+                        <div className="space-y-3">
+                          {/* Summary */}
+                          {codingConsoleOutput[currentQuestion]?.summary && (
+                            <div className="mb-4 p-3 bg-gray-700 rounded border">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-semibold text-gray-200">Test Results Summary</span>
+                                <span className="text-xs text-gray-400">
+                                  {codingConsoleOutput[currentQuestion].timestamp}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-3 gap-4 text-sm">
+                                <div className="text-center">
+                                  <div className="text-lg font-bold text-green-400">
+                                    {codingConsoleOutput[currentQuestion].summary.passedTestCases}
+                                  </div>
+                                  <div className="text-gray-400">Passed</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-lg font-bold text-red-400">
+                                    {codingConsoleOutput[currentQuestion].summary.failedTestCases}
+                                  </div>
+                                  <div className="text-gray-400">Failed</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-lg font-bold text-blue-400">
+                                    {codingConsoleOutput[currentQuestion].summary.percentage}%
+                                  </div>
+                                  <div className="text-gray-400">Score</div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Individual Test Results */}
+                          {codingConsoleOutput[currentQuestion].results.map((result, idx) => (
+                            <div
+                              key={idx}
+                              className={`p-3 rounded border ${
+                                result.passed
+                                  ? 'bg-green-900/20 border-green-500'
+                                  : 'bg-red-900/20 border-red-500'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <span className={`text-sm font-semibold ${result.passed ? 'text-green-400' : 'text-red-400'}`}>
+                                  TEST CASE {result.testCase}: {result.passed ? '✓ PASSED' : '✗ FAILED'}
+                                </span>
+                                <span className="text-xs text-gray-400">{result.executionTime}</span>
+                              </div>
+                              <div className="text-xs font-mono space-y-1">
+                                <div>
+                                  <span className="text-gray-400">Input: </span>
+                                  <span className="text-gray-300">{result.input}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-400">Expected: </span>
+                                  <span className="text-gray-300">{result.expectedOutput}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-400">Got: </span>
+                                  <span className={result.passed ? 'text-green-400' : 'text-red-400'}>
+                                    {result.actualOutput}
+                                  </span>
+                                </div>
+                                {result.error && (
+                                  <div>
+                                    <span className="text-gray-400">Error: </span>
+                                    <span className="text-red-400">{result.error}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center text-gray-500 text-sm py-8">
+                          Click "Run" to test your code
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-between px-4 py-3 bg-gray-800 border-t border-gray-700">
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={handlePrevious}
+                        disabled={currentQuestion === 0}
+                        className={`
+                          flex items-center space-x-2 px-4 py-2 rounded font-medium transition-colors
+                          ${currentQuestion === 0
+                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                            : 'bg-gray-700 hover:bg-gray-600 text-white'}
+                        `}
+                      >
+                        <ChevronLeft size={18} />
+                        <span>Previous</span>
+                      </button>
+                      <button
+                        onClick={handleNext}
+                        disabled={currentQuestion >= totalQuestions - 1}
+                        className={`
+                          flex items-center space-x-2 px-4 py-2 rounded font-medium transition-colors
+                          ${currentQuestion >= totalQuestions - 1
+                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                            : 'bg-gray-700 hover:bg-gray-600 text-white'}
+                        `}
+                      >
+                        <span>Next</span>
+                        <ChevronRight size={18} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </main>
+            )}
       </div>
 
       {/* Floating Finish Test Button - Bottom Right */}

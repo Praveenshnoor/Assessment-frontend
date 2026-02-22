@@ -75,3 +75,8 @@ temp/
 # Vite
 # ============================================
 .vite/
+
+# ============================================
+# Code Execution (temporary exclusion)
+# ============================================
+src/services/codeExecutionAPI.js

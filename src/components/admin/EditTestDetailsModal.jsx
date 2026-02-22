@@ -32,7 +32,10 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
 
   const formatDateTimeForInput = (dateTimeString) => {
     if (!dateTimeString) return '';
+    // Parse the UTC datetime from backend
     const date = new Date(dateTimeString);
+    
+    // Format for datetime-local input (uses local timezone automatically)
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -92,6 +95,11 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
 
     try {
       const token = localStorage.getItem('adminToken');
+      
+      // Convert local datetime to UTC ISO string for backend
+      const startDateTimeUTC = formData.startDateTime ? new Date(formData.startDateTime).toISOString() : null;
+      const endDateTimeUTC = formData.endDateTime ? new Date(formData.endDateTime).toISOString() : null;
+      
       const response = await apiFetch(`api/tests/${test.id}/details`, {
         method: 'PUT',
         headers: {
@@ -101,8 +109,8 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
         body: JSON.stringify({
           job_role: formData.jobRole.trim(),
           description: formData.description.trim(),
-          start_datetime: formData.startDateTime || null,
-          end_datetime: formData.endDateTime || null,
+          start_datetime: startDateTimeUTC,
+          end_datetime: endDateTimeUTC,
           duration: parseInt(formData.duration),
           passing_percentage: parseInt(formData.passingPercentage),
           max_attempts: parseInt(formData.maxAttempts)
