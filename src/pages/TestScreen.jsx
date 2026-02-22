@@ -18,8 +18,7 @@ import {
   Shield
 } from 'lucide-react';
 import { apiFetch } from '../config/api';
-// CODE EXECUTION & CODING PROBLEMS - TEMPORARILY DISABLED
-// import codeExecutionAPI from '../services/codeExecutionAPI';
+import codeExecutionAPI from '../services/codeExecutionAPI';
 
 // Questions will be fetched from API
 
@@ -1133,79 +1132,61 @@ int main() {
                           }));
                           
                           try {
-                            // CODE EXECUTION & CODING PROBLEMS - TEMPORARILY DISABLED
-                            setCodingConsoleOutput(prev => ({
-                              ...prev,
-                              [currentQuestion]: {
-                                running: false,
-                                results: [{
-                                  testCase: 1,
-                                  input: 'N/A',
-                                  expectedOutput: 'N/A',
-                                  actualOutput: 'Code execution is temporarily disabled',
-                                  passed: false,
-                                  executionTime: '0ms',
-                                  error: 'Feature temporarily disabled'
-                                }],
-                                timestamp: new Date().toLocaleTimeString()
-                              }
-                            }));
-                            
                             // Get test cases for this question
-                            // const testCases = currentQ.testCases || currentQ.publicTestCases || [];
+                            const testCases = currentQ.testCases || currentQ.publicTestCases || [];
                             
-                            // if (testCases.length === 0) {
-                            //   // No test cases, just run the code
-                            //   const result = await codeExecutionAPI.executeCode(currentCode, currentLang);
-                            //   
-                            //   setCodingConsoleOutput(prev => ({
-                            //     ...prev,
-                            //     [currentQuestion]: {
-                            //       running: false,
-                            //       results: [{
-                            //         testCase: 1,
-                            //         input: 'No input',
-                            //         expectedOutput: 'N/A',
-                            //         actualOutput: result.output || result.error,
-                            //         passed: result.success,
-                            //         executionTime: result.executionTime + 'ms',
-                            //         error: result.error
-                            //       }],
-                            //       timestamp: new Date().toLocaleTimeString()
-                            //     }
-                            //   }));
-                            // } else {
-                            //   // Run against test cases
-                            //   const evaluation = await codeExecutionAPI.evaluateWithTestCases(
-                            //     currentCode, 
-                            //     currentLang, 
-                            //     testCases.map(tc => ({
-                            //       input: tc.input,
-                            //       expected_output: tc.output || tc.expectedOutput,
-                            //       is_hidden: tc.isHidden || false
-                            //     }))
-                            //   );
-                            //   
-                            //   const results = evaluation.testResults.map((result, idx) => ({
-                            //     testCase: idx + 1,
-                            //     input: result.input,
-                            //     expectedOutput: result.expectedOutput,
-                            //     actualOutput: result.actualOutput,
-                            //     passed: result.passed,
-                            //     executionTime: result.executionTime + 'ms',
-                            //     error: result.error
-                            //   }));
-                            //   
-                            //   setCodingConsoleOutput(prev => ({
-                            //     ...prev,
-                            //     [currentQuestion]: {
-                            //       running: false,
-                            //       results: results,
-                            //       summary: evaluation.summary,
-                            //       timestamp: new Date().toLocaleTimeString()
-                            //     }
-                            //   }));
-                            // }
+                            if (testCases.length === 0) {
+                              // No test cases, just run the code
+                              const result = await codeExecutionAPI.executeCode(currentCode, currentLang);
+                              
+                              setCodingConsoleOutput(prev => ({
+                                ...prev,
+                                [currentQuestion]: {
+                                  running: false,
+                                  results: [{
+                                    testCase: 1,
+                                    input: 'No input',
+                                    expectedOutput: 'N/A',
+                                    actualOutput: result.output || result.error,
+                                    passed: result.success,
+                                    executionTime: result.executionTime + 'ms',
+                                    error: result.error
+                                  }],
+                                  timestamp: new Date().toLocaleTimeString()
+                                }
+                              }));
+                            } else {
+                              // Run against test cases
+                              const evaluation = await codeExecutionAPI.evaluateWithTestCases(
+                                currentCode, 
+                                currentLang, 
+                                testCases.map(tc => ({
+                                  input: tc.input,
+                                  expected_output: tc.output || tc.expectedOutput,
+                                  is_hidden: tc.isHidden || false
+                                }))
+                              );
+                              
+                              const results = evaluation.testResults.map((result, idx) => ({
+                                testCase: idx + 1,
+                                input: result.input,
+                                expectedOutput: result.expectedOutput,
+                                actualOutput: result.actualOutput,
+                                passed: result.passed,
+                                executionTime: result.executionTime + 'ms',
+                                error: result.error
+                              }));
+                              
+                              setCodingConsoleOutput(prev => ({
+                                ...prev,
+                                [currentQuestion]: {
+                                  running: false,
+                                  results: results,
+                                  summary: evaluation.summary,
+                                  timestamp: new Date().toLocaleTimeString()
+                                }
+                              }));
+                            }
                           } catch (error) {
                             console.error('Code execution error:', error);
                             setCodingConsoleOutput(prev => ({
