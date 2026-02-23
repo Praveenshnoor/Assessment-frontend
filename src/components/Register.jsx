@@ -101,13 +101,14 @@ const Register = () => {
       newErrors.specialization = 'Specialization is required';
     }
 
-    // Resume link validation (mandatory field)
+    // Resume link validation (mandatory field) - very lenient, accepts any text that looks like a URL
     if (!formData.resumeLink.trim()) {
       newErrors.resumeLink = 'Resume link is required';
     } else {
-      const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
-      if (!urlPattern.test(formData.resumeLink.trim())) {
-        newErrors.resumeLink = 'Enter a valid URL (e.g., https://drive.google.com/...)';
+      // Very simple validation - just check if it contains a dot (.) to look like a URL
+      const link = formData.resumeLink.trim();
+      if (!link.includes('.') || link.length < 5) {
+        newErrors.resumeLink = 'Enter a valid link';
       }
     }
 
@@ -500,21 +501,21 @@ const Register = () => {
               Resume Link <span className="text-red-600 font-bold">*</span>
             </label>
             <input
-              type="url"
+              type="text"
               name="resumeLink"
               className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.resumeLink ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
                 }`}
-              placeholder="https://drive.google.com/file/d/..."
+              placeholder="https://example.com/your-resume-link"
               value={formData.resumeLink}
               onChange={handleChange}
               disabled={isLoading}
-              autoComplete="url"
+              autoComplete="off"
             />
             <p className="text-xs text-slate-500 flex items-start gap-1.5 mt-0.5">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0 mt-0.5">
                 <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM7 5v2h2V5H7zm0 3v5h2V8H7z" />
               </svg>
-              <span>Please ensure the resume link is publicly accessible (Google Drive, Dropbox, etc.)</span>
+              <span>Provide any publicly accessible link to your resume</span>
             </p>
             {errors.resumeLink && (
               <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
