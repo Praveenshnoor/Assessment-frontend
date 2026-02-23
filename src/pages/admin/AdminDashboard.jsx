@@ -3,13 +3,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, FileSpreadsheet, LogOut, Download, ArrowLeft, 
-  Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video, Loader2, X, Building2, MoreVertical, Copy, AlertCircle, Pencil, MessageSquare, Star, TrendingUp, BarChart3
+  Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video, Loader2, X, Building2, MoreVertical, Copy, AlertCircle, Pencil, MessageSquare, Star, TrendingUp, BarChart3, Calendar
 } from 'lucide-react';
 import CreateTestSection from '../../components/admin/CreateTestSection';
 import ExamSearchFilter from '../../components/ExamSearchFilter';
 import ViewTestDetailsModal from '../../components/admin/ViewTestDetailsModal';
 import EditTestDetailsModal from '../../components/admin/EditTestDetailsModal';
 import BulkStudentUpload from '../../components/admin/BulkStudentUpload';
+import InstituteRegistrationControl from '../../components/admin/InstituteRegistrationControl';
 import { apiFetch } from '../../config/api';
 
 const AdminDashboard = () => {
@@ -45,6 +46,8 @@ const AdminDashboard = () => {
   const [isLoadingAllInstitutes, setIsLoadingAllInstitutes] = useState(false);
   const [newInstituteName, setNewInstituteName] = useState('');
   const [isAddingInstitute, setIsAddingInstitute] = useState(false);
+  const [showRegistrationControlModal, setShowRegistrationControlModal] = useState(false);
+  const [selectedInstituteForRegistration, setSelectedInstituteForRegistration] = useState(null);
 
   // Assigned Tests Modal States
   const [showAssignedTestsModal, setShowAssignedTestsModal] = useState(false);
@@ -2192,54 +2195,111 @@ const AdminDashboard = () => {
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {allInstitutes.map((institute) => (
-                          <div
-                            key={institute.id}
-                            className="border-2 border-[#E5E7EB] rounded-2xl p-6 bg-white hover:shadow-lg transition-all"
-                          >
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex-1">
-                                <h4 className="font-bold text-lg text-[#111827] mb-2">
-                                  {institute.display_name}
-                                </h4>
-                                <div className="space-y-1 text-sm text-[#374151]">
-                                  <p className="flex items-center">
-                                    <Users size={14} className="mr-2" />
-                                    {institute.student_count} student{institute.student_count !== 1 ? 's' : ''}
-                                  </p>
-                                  <p className="flex items-center">
-                                    <FileSpreadsheet size={14} className="mr-2" />
-                                    {institute.assigned_tests_count} test{institute.assigned_tests_count !== 1 ? 's' : ''} assigned
-                                  </p>
+                        {allInstitutes.map((institute) => {
+                          // Calculate effective status based on start time and deadline
+                          const now = new Date();
+                          const startTime = institute.registration_start_time ? new Date(institute.registration_start_time) : null;
+                          const deadline = institute.registration_deadline ? new Date(institute.registration_deadline) : null;
+                          const notYetOpen = startTime && now < startTime;
+                          const deadlinePassed = deadline && now > deadline;
+                          
+                          let effectiveStatus = institute.registration_status || 'open';
+                          let statusBadgeText = effectiveStatus;
+                          let statusBadgeColor = effectiveStatus === 'open' 
+                            ? 'bg-green-100 text-green-700' 
+                            : effectiveStatus === 'paused'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-red-100 text-red-700';
+                          
+                          // Override if not yet open
+                          if (notYetOpen) {
+                            statusBadgeText = 'not yet open';
+                            statusBadgeColor = 'bg-gray-100 text-gray-700';
+                          }
+                          // Override if deadline passed
+                          else if (deadlinePassed && effectiveStatus === 'open') {
+                            statusBadgeText = 'closed';
+                            statusBadgeColor = 'bg-red-100 text-red-700';
+                          }
+                          
+                          return (
+                            <div
+                              key={institute.id}
+                              className="border-2 border-[#E5E7EB] rounded-2xl p-6 bg-white hover:shadow-lg transition-all"
+                            >
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h4 className="font-bold text-lg text-[#111827]">
+                                      {institute.display_name}
+                                    </h4>
+                                    {/* Registration Status Badge */}
+                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${statusBadgeColor}`}>
+                                      {statusBadgeText}
+                                    </span>
+                                  </div>
+                                  <div className="space-y-1 text-sm text-[#374151]">
+                                    <p className="flex items-center">
+                                      <Users size={14} className="mr-2" />
+                                      {institute.student_count} student{institute.student_count !== 1 ? 's' : ''}
+                                    </p>
+                                    <p className="flex items-center">
+                                      <FileSpreadsheet size={14} className="mr-2" />
+                                      {institute.assigned_tests_count} test{institute.assigned_tests_count !== 1 ? 's' : ''} assigned
+                                    </p>
+                                  {institute.registration_start_time && (
+                                    <p className="flex items-center text-xs text-gray-500">
+                                      <Calendar size={12} className="mr-2" />
+                                      Start: {new Date(institute.registration_start_time).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}
+                                    </p>
+                                  )}
+                                  {institute.registration_deadline && (
+                                    <p className="flex items-center text-xs text-gray-500">
+                                      <Calendar size={12} className="mr-2" />
+                                      Deadline: {new Date(institute.registration_deadline).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             </div>
 
-                            <div className="flex space-x-2">
+                            <div className="grid grid-cols-2 gap-2">
                               <button
                                 onClick={() => handleViewAssignedTests(institute)}
-                                className="flex-1 py-2 px-3 bg-blue-100 text-[#3B82F6] hover:bg-[#3B82F6] hover:text-white rounded-lg text-sm font-medium transition-colors"
+                                className="py-2 px-3 bg-blue-100 text-[#3B82F6] hover:bg-[#3B82F6] hover:text-white rounded-lg text-sm font-medium transition-colors"
                               >
                                 <FileSpreadsheet size={16} className="inline mr-1" />
                                 Tests
                               </button>
                               <button
                                 onClick={() => handleManageStudents(institute)}
-                                className="flex-1 py-2 px-3 bg-green-100 text-green-600 hover:bg-green-600 hover:text-white rounded-lg text-sm font-medium transition-colors"
+                                className="py-2 px-3 bg-green-100 text-green-600 hover:bg-green-600 hover:text-white rounded-lg text-sm font-medium transition-colors"
                               >
                                 <Users size={16} className="inline mr-1" />
                                 Students
                               </button>
                               <button
+                                onClick={() => {
+                                  setSelectedInstituteForRegistration(institute);
+                                  setShowRegistrationControlModal(true);
+                                }}
+                                className="py-2 px-3 bg-purple-100 text-purple-600 hover:bg-purple-600 hover:text-white rounded-lg text-sm font-medium transition-colors"
+                              >
+                                <Calendar size={16} className="inline mr-1" />
+                                Registration
+                              </button>
+                              <button
                                 onClick={() => handleDeleteInstitute(institute.id, institute.display_name)}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                className="py-2 px-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
                                 title="Delete Institute"
                               >
-                                <Trash2 size={18} />
+                                <Trash2 size={16} className="inline mr-1" />
+                                Delete
                               </button>
                             </div>
                           </div>
-                        ))}
+                        );
+                        })}
                       </div>
                     )}
                   </div>
@@ -3007,6 +3067,20 @@ const AdminDashboard = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Registration Control Modal */}
+      {showRegistrationControlModal && selectedInstituteForRegistration && (
+        <InstituteRegistrationControl
+          institute={selectedInstituteForRegistration}
+          onClose={() => {
+            setShowRegistrationControlModal(false);
+            setSelectedInstituteForRegistration(null);
+          }}
+          onUpdate={() => {
+            fetchAllInstitutes();
+          }}
+        />
       )}
     </div>
   );

@@ -78,8 +78,35 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                     setDuration(test.duration || 60);
                     setMaxAttempts(test.max_attempts || 1);
                     setPassingPercentage(test.passing_percentage || 50);
-                    setStartDateTime(test.start_datetime ? new Date(test.start_datetime).toISOString().slice(0, 16) : '');
-                    setEndDateTime(test.end_datetime ? new Date(test.end_datetime).toISOString().slice(0, 16) : '');
+                    
+                    // Format datetime for input (convert to Asia/Kolkata timezone)
+                    if (test.start_datetime) {
+                        const date = new Date(test.start_datetime);
+                        // Convert to Asia/Kolkata timezone
+                        const istDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+                        const year = istDate.getFullYear();
+                        const month = String(istDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(istDate.getDate()).padStart(2, '0');
+                        const hours = String(istDate.getHours()).padStart(2, '0');
+                        const minutes = String(istDate.getMinutes()).padStart(2, '0');
+                        setStartDateTime(`${year}-${month}-${day}T${hours}:${minutes}`);
+                    } else {
+                        setStartDateTime('');
+                    }
+                    
+                    if (test.end_datetime) {
+                        const date = new Date(test.end_datetime);
+                        // Convert to Asia/Kolkata timezone
+                        const istDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+                        const year = istDate.getFullYear();
+                        const month = String(istDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(istDate.getDate()).padStart(2, '0');
+                        const hours = String(istDate.getHours()).padStart(2, '0');
+                        const minutes = String(istDate.getMinutes()).padStart(2, '0');
+                        setEndDateTime(`${year}-${month}-${day}T${hours}:${minutes}`);
+                    } else {
+                        setEndDateTime('');
+                    }
                     
                     // Load job roles
                     if (test.jobRoles && test.jobRoles.length > 0) {
@@ -329,6 +356,20 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
         setShowCodingModal(true);
     };
 
+    const convertISTToUTC = (dateTimeString) => {
+        if (!dateTimeString) return null;
+        // Parse the datetime-local value as IST and convert to UTC
+        const [datePart, timePart] = dateTimeString.split('T');
+        const [year, month, day] = datePart.split('-');
+        const [hours, minutes] = timePart.split(':');
+        
+        // Create date string in IST format
+        const istDateString = `${year}-${month}-${day}T${hours}:${minutes}:00+05:30`;
+        const date = new Date(istDateString);
+        
+        return date.toISOString();
+    };
+
     const handleManualSubmit = async () => {
         if (questions.length === 0 && codingQuestions.length === 0) {
             alert('Please add at least one question (MCQ or Coding)');
@@ -371,8 +412,8 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         duration: duration,
                         maxAttempts: maxAttempts,
                         passingPercentage: passingPercentage,
-                        startDateTime: startDateTime || null,
-                        endDateTime: endDateTime || null,
+                        startDateTime: convertISTToUTC(startDateTime),
+                        endDateTime: convertISTToUTC(endDateTime),
                         questions: questionData
                     })
                 });
@@ -426,8 +467,8 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         duration: duration,
                         maxAttempts: maxAttempts,
                         passingPercentage: passingPercentage,
-                        startDateTime: startDateTime || null,
-                        endDateTime: endDateTime || null,
+                        startDateTime: convertISTToUTC(startDateTime),
+                        endDateTime: convertISTToUTC(endDateTime),
                         status: 'draft', // Save as draft initially
                         questions: questionData
                     })
@@ -508,8 +549,8 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                 formData.append('duration', duration);
                 formData.append('maxAttempts', maxAttempts);
                 formData.append('passingPercentage', passingPercentage);
-                formData.append('startDateTime', startDateTime || '');
-                formData.append('endDateTime', endDateTime || '');
+                formData.append('startDateTime', convertISTToUTC(startDateTime) || '');
+                formData.append('endDateTime', convertISTToUTC(endDateTime) || '');
                 formData.append('testId', uploadedTestId); // Include test ID for update
 
                 const response = await apiFetch(`api/upload/questions/${uploadedTestId}`, {
@@ -580,8 +621,8 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                 formData.append('duration', duration);
                 formData.append('maxAttempts', maxAttempts);
                 formData.append('passingPercentage', passingPercentage);
-                formData.append('startDateTime', startDateTime || '');
-                formData.append('endDateTime', endDateTime || '');
+                formData.append('startDateTime', convertISTToUTC(startDateTime) || '');
+                formData.append('endDateTime', convertISTToUTC(endDateTime) || '');
                 formData.append('status', 'draft'); // Save as draft initially
 
                 const response = await apiFetch('api/upload/questions', {

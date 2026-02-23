@@ -32,17 +32,18 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
 
   const formatDateTimeForInput = (dateTimeString) => {
     if (!dateTimeString) return '';
-    // Parse the UTC datetime from backend and convert to Asia/Kolkata
+    // Parse the datetime from backend and convert to Asia/Kolkata timezone
     const date = new Date(dateTimeString);
     
-    // Convert to Asia/Kolkata timezone
-    const kolkataDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    // Convert to Asia/Kolkata timezone (IST)
+    const istDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
     
-    const year = kolkataDate.getFullYear();
-    const month = String(kolkataDate.getMonth() + 1).padStart(2, '0');
-    const day = String(kolkataDate.getDate()).padStart(2, '0');
-    const hours = String(kolkataDate.getHours()).padStart(2, '0');
-    const minutes = String(kolkataDate.getMinutes()).padStart(2, '0');
+    // Format for datetime-local input (YYYY-MM-DDTHH:MM)
+    const year = istDate.getFullYear();
+    const month = String(istDate.getMonth() + 1).padStart(2, '0');
+    const day = String(istDate.getDate()).padStart(2, '0');
+    const hours = String(istDate.getHours()).padStart(2, '0');
+    const minutes = String(istDate.getMinutes()).padStart(2, '0');
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
@@ -85,6 +86,20 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
     setSaveError('');
   };
 
+  const convertISTToUTC = (dateTimeString) => {
+    if (!dateTimeString) return null;
+    // Parse the datetime-local value as IST and convert to UTC
+    const [datePart, timePart] = dateTimeString.split('T');
+    const [year, month, day] = datePart.split('-');
+    const [hours, minutes] = timePart.split(':');
+    
+    // Create date string in IST format
+    const istDateString = `${year}-${month}-${day}T${hours}:${minutes}:00+05:30`;
+    const date = new Date(istDateString);
+    
+    return date.toISOString();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -106,8 +121,8 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
         body: JSON.stringify({
           job_role: formData.jobRole.trim(),
           description: formData.description.trim(),
-          start_datetime: formData.startDateTime || null,
-          end_datetime: formData.endDateTime || null,
+          start_datetime: convertISTToUTC(formData.startDateTime),
+          end_datetime: convertISTToUTC(formData.endDateTime),
           duration: parseInt(formData.duration),
           passing_percentage: parseInt(formData.passingPercentage),
           max_attempts: parseInt(formData.maxAttempts)

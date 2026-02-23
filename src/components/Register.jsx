@@ -223,6 +223,15 @@ const Register = () => {
       console.log('Backend response:', data);
 
       if (!response.ok) {
+        // Backend registration failed - delete the Firebase user
+        console.log('❌ Backend registration failed, deleting Firebase user...');
+        try {
+          await userCredential.user.delete();
+          console.log('✅ Firebase user deleted successfully');
+        } catch (deleteError) {
+          console.error('⚠️ Failed to delete Firebase user:', deleteError);
+          // Continue to show the original error to user
+        }
         throw new Error(data.message || 'Registration failed');
       }
 
