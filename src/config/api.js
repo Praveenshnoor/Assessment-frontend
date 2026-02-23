@@ -21,6 +21,11 @@ export const apiFetch = (endpoint, options = {}) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
 
+  // If external signal provided, listen to it and abort our controller
+  if (options.signal) {
+    options.signal.addEventListener('abort', () => controller.abort());
+  }
+
   return fetch(getApiUrl(endpoint), {
     ...options,
     signal: controller.signal

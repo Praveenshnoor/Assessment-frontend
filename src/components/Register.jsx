@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../config/api';
+import { createUserWithEmailAndPassword, auth } from '../config/firebase';
 import shnoorLogo from '../../public/favicon.png';
 
 
@@ -101,16 +102,12 @@ const Register = () => {
       newErrors.specialization = 'Specialization is required';
     }
 
-    // Resume link validation (mandatory field) - very lenient, accepts any text that looks like a URL
+    // Resume link validation - accepts ANY text, no URL validation at all
+    // This prevents browser hanging issues with complex URLs
     if (!formData.resumeLink.trim()) {
       newErrors.resumeLink = 'Resume link is required';
-    } else {
-      // Very simple validation - just check if it contains a dot (.) to look like a URL
-      const link = formData.resumeLink.trim();
-      if (!link.includes('.') || link.length < 5) {
-        newErrors.resumeLink = 'Enter a valid link';
-      }
     }
+    // No other validation - accept any text to avoid browser issues
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
@@ -173,10 +170,21 @@ const Register = () => {
     console.log('✅ Form validation passed');
     setIsLoading(true);
 
+    // Create AbortController for proper cancellation
+    const abortController = new AbortController();
+
+    // Safety timeout - if registration takes more than 45 seconds, cancel everything
+    const timeoutId = setTimeout(() => {
+      abortController.abort(); // Actually cancel the fetch
+      setIsLoading(false);
+      setApiError('Registration is taking too long. Please check your internet connection and try again.');
+      console.error('❌ Registration timeout after 45 seconds');
+    }, 45000);
+
     try {
       // Step 1: Register user in Firebase
       console.log('Step 1: Creating Firebase user...');
-      const { createUserWithEmailAndPassword, auth } = await import('../config/firebase');
+      // FIXED: Firebase import now at top level, no dynamic import freeze
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
@@ -208,6 +216,7 @@ const Register = () => {
           specialization: formData.specialization.trim(),
           resume_link: formData.resumeLink.trim()
         }),
+        signal: abortController.signal // Pass abort signal for proper cancellation
       });
 
       const data = await response.json();
@@ -223,10 +232,28 @@ const Register = () => {
         state: { message: 'Registration successful. Please sign in to begin.' }
       });
 
+      // Clear timeout on success
+      clearTimeout(timeoutId);
+
     } catch (error) {
+      // Clear timeout on error
+      clearTimeout(timeoutId);
+      
       console.error('❌ Registration error:', error);
       console.error('Error code:', error.code);
       console.error('Error message:', error.message);
+
+      // Handle abort/timeout
+      if (error.name === 'AbortError') {
+        setApiError('Registration was cancelled due to timeout. Please try again.');
+        return;
+      }
+
+      // Handle network errors
+      if (error.message === 'Failed to fetch') {
+        setApiError('Network error. Please check your internet connection and try again.');
+        return;
+      }
 
       // Handle Firebase-specific errors
       if (error.code === 'auth/email-already-in-use') {
@@ -505,17 +532,20 @@ const Register = () => {
               name="resumeLink"
               className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.resumeLink ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
                 }`}
-              placeholder="https://example.com/your-resume-link"
+              placeholder="Paste your resume link here"
               value={formData.resumeLink}
               onChange={handleChange}
               disabled={isLoading}
               autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
             />
             <p className="text-xs text-slate-500 flex items-start gap-1.5 mt-0.5">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0 mt-0.5">
                 <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM7 5v2h2V5H7zm0 3v5h2V8H7z" />
               </svg>
-              <span>Provide any publicly accessible link to your resume</span>
+              <span>Enter any link to your resume (Google Drive, Dropbox, personal website, etc.)</span>
             </p>
             {errors.resumeLink && (
               <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
