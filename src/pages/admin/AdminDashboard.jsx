@@ -20,6 +20,8 @@ const AdminDashboard = () => {
   const [editingTest, setEditingTest] = useState(null);
   const [selectedExamId, setSelectedExamId] = useState(null);
   const [tests, setTests] = useState([]);
+  const [selectedTests, setSelectedTests] = useState([]);
+  const [selectedStudentsForDelete, setSelectedStudentsForDelete] = useState([]);
   const [studentsData, setStudentsData] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -63,6 +65,8 @@ const AdminDashboard = () => {
   const [instituteStudentsForManagement, setInstituteStudentsForManagement] = useState([]);
   const [isLoadingStudentsForManagement, setIsLoadingStudentsForManagement] = useState(false);
   const [showAddStudentForm, setShowAddStudentForm] = useState(false);
+  const [selectedTestForStudentModal, setSelectedTestForStudentModal] = useState('');
+  const [isAssigningTestInModal, setIsAssigningTestInModal] = useState(false);
   const [newStudentData, setNewStudentData] = useState({
     full_name: '',
     email: '',
@@ -107,6 +111,17 @@ const AdminDashboard = () => {
   const [selectedTestForViolations, setSelectedTestForViolations] = useState('');
   const [isLoadingViolations, setIsLoadingViolations] = useState(false);
   const [violationFilter, setViolationFilter] = useState('all'); // all, high, medium, low
+
+  // Preview Questions Modal States
+  const [showPreviewQuestionsModal, setShowPreviewQuestionsModal] = useState(false);
+  const [previewTest, setPreviewTest] = useState(null);
+  const [previewQuestions, setPreviewQuestions] = useState([]);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+
+  // Test History Modal States
+  const [showTestHistoryModal, setShowTestHistoryModal] = useState(false);
+  const [testHistory, setTestHistory] = useState(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // Derived state: Get students for the selected exam
   const selectedExamStudents = selectedExamId ? (studentsData[selectedExamId] || []) : [];
@@ -336,7 +351,15 @@ const AdminDashboard = () => {
                 year: 'numeric', 
                 month: 'short', 
                 day: 'numeric' 
-              })
+              }),
+              noFace: result.no_face_count || 0,
+              multipleFaces: result.multiple_faces_count || 0,
+              phoneDetected: result.phone_detected_count || 0,
+              loudNoise: result.loud_noise_count || 0,
+              voiceDetected: result.voice_detected_count || 0,
+              totalViolations: result.total_violations || 0,
+              highSeverityCount: result.high_severity_count || 0,
+              flagged: (result.high_severity_count || 0) >= 3
             });
 
             testStats[testId].totalScore += result.percentage;
@@ -400,6 +423,61 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Delete error:', error);
       alert('Failed to delete test');
+    }
+  };
+
+  const handleBulkDeleteTests = async () => {
+    if (selectedTests.length === 0) {
+      alert('Please select tests to delete');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedTests.length} test(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch('api/tests/bulk', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ test_ids: selectedTests })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert(`Successfully deleted ${data.deleted_count} test(s)`);
+        setSelectedTests([]);
+        fetchTests();
+        if (activeTab === 'institutes') {
+          fetchAllInstitutes();
+        }
+      } else {
+        alert(data.message || 'Failed to delete tests');
+      }
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      alert('Failed to delete tests');
+    }
+  };
+
+  const toggleTestSelection = (testId) => {
+    setSelectedTests(prev => 
+      prev.includes(testId) 
+        ? prev.filter(id => id !== testId)
+        : [...prev, testId]
+    );
+  };
+
+  const toggleAllTests = () => {
+    if (selectedTests.length === filteredTests.length) {
+      setSelectedTests([]);
+    } else {
+      setSelectedTests(filteredTests.map(t => t.id));
     }
   };
 
@@ -781,6 +859,83 @@ const AdminDashboard = () => {
     setCloneError('');
     setShowCloneModal(true);
     setOpenMenuId(null);
+  };
+
+  // Preview Questions Functions
+  const handlePreviewQuestions = async (test) => {
+    setPreviewTest(test);
+    setShowPreviewQuestionsModal(true);
+    setIsLoadingPreview(true);
+    setOpenMenuId(null);
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch(`api/tests/${test.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setPreviewQuestions(data.test.questions || []);
+      } else {
+        alert('Failed to load questions');
+        setShowPreviewQuestionsModal(false);
+      }
+    } catch (error) {
+      console.error('Error loading questions:', error);
+      alert('Failed to load questions');
+      setShowPreviewQuestionsModal(false);
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
+
+  // Test History Functions
+  const handleViewTestHistory = async (test) => {
+    setShowTestHistoryModal(true);
+    setIsLoadingHistory(true);
+    setOpenMenuId(null);
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch(`api/tests/${test.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setTestHistory({
+          testName: test.name,
+          createdBy: data.test.created_by || 'Admin',
+          createdAt: data.test.created_at,
+          updatedBy: data.test.updated_by || 'N/A',
+          updatedAt: data.test.updated_at || data.test.created_at
+        });
+      } else {
+        setTestHistory({
+          testName: test.name,
+          createdBy: 'Admin',
+          createdAt: test.date,
+          updatedBy: 'N/A',
+          updatedAt: test.date
+        });
+      }
+    } catch (error) {
+      console.error('Error loading test history:', error);
+      setTestHistory({
+        testName: test.name,
+        createdBy: 'Admin',
+        createdAt: test.date,
+        updatedBy: 'N/A',
+        updatedAt: test.date
+      });
+    } finally {
+      setIsLoadingHistory(false);
+    }
   };
 
   const handleCloneTest = async () => {
@@ -1191,6 +1346,108 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleBulkDeleteStudents = async () => {
+    if (selectedStudentsForDelete.length === 0) {
+      alert('Please select students to delete');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedStudentsForDelete.length} student(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch('api/student/bulk', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ student_ids: selectedStudentsForDelete })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert(`Successfully deleted ${data.deleted_count} student(s)`);
+        setSelectedStudentsForDelete([]);
+        handleManageStudents(selectedInstituteForStudents);
+        fetchAllInstitutes();
+      } else {
+        alert(data.message || 'Failed to delete students');
+      }
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      alert('Failed to delete students');
+    }
+  };
+
+  const toggleStudentForDelete = (studentId) => {
+    setSelectedStudentsForDelete(prev => 
+      prev.includes(studentId) 
+        ? prev.filter(id => id !== studentId)
+        : [...prev, studentId]
+    );
+  };
+
+  const toggleAllStudentsForDelete = (students) => {
+    const studentIds = students.map(s => s.id);
+    if (selectedStudentsForDelete.length === studentIds.length && 
+        studentIds.every(id => selectedStudentsForDelete.includes(id))) {
+      setSelectedStudentsForDelete([]);
+    } else {
+      setSelectedStudentsForDelete(studentIds);
+    }
+  };
+
+  const handleAssignTestInModal = async () => {
+    if (!selectedTestForStudentModal) {
+      alert('⚠️ Please select a test to assign');
+      return;
+    }
+
+    if (selectedStudentsForDelete.length === 0) {
+      alert('⚠️ Please select at least one student');
+      return;
+    }
+
+    if (!confirm(`Assign test to ${selectedStudentsForDelete.length} student(s)?`)) {
+      return;
+    }
+
+    try {
+      setIsAssigningTestInModal(true);
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch('api/tests/assign', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          test_id: parseInt(selectedTestForStudentModal),
+          student_ids: selectedStudentsForDelete
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert(`✅ ${data.message}`);
+        setSelectedStudentsForDelete([]);
+        setSelectedTestForStudentModal('');
+      } else {
+        alert(`❌ ${data.message || 'Failed to assign test'}`);
+      }
+    } catch (error) {
+      console.error('Error assigning test:', error);
+      alert('❌ An error occurred while assigning the test');
+    } finally {
+      setIsAssigningTestInModal(false);
+    }
+  };
+
   // Fetch AI Violations
   const fetchViolations = async () => {
     if (!selectedTestForViolations) return;
@@ -1236,6 +1493,58 @@ const AdminDashboard = () => {
       console.error('Error fetching violations:', error);
     } finally {
       setIsLoadingViolations(false);
+    }
+  };
+
+  // Export violations to Excel
+  const exportViolationsToExcel = async () => {
+    if (!selectedTestForViolations) {
+      alert('Please select a test first');
+      return;
+    }
+
+    if (violationsByStudent.length === 0) {
+      alert('No violations to export for this test');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch(`api/proctoring/violations/export/${selectedTestForViolations}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 404) {
+          alert(errorData.message || 'No violations found for this test');
+        } else {
+          alert(errorData.message || 'Failed to export violations report');
+        }
+        return;
+      }
+
+      // Get the filename from the response headers
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filename = contentDisposition 
+        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+        : `violations_report_${selectedTestForViolations}.xlsx`;
+
+      // Download the file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export violations error:', error);
+      alert('Failed to export violations report. Please try again.');
     }
   };
 
@@ -1418,10 +1727,11 @@ const AdminDashboard = () => {
                   (Number(s.score) / Number(s.total) * 100) >= (s.passingPercentage || 50)
                 ).length;
                 const passRate = selectedExamStudents.length > 0 ? (passedCount / selectedExamStudents.length) * 100 : 0;
+                const flaggedCount = selectedExamStudents.filter(s => s.flagged === true).length;
 
                 return (
                   <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 shadow-sm">
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                       {/* Total Attempts */}
                       <div className="text-center">
                         <p className="text-xs text-gray-500 font-medium mb-1">Total Attempts</p>
@@ -1452,6 +1762,13 @@ const AdminDashboard = () => {
                         <p className="text-2xl font-bold text-emerald-600">{passRate.toFixed(0)}%</p>
                         <p className="text-xs text-gray-400 mt-0.5">({passedCount}/{selectedExamStudents.length})</p>
                       </div>
+
+                      {/* Flagged Students */}
+                      <div className="text-center border-l border-gray-200">
+                        <p className="text-xs text-gray-500 font-medium mb-1">Flagged</p>
+                        <p className="text-2xl font-bold text-red-600">{flaggedCount}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">(3+ high violations)</p>
+                      </div>
                     </div>
                   </div>
                 );
@@ -1469,6 +1786,13 @@ const AdminDashboard = () => {
                         <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Date Attempted</th>
                         <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Score</th>
                         <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">No Face</th>
+                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Multi Faces</th>
+                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Phone</th>
+                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Noise</th>
+                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Voice</th>
+                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Total</th>
+                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Flagged</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-[#E5E7EB]">
@@ -1501,12 +1825,27 @@ const AdminDashboard = () => {
                                   {isPassed ? 'Pass' : 'Fail'}
                                 </span>
                               </td>
+                              <td className="px-4 py-4 text-center text-sm text-gray-700">{student.noFace || 0}</td>
+                              <td className="px-4 py-4 text-center text-sm text-gray-700">{student.multipleFaces || 0}</td>
+                              <td className="px-4 py-4 text-center text-sm text-gray-700">{student.phoneDetected || 0}</td>
+                              <td className="px-4 py-4 text-center text-sm text-gray-700">{student.loudNoise || 0}</td>
+                              <td className="px-4 py-4 text-center text-sm text-gray-700">{student.voiceDetected || 0}</td>
+                              <td className="px-4 py-4 text-center text-sm font-semibold text-gray-900">{student.totalViolations || 0}</td>
+                              <td className="px-4 py-4 text-center">
+                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                  student.flagged 
+                                    ? 'bg-red-100 text-red-800' 
+                                    : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {student.flagged ? 'Yes' : 'No'}
+                                </span>
+                              </td>
                             </tr>
                           );
                         })
                       ) : (
                         <tr>
-                          <td colSpan="6" className="px-6 py-12 text-center text-[#374151]">
+                          <td colSpan="13" className="px-6 py-12 text-center text-[#374151]">
                             No students have attempted this exam yet.
                           </td>
                         </tr>
@@ -1705,12 +2044,50 @@ const AdminDashboard = () => {
                           <p className="text-sm mt-1">Try adjusting your search or filters</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <>
+                          {/* Bulk Actions Bar */}
+                          <div className="flex items-center justify-between mb-4 p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
+                            <label className="flex items-center space-x-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedTests.length === filteredTests.length && filteredTests.length > 0}
+                                onChange={toggleAllTests}
+                                className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                              />
+                              <span className="text-sm font-bold text-gray-700">
+                                {selectedTests.length > 0 ? `${selectedTests.length} selected` : 'Select All'}
+                              </span>
+                            </label>
+                            {selectedTests.length > 0 && (
+                              <button
+                                onClick={handleBulkDeleteTests}
+                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
+                              >
+                                <Trash2 size={16} />
+                                <span>Delete {selectedTests.length} Test{selectedTests.length !== 1 ? 's' : ''}</span>
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                           {filteredTests.map((test) => (
                         <div
                           key={test.id}
                           className="bg-white border-2 border-[#E5E7EB] rounded-xl p-6 hover:shadow-lg hover:border-[#3B82F6] transition-all group relative"
                         >
+                          {/* Checkbox for selection */}
+                          <div className="absolute top-4 left-4 z-10">
+                            <input
+                              type="checkbox"
+                              checked={selectedTests.includes(test.id)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                toggleTestSelection(test.id);
+                              }}
+                              className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+
                           {/* Status Badge and 3-Dot Menu */}
                           <div className="absolute top-4 right-4 flex items-center space-x-2">
                             {test.status === 'published' ? (
@@ -1747,16 +2124,38 @@ const AdminDashboard = () => {
                                 <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                                   {/* For draft tests, only show Clone option */}
                                   {test.status === 'draft' ? (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleOpenCloneModal(test);
-                                      }}
-                                      className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 flex items-center space-x-2 transition-colors"
-                                    >
-                                      <Copy size={14} />
-                                      <span>Clone Test</span>
-                                    </button>
+                                    <>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handlePreviewQuestions(test);
+                                        }}
+                                        className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 flex items-center space-x-2 transition-colors"
+                                      >
+                                        <Eye size={14} />
+                                        <span>Preview Questions</span>
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleViewTestHistory(test);
+                                        }}
+                                        className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 flex items-center space-x-2 transition-colors border-t border-gray-100"
+                                      >
+                                        <AlertCircle size={14} />
+                                        <span>Test History</span>
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleOpenCloneModal(test);
+                                        }}
+                                        className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 flex items-center space-x-2 transition-colors border-t border-gray-100"
+                                      >
+                                        <Copy size={14} />
+                                        <span>Clone Test</span>
+                                      </button>
+                                    </>
                                   ) : (
                                     <>
                                       {/* View Details - Available for published tests */}
@@ -1769,6 +2168,30 @@ const AdminDashboard = () => {
                                       >
                                         <Eye size={14} />
                                         <span>View Details</span>
+                                      </button>
+                                      
+                                      {/* Preview Questions */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handlePreviewQuestions(test);
+                                        }}
+                                        className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 flex items-center space-x-2 transition-colors border-t border-gray-100"
+                                      >
+                                        <FileSpreadsheet size={14} />
+                                        <span>Preview Questions</span>
+                                      </button>
+
+                                      {/* Test History */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleViewTestHistory(test);
+                                        }}
+                                        className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 flex items-center space-x-2 transition-colors border-t border-gray-100"
+                                      >
+                                        <AlertCircle size={14} />
+                                        <span>Test History</span>
                                       </button>
                                       
                                       {/* Clone Test */}
@@ -1897,6 +2320,7 @@ const AdminDashboard = () => {
                         </div>
                       ))}
                     </div>
+                        </>
                       )}
                     </>
                   )}
@@ -2327,6 +2751,16 @@ const AdminDashboard = () => {
                       </h2>
                       <p className="text-sm text-[#374151] mt-1">Monitor detected suspicious activities during exams</p>
                     </div>
+                    {selectedTestForViolations && violationsByStudent.length > 0 && (
+                      <button
+                        onClick={exportViolationsToExcel}
+                        className="flex items-center space-x-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-semibold"
+                        title="Export Violations Report"
+                      >
+                        <Download size={20} />
+                        <span>Export Report</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* Test Selector */}
@@ -2919,7 +3353,11 @@ const AdminDashboard = () => {
                 <p className="text-blue-100 text-sm mt-1">Manage Students</p>
               </div>
               <button
-                onClick={() => setShowStudentManagementModal(false)}
+                onClick={() => {
+                  setShowStudentManagementModal(false);
+                  setSelectedStudentsForDelete([]);
+                  setSelectedTestForStudentModal('');
+                }}
                 className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
               >
                 <X size={24} />
@@ -2992,26 +3430,75 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               ) : (
-                <div className="flex justify-between items-center">
-                  <h4 className="text-sm font-bold text-[#111827]">Students List</h4>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => setShowAddStudentForm(true)}
-                      className="px-4 py-2 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
-                    >
-                      <Plus size={16} />
-                      <span>Add Student</span>
-                    </button>
-                    {instituteStudentsForManagement.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-sm font-bold text-[#111827]">Students List</h4>
+                    <div className="flex space-x-2">
                       <button
-                        onClick={handleDeleteAllStudents}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
+                        onClick={() => setShowAddStudentForm(true)}
+                        className="px-4 py-2 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
                       >
-                        <Trash2 size={16} />
-                        <span>Delete All</span>
+                        <Plus size={16} />
+                        <span>Add Student</span>
                       </button>
-                    )}
+                      {selectedStudentsForDelete.length > 0 && (
+                        <button
+                          onClick={handleBulkDeleteStudents}
+                          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
+                        >
+                          <Trash2 size={16} />
+                          <span>Delete {selectedStudentsForDelete.length} Selected</span>
+                        </button>
+                      )}
+                      {instituteStudentsForManagement.length > 0 && (
+                        <button
+                          onClick={handleDeleteAllStudents}
+                          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
+                        >
+                          <Trash2 size={16} />
+                          <span>Delete All</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Test Assignment Section */}
+                  {selectedStudentsForDelete.length > 0 && (
+                    <div className="p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+                      <h5 className="text-sm font-bold text-[#111827] mb-3">
+                        Assign Test to {selectedStudentsForDelete.length} Selected Student{selectedStudentsForDelete.length !== 1 ? 's' : ''}
+                      </h5>
+                      <div className="flex space-x-3">
+                        <select
+                          value={selectedTestForStudentModal}
+                          onChange={(e) => setSelectedTestForStudentModal(e.target.value)}
+                          className="flex-1 px-4 py-3 border-2 border-[#E5E7EB] rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#3B82F6] bg-white text-[#111827] font-medium"
+                        >
+                          <option value="">-- Select a test --</option>
+                          {tests.filter(test => test.status === 'published').map((test) => (
+                            <option key={test.id} value={test.id}>
+                              {test.name} ({test.questions} questions • {test.duration} mins)
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={handleAssignTestInModal}
+                          disabled={!selectedTestForStudentModal || isAssigningTestInModal}
+                          className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center space-x-2 ${
+                            selectedTestForStudentModal && !isAssigningTestInModal
+                              ? 'bg-[#3B82F6] hover:bg-blue-600 text-white'
+                              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          }`}
+                        >
+                          {isAssigningTestInModal && (
+                            <Loader2 className="animate-spin" size={16} />
+                          )}
+                          <UserCheck size={18} />
+                          <span>{isAssigningTestInModal ? 'Assigning...' : 'Assign'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -3028,20 +3515,46 @@ const AdminDashboard = () => {
                     <p className="text-[#374151]">No students found</p>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                  <>
+                    {/* Select All Checkbox */}
+                    <div className="flex items-center space-x-3 mb-3 p-3 bg-gray-50 rounded-lg">
+                      <input
+                        type="checkbox"
+                        checked={selectedStudentsForDelete.length === instituteStudentsForManagement.length && instituteStudentsForManagement.length > 0}
+                        onChange={() => toggleAllStudentsForDelete(instituteStudentsForManagement)}
+                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-bold text-gray-700">
+                        {selectedStudentsForDelete.length > 0 ? `${selectedStudentsForDelete.length} selected` : 'Select All'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
                     {instituteStudentsForManagement.map((student) => (
                       <div
                         key={student.id}
-                        className="flex items-center justify-between p-4 bg-white border-2 border-[#E5E7EB] rounded-xl hover:shadow-md transition-all"
+                        className={`flex items-center justify-between p-4 border-2 rounded-xl hover:shadow-md transition-all ${
+                          selectedStudentsForDelete.includes(student.id)
+                            ? 'bg-blue-50 border-blue-500'
+                            : 'bg-white border-[#E5E7EB]'
+                        }`}
                       >
-                        <div className="flex-1">
-                          <h5 className="font-bold text-[#111827]">{student.full_name}</h5>
-                          <p className="text-sm text-[#374151]">
-                            {student.email} • {student.roll_number || 'No roll number'}
-                            <span className="ml-2 text-xs">
-                              ({student.assigned_tests_count} test{student.assigned_tests_count !== 1 ? 's' : ''} assigned)
-                            </span>
-                          </p>
+                        <div className="flex items-center space-x-3 flex-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedStudentsForDelete.includes(student.id)}
+                            onChange={() => toggleStudentForDelete(student.id)}
+                            className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <div className="flex-1">
+                            <h5 className="font-bold text-[#111827]">{student.full_name}</h5>
+                            <p className="text-sm text-[#374151]">
+                              {student.email} • {student.roll_number || 'No roll number'}
+                              <span className="ml-2 text-xs">
+                                ({student.assigned_tests_count} test{student.assigned_tests_count !== 1 ? 's' : ''} assigned)
+                              </span>
+                            </p>
+                          </div>
                         </div>
                         <button
                           onClick={() => handleDeleteStudent(student.id, student.full_name)}
@@ -3053,13 +3566,18 @@ const AdminDashboard = () => {
                       </div>
                     ))}
                   </div>
+                  </>
                 )}
               </div>
             </div>
 
             <div className="p-6 border-t border-[#E5E7EB] flex justify-end">
               <button
-                onClick={() => setShowStudentManagementModal(false)}
+                onClick={() => {
+                  setShowStudentManagementModal(false);
+                  setSelectedStudentsForDelete([]);
+                  setSelectedTestForStudentModal('');
+                }}
                 className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-[#111827] rounded-xl font-medium transition-colors"
               >
                 Close
@@ -3081,6 +3599,194 @@ const AdminDashboard = () => {
             fetchAllInstitutes();
           }}
         />
+      )}
+
+      {/* Preview Questions Modal */}
+      {showPreviewQuestionsModal && previewTest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-[#3B82F6] to-blue-600 px-6 py-4 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-white">{previewTest.name}</h3>
+                <p className="text-blue-100 text-sm mt-1">Preview Questions</p>
+              </div>
+              <button
+                onClick={() => setShowPreviewQuestionsModal(false)}
+                className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              {isLoadingPreview ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="animate-spin text-[#3B82F6]" size={32} />
+                  <span className="ml-3 text-[#374151]">Loading questions...</span>
+                </div>
+              ) : previewQuestions.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileSpreadsheet className="mx-auto mb-3 text-gray-300" size={48} />
+                  <p className="text-[#374151]">No questions found</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {previewQuestions.map((question, index) => (
+                    <div key={question.id} className="p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
+                      <div className="flex items-start space-x-3 mb-3">
+                        <span className="flex-shrink-0 w-8 h-8 bg-blue-100 text-[#3B82F6] rounded-full flex items-center justify-center font-bold text-sm">
+                          {index + 1}
+                        </span>
+                        <p className="flex-1 text-[#111827] font-medium">{question.question_text}</p>
+                      </div>
+                      <div className="ml-11 space-y-2">
+                        {[
+                          { label: 'A', value: question.option_a },
+                          { label: 'B', value: question.option_b },
+                          { label: 'C', value: question.option_c },
+                          { label: 'D', value: question.option_d }
+                        ].filter(opt => opt.value).map((option) => (
+                          <div
+                            key={option.label}
+                            className={`p-3 rounded-lg border-2 ${
+                              question.correct_option === option.label
+                                ? 'bg-green-50 border-green-500 text-green-900'
+                                : 'bg-white border-gray-200 text-[#374151]'
+                            }`}
+                          >
+                            <span className="font-bold mr-2">{option.label}.</span>
+                            {option.value}
+                            {question.correct_option === option.label && (
+                              <span className="ml-2 text-xs font-bold text-green-600">(Correct Answer)</span>
+                            )}
+                          </div>
+                        ))}
+                        <div className="text-sm text-gray-600 mt-2">
+                          <span className="font-bold">Marks:</span> {question.marks || 1}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-[#E5E7EB] flex justify-end">
+              <button
+                onClick={() => setShowPreviewQuestionsModal(false)}
+                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-[#111827] rounded-xl font-medium transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Test History Modal */}
+      {showTestHistoryModal && testHistory && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full">
+            <div className="bg-gradient-to-r from-[#3B82F6] to-blue-600 px-6 py-4 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-white">Test History</h3>
+                <p className="text-blue-100 text-sm mt-1">{testHistory.testName}</p>
+              </div>
+              <button
+                onClick={() => setShowTestHistoryModal(false)}
+                className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {isLoadingHistory ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="animate-spin text-[#3B82F6]" size={32} />
+                  <span className="ml-3 text-[#374151]">Loading history...</span>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Created Info */}
+                  <div className="p-4 bg-green-50 rounded-xl border-2 border-green-200">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <Plus className="text-green-600" size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-[#111827]">Created</h4>
+                        <p className="text-sm text-gray-600">Test was created</p>
+                      </div>
+                    </div>
+                    <div className="ml-13 space-y-2">
+                      <div className="flex items-center space-x-2 text-sm">
+                        <Users size={16} className="text-gray-500" />
+                        <span className="text-gray-600">By:</span>
+                        <span className="font-bold text-[#111827]">{testHistory.createdBy}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm">
+                        <Calendar size={16} className="text-gray-500" />
+                        <span className="text-gray-600">On:</span>
+                        <span className="font-bold text-[#111827]">
+                          {new Date(testHistory.createdAt).toLocaleString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Updated Info */}
+                  <div className="p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <Pencil className="text-blue-600" size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-[#111827]">Last Updated</h4>
+                        <p className="text-sm text-gray-600">Most recent modification</p>
+                      </div>
+                    </div>
+                    <div className="ml-13 space-y-2">
+                      <div className="flex items-center space-x-2 text-sm">
+                        <Users size={16} className="text-gray-500" />
+                        <span className="text-gray-600">By:</span>
+                        <span className="font-bold text-[#111827]">{testHistory.updatedBy}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm">
+                        <Calendar size={16} className="text-gray-500" />
+                        <span className="text-gray-600">On:</span>
+                        <span className="font-bold text-[#111827]">
+                          {new Date(testHistory.updatedAt).toLocaleString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-[#E5E7EB] flex justify-end">
+              <button
+                onClick={() => setShowTestHistoryModal(false)}
+                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-[#111827] rounded-xl font-medium transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
