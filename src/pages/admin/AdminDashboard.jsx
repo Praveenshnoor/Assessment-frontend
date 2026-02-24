@@ -696,11 +696,17 @@ const AdminDashboard = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
+        // Show message about assignments
         alert(`✅ ${data.message}`);
         setSelectedStudents([]);
         setSelectedTest('');
       } else {
-        alert(`❌ ${data.message || 'Failed to assign test'}`);
+        // Handle case where all students already have the test
+        if (data.already_assigned > 0 && data.newly_assigned === 0) {
+          alert(`⚠️ ${data.message}`);
+        } else {
+          alert(`❌ ${data.message || 'Failed to assign test'}`);
+        }
       }
     } catch (error) {
       console.error('Error assigning test:', error);
@@ -1434,11 +1440,19 @@ const AdminDashboard = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
+        // Show message about assignments
         alert(`✅ ${data.message}`);
         setSelectedStudentsForDelete([]);
         setSelectedTestForStudentModal('');
+        // Refresh the student list to update assigned test counts
+        handleManageStudents(selectedInstituteForStudents);
       } else {
-        alert(`❌ ${data.message || 'Failed to assign test'}`);
+        // Handle case where all students already have the test
+        if (data.already_assigned > 0 && data.newly_assigned === 0) {
+          alert(`⚠️ ${data.message}`);
+        } else {
+          alert(`❌ ${data.message || 'Failed to assign test'}`);
+        }
       }
     } catch (error) {
       console.error('Error assigning test:', error);
