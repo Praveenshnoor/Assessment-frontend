@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Save, AlertCircle } from 'lucide-react';
 import { apiFetch } from '../../config/api';
+import Button from '../Button';
 
 const EditTestDetailsModal = ({ test, onClose, onSave }) => {
   const [formData, setFormData] = useState({
@@ -151,18 +152,18 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#3B82F6] to-blue-600 text-white px-6 py-4 flex justify-between items-center">
+        <div className="bg-shnoor-indigo text-white px-6 py-4 flex justify-between items-center">
           <div>
             <h2 className="text-xl font-bold">Edit Test Details</h2>
             <p className="text-blue-100 text-sm">{test.name}</p>
           </div>
-          <button
+          <Button
             onClick={onClose}
             className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
             disabled={isSaving}
           >
             <X size={20} />
-          </button>
+          </Button>
         </div>
 
         {/* Form */}
@@ -177,16 +178,15 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
 
           {/* Job Role */}
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Job Role <span className="text-red-600">*</span>
+            <label className="block text-sm font-semibold text-shnoor-navy mb-2">
+              Job Role <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={formData.jobRole}
               onChange={(e) => handleChange('jobRole', e.target.value)}
-              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-[#3B82F6] transition-all text-sm ${
-                errors.jobRole ? 'border-red-500 bg-red-50' : 'border-gray-300'
-              }`}
+              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.jobRole ? 'border-red-500 bg-red-50 focus:ring-red-100' : 'border-shnoor-light focus:ring-blue-100'
+                }`}
               placeholder="e.g., Software Developer"
               disabled={isSaving}
             />
@@ -200,14 +200,14 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
+            <label className="block text-sm font-semibold text-shnoor-navy mb-2">
               Job Description
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => handleChange('description', e.target.value)}
               rows={3}
-              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-[#3B82F6] transition-all resize-none text-sm"
+              className="w-full px-4 py-2.5 border-2 border-shnoor-light rounded-lg focus:ring-4 focus:ring-blue-100 focus:border-shnoor-indigo transition-all resize-none text-sm text-shnoor-navy font-medium bg-white shadow-sm"
               placeholder="Describe the job role..."
               disabled={isSaving}
             />
@@ -216,29 +216,28 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
           {/* Date & Time */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
+              <label className="block text-sm font-semibold text-shnoor-navy mb-2">
                 Start Date & Time
               </label>
               <input
                 type="datetime-local"
                 value={formData.startDateTime}
                 onChange={(e) => handleChange('startDateTime', e.target.value)}
-                className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-[#3B82F6] transition-all text-sm"
+                className="w-full px-4 py-2.5 border-2 border-shnoor-light rounded-lg focus:ring-4 focus:ring-blue-100 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm"
                 disabled={isSaving}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
+              <label className="block text-sm font-semibold text-shnoor-navy mb-2">
                 End Date & Time
               </label>
               <input
                 type="datetime-local"
                 value={formData.endDateTime}
                 onChange={(e) => handleChange('endDateTime', e.target.value)}
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-[#3B82F6] transition-all text-sm ${
-                  errors.endDateTime ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                }`}
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.endDateTime ? 'border-red-500 bg-red-50 focus:ring-red-100' : 'border-shnoor-light focus:ring-blue-100'
+                  }`}
                 disabled={isSaving}
               />
               {errors.endDateTime && (
@@ -253,8 +252,8 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
           {/* Test Settings */}
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Duration (min) <span className="text-red-600">*</span>
+              <label className="block text-sm font-semibold text-shnoor-navy mb-2">
+                Duration (min) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -262,9 +261,8 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
                 max="300"
                 value={formData.duration}
                 onChange={(e) => handleChange('duration', e.target.value)}
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-[#3B82F6] transition-all text-sm ${
-                  errors.duration ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                }`}
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.duration ? 'border-red-500 bg-red-50 focus:ring-red-100' : 'border-shnoor-light focus:ring-blue-100'
+                  }`}
                 disabled={isSaving}
               />
               {errors.duration && (
@@ -273,8 +271,8 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Passing % <span className="text-red-600">*</span>
+              <label className="block text-sm font-semibold text-shnoor-navy mb-2">
+                Passing % <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -282,9 +280,8 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
                 max="100"
                 value={formData.passingPercentage}
                 onChange={(e) => handleChange('passingPercentage', e.target.value)}
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-[#3B82F6] transition-all text-sm ${
-                  errors.passingPercentage ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                }`}
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.passingPercentage ? 'border-red-500 bg-red-50 focus:ring-red-100' : 'border-shnoor-light focus:ring-blue-100'
+                  }`}
                 disabled={isSaving}
               />
               {errors.passingPercentage && (
@@ -293,8 +290,8 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Max Attempts <span className="text-red-600">*</span>
+              <label className="block text-sm font-semibold text-shnoor-navy mb-2">
+                Max Attempts <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -302,9 +299,8 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
                 max="10"
                 value={formData.maxAttempts}
                 onChange={(e) => handleChange('maxAttempts', e.target.value)}
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-[#3B82F6] transition-all text-sm ${
-                  errors.maxAttempts ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                }`}
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.maxAttempts ? 'border-red-500 bg-red-50 focus:ring-red-100' : 'border-shnoor-light focus:ring-blue-100'
+                  }`}
                 disabled={isSaving}
               />
               {errors.maxAttempts && (
@@ -315,11 +311,11 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
 
           {/* Info Box */}
           {test.status === 'published' && (
-            <div className="bg-blue-50 border-l-4 border-[#3B82F6] p-3 rounded-r-lg">
+            <div className="bg-shnoor-lavender border-l-4 border-shnoor-indigo p-3 rounded-r-lg">
               <div className="flex items-start">
-                <AlertCircle size={16} className="text-[#3B82F6] mr-2 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-blue-900">
-                  <span className="font-semibold">Note:</span> Changes will be reflected immediately. Questions cannot be modified for published tests.
+                <AlertCircle size={16} className="text-shnoor-indigo mr-2 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-shnoor-indigoMedium">
+                  <span className="font-semibold text-shnoor-indigo">Note:</span> Changes will be reflected immediately. Questions cannot be modified for published tests.
                 </p>
               </div>
             </div>
@@ -327,21 +323,22 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
         </form>
 
         {/* Footer */}
-        <div className="bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end space-x-3">
-          <button
-            type="button"
+        <div className="bg-white border-t border-shnoor-light px-6 py-4 flex justify-end space-x-3">
+          <Button
+            type="Button"
+            variant="secondary"
             onClick={onClose}
-            className="px-5 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium"
+            className="text-sm px-5 py-2 !font-bold"
             disabled={isSaving}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
+            variant="primary"
             onClick={handleSubmit}
             disabled={isSaving}
-            className="px-5 py-2 bg-[#3B82F6] text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+            className="text-sm px-5 py-2 !font-bold bg-shnoor-indigo hover:bg-shnoor-navy flex items-center disabled:opacity-50 disabled:cursor-not-allowed"          >
             {isSaving ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -353,7 +350,7 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
                 Save Changes
               </>
             )}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

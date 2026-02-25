@@ -1,7 +1,7 @@
 const FullscreenWarning = ({ onEnterFullscreen }) => {
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md mx-4">
+        <div className="fixed inset-0 bg-shnoor-navy/80 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md mx-4 border border-shnoor-mist">
                 <div className="text-center">
                     <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -9,22 +9,22 @@ const FullscreenWarning = ({ onEnterFullscreen }) => {
                         </svg>
                     </div>
 
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                    <h3 className="text-xl font-bold text-shnoor-navy mb-2">
                         Fullscreen Mode Required
                     </h3>
 
-                    <p className="text-gray-600 mb-6">
+                    <p className="text-shnoor-indigoMedium mb-6 leading-relaxed">
                         This examination must be taken in fullscreen mode for security purposes. Please click the button below to enter fullscreen.
                     </p>
 
                     <button
                         onClick={onEnterFullscreen}
-                        className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-sm"
-                    >
+                        className="w-full px-6 py-3 bg-shnoor-indigo hover:bg-[#6b6be5] hover:shadow-[0_0_20px_rgba(107,107,229,0.4)] text-white font-bold rounded-xl transition-all shadow-sm hover:-translate-y-0.5"
+                        >
                         Enter Fullscreen Mode
                     </button>
 
-                    <p className="text-xs text-gray-500 mt-4">
+                    <p className="text-xs text-shnoor-indigoMedium mt-4 font-medium">
                         Press ESC to exit fullscreen will trigger a warning
                     </p>
                 </div>

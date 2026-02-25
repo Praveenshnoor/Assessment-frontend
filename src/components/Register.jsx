@@ -1,210 +1,203 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../config/api';
-import { createUserWithEmailAndPassword, auth } from '../config/firebase';
 import shnoorLogo from '../../public/favicon.png';
+import Button from './Button';
+import InputField from './InputField';
 
+/* ─── Icon helpers ──────────────────────────────────────────────────────────── */
+const EyeOpen = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
 
+const EyeOff = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+    <line x1="1" y1="1" x2="23" y2="23" />
+  </svg>
+);
+
+const FieldError = ({ msg }) => msg ? (
+  <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1.5">
+    <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
+      <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
+    </svg>
+    {msg}
+  </p>
+) : null;
+
+/* ─── Step metadata — 4 steps ───────────────────────────────────────────────── */
+const STEP_META = [
+  {
+    icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
+    title: 'Personal Info',
+    desc: 'Name, roll number & contact details',
+  },
+  {
+    icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
+    title: 'Academic Details',
+    desc: 'Course, institute & resume link',
+  },
+  {
+    icon: 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z',
+    title: 'Account Setup',
+    desc: 'Email address & secure password',
+  },
+  {
+    icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+    title: 'Review & Confirm',
+    desc: 'Verify your details before submitting',
+  },
+];
+
+const TOTAL_STEPS = STEP_META.length; // 4
+/* ─── Reusable Review Row ────────────────────────────────────────────────────── */
+const ReviewRow = ({ label, value, hidden }) => (
+  <div className="flex items-start justify-between py-2.5 border-b border-shnoor-mist/50 last:border-0 gap-4">
+    <span className="text-xs text-shnoor-soft font-medium flex-shrink-0 w-28">{label}</span>
+    <span className={`text-sm text-shnoor-navy font-semibold text-right leading-snug ${hidden ? 'tracking-widest' : ''}`}>
+      {hidden ? '••••••••' : (value || <span className="text-shnoor-soft italic font-normal">Not provided</span>)}
+    </span>
+  </div>
+);
+
+/* ─── Resume Link Row with text display ────────────────────────────────────── */
+const ResumeLinkRow = ({ label, value }) => (
+  <div className="flex items-start justify-between py-2.5 border-b border-shnoor-mist/50 last:border-0 gap-4">
+    <span className="text-xs text-shnoor-soft font-medium flex-shrink-0 w-28">{label}</span>
+    <span className="text-sm text-shnoor-navy font-semibold text-right leading-snug">
+      {value ? (
+        <span className="text-xs break-all">
+          {value.length > 40 ? value.slice(0, 40) + '…' : value}
+        </span>
+      ) : (
+        <span className="text-shnoor-soft italic font-normal">Not provided</span>
+      )}
+    </span>
+  </div>
+);
+
+/* ─── Review Section Card ────────────────────────────────────────────────────── */
+const ReviewSection = ({ title, stepIndex, onEdit, children }) => (
+  <div className="bg-white border border-shnoor-mist rounded-xl overflow-hidden shadow-sm">
+    <div className="flex items-center justify-between px-5 py-3 bg-shnoor-lavender border-b border-shnoor-mist">
+      <p className="text-xs font-extrabold text-shnoor-indigo uppercase tracking-widest">{title}</p>
+      <Button
+        type="button"
+        onClick={() => onEdit(stepIndex)}
+        className="flex items-center gap-1.5 text-xs font-bold text-shnoor-indigo hover:text-shnoor-navy transition-colors group"
+      >
+        <svg className="w-3.5 h-3.5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
+        Edit
+      </Button>
+    </div>
+    <div className="px-5 py-1">{children}</div>
+  </div>
+);
+
+/* ─── Main Component ─────────────────────────────────────────────────────────── */
 const Register = () => {
   const navigate = useNavigate();
+  const [step, setStep] = useState(0);
   const [formData, setFormData] = useState({
-    fullName: '',
-    rollNumber: '',
-    email: '',
-    institute: '',
-    phone: '',
-    address: '',
-    course: '',
-    specialization: '',
-    resumeLink: '',
-    password: '',
-    confirmPassword: ''
+    fullName: '', rollNumber: '', phone: '', address: '',
+    institute: '', course: '', specialization: '', resumeLink: '',
+    email: '', password: '', confirmPassword: '',
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  // Institute dropdown state
   const [institutes, setInstitutes] = useState([]);
   const [showInstituteDropdown, setShowInstituteDropdown] = useState(false);
-  const instituteDropdownRef = useRef(null);
+  const dropdownRef = useRef(null);
 
-  // Fetch institutes on component mount
   useEffect(() => {
-    const fetchInstitutes = async () => {
+    (async () => {
       try {
-        const response = await apiFetch('api/institutes/public', {
-          method: 'GET',
-        });
-        const data = await response.json();
-        if (data.success && data.institutes) {
-          setInstitutes(data.institutes);
-        }
-      } catch (error) {
-        console.error('Error fetching institutes:', error);
-      }
-    };
-    fetchInstitutes();
+        const res = await apiFetch('api/institutes/public', { method: 'GET' });
+        const data = await res.json();
+        if (data.success && data.institutes) setInstitutes(data.institutes);
+      } catch { }
+    })();
   }, []);
 
-  // Handle click outside to close dropdown
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (instituteDropdownRef.current && !instituteDropdownRef.current.contains(event.target)) {
+    const close = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target))
         setShowInstituteDropdown(false);
-      }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
   }, []);
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
-    } else if (formData.fullName.length < 3) {
-      newErrors.fullName = 'Name must be at least 3 characters';
-    }
-
-    if (!formData.rollNumber.trim()) {
-      newErrors.rollNumber = 'Roll number is required';
-    } else if (!/^[a-zA-Z0-9-]+$/.test(formData.rollNumber)) {
-      newErrors.rollNumber = 'Alphanumeric characters and hyphens only';
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Enter a valid institutional email';
-    }
-    if (!formData.institute.trim()) {
-      newErrors.institute = 'Institute/University is required';
-    }
-
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!/^\d{10}$/.test(formData.phone.replace(/[^0-9]/g, ''))) {
-      newErrors.phone = 'Enter a valid 10-digit phone number';
-    }
-
-    if (!formData.address.trim()) {
-      newErrors.address = 'Address is required';
-    }
-
-    if (!formData.course.trim()) {
-      newErrors.course = 'Course is required';
-    }
-
-    if (!formData.specialization.trim()) {
-      newErrors.specialization = 'Specialization is required';
-    }
-
-    // Resume link validation - accepts ANY text, no URL validation at all
-    // This prevents browser hanging issues with complex URLs
-    if (!formData.resumeLink.trim()) {
-      newErrors.resumeLink = 'Resume link is required';
-    }
-    // No other validation - accept any text to avoid browser issues
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
+    setFormData(p => ({ ...p, [name]: value }));
+    if (errors[name]) setErrors(p => ({ ...p, [name]: '' }));
     setApiError('');
   };
-
-  const handleInstituteSelect = (institute) => {
-    setFormData(prev => ({ ...prev, institute: institute.display_name }));
-    setShowInstituteDropdown(false);
-    if (errors.institute) {
-      setErrors(prev => ({ ...prev, institute: '' }));
+  /* ── Per-step validation ─────────────────────────────────────────────── */
+  const validateStep = (s) => {
+    const e = {};
+    if (s === 0) {
+      if (!formData.fullName.trim()) e.fullName = 'Full name is required';
+      else if (formData.fullName.length < 3) e.fullName = 'Name must be at least 3 characters';
+      if (!formData.rollNumber.trim()) e.rollNumber = 'Roll number is required';
+      else if (!/^[a-zA-Z0-9-]+$/.test(formData.rollNumber)) e.rollNumber = 'Alphanumeric and hyphens only';
+      if (!formData.phone.trim()) e.phone = 'Phone number is required';
+      else if (!/^\d{10}$/.test(formData.phone.replace(/[^0-9]/g, ''))) e.phone = 'Enter a valid 10-digit number';
+      if (!formData.address.trim()) e.address = 'Address is required';
     }
+    if (s === 1) {
+      if (!formData.institute.trim()) e.institute = 'Please select an institute';
+      if (!formData.course.trim()) e.course = 'Course is required';
+      if (!formData.specialization.trim()) e.specialization = 'Specialization is required';
+      if (!formData.resumeLink.trim()) e.resumeLink = 'Resume link is required';
+    }
+    if (s === 2) {
+      if (!formData.email.trim()) e.email = 'Email is required';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) e.email = 'Enter a valid email';
+      if (!formData.password) e.password = 'Password is required';
+      else if (formData.password.length < 8) e.password = 'Minimum 8 characters required';
+      if (formData.password !== formData.confirmPassword) e.confirmPassword = 'Passwords do not match';
+    }
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
-  const handleInstituteInputClick = () => {
-    setShowInstituteDropdown(true);
+  const goNext = () => {
+    if (!validateStep(step)) return;
+    setStep(s => s + 1);
   };
 
-  const clearInstituteSelection = () => {
-    setFormData(prev => ({ ...prev, institute: '' }));
-    setShowInstituteDropdown(false);
+  const goBack = () => {
+    setErrors({});
+    setStep(s => s - 1);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  /* Jump to a specific step to edit — called from Review page */
+  const jumpToStep = (targetStep) => {
+    setErrors({});
+    setStep(targetStep);
+  };
+
+  const handleSubmit = async () => {
     setApiError('');
-
-    console.log('=== REGISTRATION STARTED ===');
-    console.log('Form data:', {
-      fullName: formData.fullName,
-      email: formData.email,
-      rollNumber: formData.rollNumber,
-      institute: formData.institute,
-      hasResumeLink: !!formData.resumeLink
-    });
-
-    if (!validateForm()) {
-      console.log('❌ Form validation failed');
-      return;
-    }
-
-    console.log('✅ Form validation passed');
     setIsLoading(true);
-
-    // Create AbortController for proper cancellation
-    const abortController = new AbortController();
-
-    // Safety timeout - if registration takes more than 45 seconds, cancel everything
-    const timeoutId = setTimeout(() => {
-      abortController.abort(); // Actually cancel the fetch
-      setIsLoading(false);
-      setApiError('Registration is taking too long. Please check your internet connection and try again.');
-      console.error('❌ Registration timeout after 45 seconds');
-    }, 45000);
-
     try {
-      // Step 1: Register user in Firebase
-      console.log('Step 1: Creating Firebase user...');
-      // FIXED: Firebase import now at top level, no dynamic import freeze
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
-      console.log('✅ Firebase user created:', userCredential.user.uid);
-
-      // Step 2: Get Firebase ID token
-      console.log('Step 2: Getting Firebase token...');
+      const { createUserWithEmailAndPassword, auth } = await import('../config/firebase');
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const idToken = await userCredential.user.getIdToken();
-      console.log('✅ Firebase token obtained');
-
-      // Step 3: Send user data to backend with Firebase token
-      console.log('Step 3: Sending data to backend...');
       const response = await apiFetch('api/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
           full_name: formData.fullName.trim(),
           email: formData.email.trim(),
@@ -214,503 +207,366 @@ const Register = () => {
           address: formData.address.trim(),
           course: formData.course.trim(),
           specialization: formData.specialization.trim(),
-          resume_link: formData.resumeLink.trim()
+          resume_link: formData.resumeLink.trim(),
         }),
-        signal: abortController.signal // Pass abort signal for proper cancellation
       });
-
       const data = await response.json();
-      console.log('Backend response:', data);
-
-      if (!response.ok) {
-        // Backend registration failed - delete the Firebase user
-        console.log('❌ Backend registration failed, deleting Firebase user...');
-        try {
-          await userCredential.user.delete();
-          console.log('✅ Firebase user deleted successfully');
-        } catch (deleteError) {
-          console.error('⚠️ Failed to delete Firebase user:', deleteError);
-          // Continue to show the original error to user
-        }
-        throw new Error(data.message || 'Registration failed');
-      }
-
-      console.log('✅ Registration successful!');
-      // Success: Navigate to login page
-      navigate('/login', {
-        state: { message: 'Registration successful. Please sign in to begin.' }
-      });
-
-      // Clear timeout on success
-      clearTimeout(timeoutId);
-
+      if (!response.ok) throw new Error(data.message || 'Registration failed');
+      navigate('/login', { state: { message: 'Registration successful. Please sign in to begin.' } });
     } catch (error) {
-      // Clear timeout on error
-      clearTimeout(timeoutId);
-      
-      console.error('❌ Registration error:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
-
-      // Handle abort/timeout
-      if (error.name === 'AbortError') {
-        setApiError('Registration was cancelled due to timeout. Please try again.');
-        return;
-      }
-
-      // Handle network errors
-      if (error.message === 'Failed to fetch') {
-        setApiError('Network error. Please check your internet connection and try again.');
-        return;
-      }
-
-      // Handle Firebase-specific errors
-      if (error.code === 'auth/email-already-in-use') {
-        setApiError('This email is already registered. Please login instead.');
-      } else if (error.code === 'auth/weak-password') {
-        setApiError('Password is too weak. Please use a stronger password.');
-      } else if (error.code === 'auth/invalid-email') {
-        setApiError('Invalid email address format.');
-      } else {
-        setApiError(error.message || 'Unable to complete registration. Please try again.');
-      }
+      if (error.code === 'auth/email-already-in-use') setApiError('This email is already registered. Please login instead.');
+      else if (error.code === 'auth/weak-password') setApiError('Password is too weak. Please use a stronger password.');
+      else if (error.code === 'auth/invalid-email') setApiError('Invalid email address format.');
+      else setApiError(error.message || 'Unable to complete registration. Please try again.');
+      // Jump back to account step on auth error
+      if (error.code) setStep(2);
     } finally {
       setIsLoading(false);
     }
   };
+  /* ── renderStep — plain function, NOT inner component ────────────────── */
+  const renderStep = () => {
+    /* STEP 0 — Personal Info */
+    if (step === 0) return (
+      <div className="flex flex-col gap-5">
+        <div>
+          <InputField label="Full Name" type="text" name="fullName" placeholder="As per official records" required
+            value={formData.fullName} onChange={handleChange} disabled={isLoading} autoComplete="name" />
+          <FieldError msg={errors.fullName} />
+        </div>
+        <div>
+          <InputField label="Student Roll Number" type="text" name="rollNumber" placeholder="e.g., 2024CS001" required
+            value={formData.rollNumber} onChange={handleChange} disabled={isLoading} autoComplete="off" />
+          <FieldError msg={errors.rollNumber} />
+        </div>
+        <div>
+          <InputField label="Phone Number" type="tel" name="phone" placeholder="e.g., 9876543210" required
+            value={formData.phone} onChange={handleChange} disabled={isLoading} autoComplete="tel" maxLength="10" />
+          <FieldError msg={errors.phone} />
+        </div>
+        <div>
+          <label className="text-[11px] font-semibold text-shnoor-navy mb-1.5 uppercase tracking-wide flex items-center gap-1 block">
+            Address <span className="text-red-500">*</span>
+          </label>
+          <textarea name="address"
+            className={`w-full h-[90px] px-4 py-3 rounded-lg border bg-white text-sm text-shnoor-navy placeholder-shnoor-soft transition-colors focus:outline-none focus:ring-1 resize-none
+              ${errors.address ? 'border-red-400 focus:ring-red-400' : 'border-shnoor-mist focus:border-shnoor-indigo focus:ring-shnoor-indigo'}`}
+            placeholder="Enter your full address"
+            value={formData.address} onChange={handleChange} disabled={isLoading} />
+          <FieldError msg={errors.address} />
+        </div>
+      </div>
+    );
 
-  return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 font-sans p-4 sm:p-6 overflow-auto">
-      <div className="bg-white w-full max-w-[520px] p-6 sm:p-8 md:p-12 lg:p-14 flex flex-col justify-center rounded-lg shadow-xl border border-slate-200 relative my-4">
-        <div className="text-center mb-6 flex-shrink-0">
-          <div className="flex items-center justify-center mb-2 gap-3">
-            <img
-              src={shnoorLogo}
-              alt="Shnoor Assessment Platform"
-              className="w-[55px] h-[50px] object-contain"
-            />
-            <div className="text-left">
-              <h1 className="brand-logo text-slate-900 text-xl md:text-2xl font-semibold mb-1 tracking-tight leading-tight">
-                SHNOOR International
-              </h1>
-              <p className="text-xs md:text-sm text-slate-500 font-medium tracking-[0.18em] uppercase">
-                Assessment Platform
-              </p>
+    /* STEP 1 — Academic Details */
+    if (step === 1) return (
+      <div className="flex flex-col gap-5">
+        <div ref={dropdownRef}>
+          <label className="text-[11px] font-semibold text-shnoor-navy mb-1.5 uppercase tracking-wide flex items-center gap-1 block">
+            Institute / University <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <div
+              className={`w-full h-[50px] px-4 rounded-lg border bg-white transition-colors cursor-pointer flex items-center justify-between text-sm
+                ${errors.institute ? 'border-red-400' : 'border-shnoor-mist hover:border-shnoor-indigo'}`}
+              onClick={() => !isLoading && setShowInstituteDropdown(v => !v)}
+            >
+              <span className={formData.institute ? 'text-shnoor-navy' : 'text-shnoor-soft'}>
+                {formData.institute || 'Select your institute...'}
+              </span>
+              <div className="flex items-center gap-2">
+                {formData.institute && (
+                  <Button type="Button" onClick={e => { e.stopPropagation(); setFormData(p => ({ ...p, institute: '' })); }}
+                    className="text-shnoor-soft hover:text-red-500 transition-colors">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z" />
+                    </svg>
+                  </Button>
+                )}
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"
+                  className={`text-shnoor-soft transition-transform duration-200 ${showInstituteDropdown ? 'rotate-180' : ''}`}>
+                  <path d="M4.427 5.427a.5.5 0 0 0 0 .707l3 3a.5.5 0 0 0 .707 0l3-3a.5.5 0 1 0-.707-.707L8 7.793 5.573 5.427a.5.5 0 0 0-.707 0z" />
+                </svg>
+              </div>
             </div>
+            {showInstituteDropdown && (
+              <div className="absolute z-50 w-full mt-1 bg-white border border-shnoor-mist rounded-xl shadow-[0_8px_24px_rgba(68,68,142,0.12)] overflow-hidden">
+                <div className="max-h-52 overflow-y-auto">
+                  {institutes.length > 0 ? institutes.map(inst => (
+                    <div key={inst.id}
+                      onClick={() => { setFormData(p => ({ ...p, institute: inst.display_name })); setShowInstituteDropdown(false); if (errors.institute) setErrors(p => ({ ...p, institute: '' })); }}
+                      className="px-4 py-3 hover:bg-shnoor-lavender cursor-pointer transition-colors text-sm text-shnoor-navy border-b border-shnoor-mist/50 last:border-0">
+                      {inst.display_name}
+                    </div>
+                  )) : <div className="px-4 py-3 text-sm text-shnoor-soft italic">No institutes available.</div>}
+                </div>
+              </div>
+            )}
           </div>
-          <p className="text-sm sm:text-[15px] text-slate-500 font-normal leading-relaxed px-2">
-            Create your examination account
+          <FieldError msg={errors.institute} />
+        </div>
+        <div>
+          <InputField label="Course" type="text" name="course" placeholder="e.g., B.Tech, M.Sc, BCA" required
+            value={formData.course} onChange={handleChange} disabled={isLoading} autoComplete="off" />
+          <FieldError msg={errors.course} />
+        </div>
+        <div>
+          <InputField label="Specialization" type="text" name="specialization" placeholder="e.g., Computer Science, Electronics" required
+            value={formData.specialization} onChange={handleChange} disabled={isLoading} autoComplete="off" />
+          <FieldError msg={errors.specialization} />
+        </div>
+        <div>
+          <InputField label="Resume Link" type="text" name="resumeLink" placeholder="Enter resume link or 'test'" required
+            value={formData.resumeLink} onChange={handleChange} disabled={isLoading} autoComplete="off" />
+          <p className="text-[11px] text-shnoor-soft mt-1">Enter Resume Link...</p>
+          <FieldError msg={errors.resumeLink} />
+        </div>
+      </div>
+    );
+    /* STEP 2 — Account Setup */
+    if (step === 2) return (
+      <div className="flex flex-col gap-5">
+        <div>
+          <InputField label="Email Address" type="email" name="email" placeholder="student@institution.edu" required
+            value={formData.email} onChange={handleChange} disabled={isLoading} autoComplete="email" />
+          <FieldError msg={errors.email} />
+        </div>
+        <div className="relative">
+          <InputField label="Password" type={showPassword ? 'text' : 'password'} name="password" placeholder="Minimum 8 characters" required
+            value={formData.password} onChange={handleChange} disabled={isLoading} autoComplete="new-password" />
+          <button type="button" onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-[37px] text-shnoor-soft hover:text-shnoor-navy transition-colors p-1" tabIndex={-1}>
+            {showPassword ? <EyeOff /> : <EyeOpen />}
+          </button>
+          <FieldError msg={errors.password} />
+        </div>
+        <div className="relative">
+          <InputField label="Confirm Password" type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" placeholder="Re-enter your password" required
+            value={formData.confirmPassword} onChange={handleChange} disabled={isLoading} autoComplete="new-password" />
+          <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            className="absolute right-3 top-[37px] text-shnoor-soft hover:text-shnoor-navy transition-colors p-1" tabIndex={-1}>
+            {showConfirmPassword ? <EyeOff /> : <EyeOpen />}
+          </button>
+          <FieldError msg={errors.confirmPassword} />
+        </div>
+      </div>
+    );
+
+    /* STEP 3 — Review & Confirm */
+    return (
+      <div className="flex flex-col gap-4">
+        {/* Banner */}
+        <div className="flex items-start gap-3 bg-[#EEF9F0] border border-green-200 rounded-xl px-4 py-3">
+          <svg className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.97 4.97a.75.75 0 0 0-1.08-.022L6.477 9.417 4.384 7.323a.75.75 0 0 0-1.06 1.06l2.75 2.75a.75.75 0 0 0 1.137-.089l4-5.5a.75.75 0 0 0-.24-1.573z" />
+          </svg>
+          <p className="text-sm text-green-800 leading-relaxed">
+            <span className="font-bold">Almost done!</span> Please review your details carefully. Click <strong>Edit</strong> on any section to make changes before submitting.
           </p>
         </div>
 
-        {apiError && (
-          <div className="bg-red-50 border-l-4 border-red-600 text-red-600 p-3 sm:p-4 rounded-r-md text-xs sm:text-sm font-medium flex items-center gap-2.5 mb-4 sm:mb-6 flex-shrink-0">
-            <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-              <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
-            </svg>
-            <span className="break-words">{apiError}</span>
-          </div>
-        )}
+        {/* Section 1: Personal Info */}
+        <ReviewSection title="Personal Information" stepIndex={0} onEdit={jumpToStep}>
+          <ReviewRow label="Full Name" value={formData.fullName} />
+          <ReviewRow label="Roll Number" value={formData.rollNumber} />
+          <ReviewRow label="Phone" value={formData.phone} />
+          <ReviewRow label="Address" value={formData.address} />
+        </ReviewSection>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 sm:gap-5 md:gap-6 flex-1 justify-center">
-          <div className="flex flex-col gap-2">
-            <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-              Full Name <span className="text-red-600 font-bold">*</span>
-            </label>
-            <input
-              type="text"
-              name="fullName"
-              className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.fullName ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
-                }`}
-              placeholder="As per official records"
-              value={formData.fullName}
-              onChange={handleChange}
-              disabled={isLoading}
-              autoComplete="name"
-            />
-            {errors.fullName && (
-              <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-                  <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
-                </svg>
-                {errors.fullName}
-              </span>
-            )}
-          </div>
+        {/* Section 2: Academic */}
+        <ReviewSection title="Academic Details" stepIndex={1} onEdit={jumpToStep}>
+          <ReviewRow label="Institute" value={formData.institute} />
+          <ReviewRow label="Course" value={formData.course} />
+          <ReviewRow label="Specialization" value={formData.specialization} />
+          <ResumeLinkRow label="Resume Link" value={formData.resumeLink} />
+        </ReviewSection>
 
-          <div className="flex flex-col gap-2">
-            <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-              Student Roll Number <span className="text-red-600 font-bold">*</span>
-            </label>
-            <input
-              type="text"
-              name="rollNumber"
-              className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.rollNumber ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
-                }`}
-              placeholder="e.g., 2024CS001"
-              value={formData.rollNumber}
-              onChange={handleChange}
-              disabled={isLoading}
-              autoComplete="off"
-            />
-            {errors.rollNumber && (
-              <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-                  <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
-                </svg>
-                {errors.rollNumber}
-              </span>
-            )}
-            <span className="text-[10px] sm:text-xs text-slate-400 italic mt-1">This will be your permanent examination ID</span>
+        {/* Section 3: Account */}
+        <ReviewSection title="Account Credentials" stepIndex={2} onEdit={jumpToStep}>
+          <ReviewRow label="Email" value={formData.email} />
+          <ReviewRow label="Password" value="set" hidden />
+        </ReviewSection>
+
+        {/* Disclaimer */}
+        <p className="text-xs text-shnoor-soft text-center leading-relaxed">
+          By submitting, you confirm that all details are accurate and you agree to the platform's terms of use.
+        </p>
+      </div>
+    );
+  };
+  /* ─── Render ─────────────────────────────────────────────────────────────── */
+  return (
+    <div className="min-h-screen w-full flex font-['Plus_Jakarta_Sans',sans-serif]">
+      {/* ── LEFT PANEL ────────────────────────────────────── */}
+      <div className="hidden lg:flex lg:w-[38%] flex-col justify-between bg-shnoor-navy px-12 py-12 relative overflow-hidden">
+        <div className="absolute top-[-80px] right-[-60px] w-80 h-80 rounded-full bg-shnoor-indigo opacity-20 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-[-60px] left-[-40px] w-60 h-60 rounded-full bg-[#6868AC] opacity-15 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-12">
+            <img src={shnoorLogo} alt="Shnoor" className="h-11 w-11 object-contain" />
+            <div>
+              <p className="font-extrabold text-white text-lg leading-tight">SHNOOR Assessments</p>
+              <p className="text-[11px] text-[#8F8FC4] uppercase tracking-widest font-semibold">Secure Examination Portal</p>
+            </div>
           </div>
 
-          
+          <h2 className="text-2xl font-extrabold text-white leading-tight mb-2">
+            Join the <span className="text-[#8F8FC4]">SHNOOR</span><br />Recruitment Drive
+          </h2>
+          <p className="text-[#8F8FC4] text-sm leading-relaxed mb-10">
+            Complete 4 quick steps to create your account and access your assessments.
+          </p>
 
-          <div className="flex flex-col gap-2" ref={instituteDropdownRef}>
-            <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-              Institute/University <span className="text-red-600 font-bold">*</span>
-            </label>
-            <div className="relative">
-              <div
-                className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 cursor-pointer flex items-center justify-between ${
-                  errors.institute ? 'border-red-600 bg-red-50' : 'border-slate-200 hover:border-blue-400'
-                } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onClick={() => !isLoading && handleInstituteInputClick()}
-              >
-                <span className={formData.institute ? 'text-slate-900' : 'text-slate-400 text-sm sm:text-[15px]'}>
-                  {formData.institute || 'Click to select your institute...'}
-                </span>
-                <div className="flex items-center gap-2">
-                  {formData.institute && !isLoading && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        clearInstituteSelection();
-                      }}
-                      className="text-slate-400 hover:text-red-600 transition-colors"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
+          {/* Step list */}
+          <div className="flex flex-col gap-5">
+            {STEP_META.map((s, i) => {
+              const isDone = i < step;
+              const isActive = i === step;
+              return (
+                <div key={i} className={`flex items-start gap-4 transition-all duration-300 ${isActive ? 'opacity-100' : isDone ? 'opacity-75' : 'opacity-30'}`}>
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300
+                    ${isDone ? 'bg-green-500' : isActive ? 'bg-shnoor-indigo shadow-[0_0_16px_rgba(68,68,142,0.6)]' : 'bg-white/10'}`}>
+                    {isDone ? (
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
-                    </button>
-                  )}
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className={`text-slate-400 transition-transform ${showInstituteDropdown ? 'rotate-180' : ''}`}>
-                    <path d="M4.427 5.427a.5.5 0 0 0 0 .707l3 3a.5.5 0 0 0 .707 0l3-3a.5.5 0 1 0-.707-.707L8 7.793 5.573 5.427a.5.5 0 0 0-.707 0z"/>
-                  </svg>
-                </div>
-              </div>
-              {showInstituteDropdown && (
-                <div className="absolute z-50 w-full mt-1 bg-white border-2 border-slate-200 rounded-md shadow-lg">
-                  <div className="max-h-60 overflow-y-auto">
-                    {institutes.length > 0 ? (
-                      institutes.map((institute) => (
-                        <div
-                          key={institute.id}
-                          className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors duration-150 text-sm text-slate-900 border-b border-slate-100 last:border-b-0"
-                          onClick={() => handleInstituteSelect(institute)}
-                        >
-                          {institute.display_name}
-                        </div>
-                      ))
                     ) : (
-                      <div className="px-4 py-3 text-sm text-slate-500 italic">
-                        No institutes available.
-                      </div>
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d={s.icon} />
+                      </svg>
                     )}
                   </div>
+                  <div>
+                    <p className={`text-sm font-bold ${isActive ? 'text-white' : isDone ? 'text-white/70' : 'text-white/40'}`}>{s.title}</p>
+                    <p className={`text-xs leading-relaxed ${isActive ? 'text-[#8F8FC4]' : 'text-[#8F8FC4]/50'}`}>{s.desc}</p>
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="relative z-10">
+          <div className="flex gap-1 mb-3">
+            {['#E0E0EF', '#B7B7D9', '#8F8FC4', '#6868AC', '#44448E', '#272757', '#0E0E27'].map(c => (
+              <div key={c} className="h-1.5 flex-1 rounded-full" style={{ backgroundColor: c }} />
+            ))}
+          </div>
+          <p className="text-xs text-[#6868AC]">SHNOOR Recruitment & Assessment Portal</p>
+        </div>
+      </div>
+      {/* ── RIGHT PANEL ───────────────────────────────────── */}
+      <div className="flex-1 bg-white flex items-center justify-center px-6 py-10 overflow-auto">
+        <div className="w-full max-w-[500px]">
+          {/* Mobile brand */}
+          <div className="flex items-center gap-3 mb-6 lg:hidden">
+            <img src={shnoorLogo} alt="Shnoor" className="h-9 w-9 object-contain" />
+            <div>
+              <p className="font-extrabold text-shnoor-navy text-base">SHNOOR Assessments</p>
+              <p className="text-[10px] text-shnoor-soft uppercase tracking-widest">Secure Examination Portal</p>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className="mb-7">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-shnoor-indigo uppercase tracking-widest">Step {step + 1} of {TOTAL_STEPS}</span>
+              <span className="text-xs text-shnoor-soft font-medium">{STEP_META[step].title}</span>
+            </div>
+            <div className="h-1.5 bg-shnoor-lavender rounded-full overflow-hidden">
+              <div
+                className="h-full bg-shnoor-indigo rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${((step + 1) / TOTAL_STEPS) * 100}%` }}
+              />
+            </div>
+            <div className="flex justify-between mt-2">
+              {STEP_META.map((s, i) => (
+                <div key={i} className="flex items-center gap-1">
+                  <div className={`w-2 h-2 rounded-full transition-all duration-300
+                    ${i < step ? 'bg-green-500' : i === step ? 'bg-shnoor-indigo scale-125' : 'bg-shnoor-mist'}`} />
+                  <span className={`text-[10px] font-semibold hidden sm:block transition-colors duration-200
+                    ${i === step ? 'text-shnoor-navy' : i < step ? 'text-green-600' : 'text-shnoor-soft'}`}>
+                    {s.title}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Heading */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-extrabold text-shnoor-navy">{STEP_META[step].title}</h1>
+            <p className="text-sm text-shnoor-soft mt-0.5">{STEP_META[step].desc}</p>
+          </div>
+
+          {/* API error */}
+          {apiError && (
+            <div className="mb-5 flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+              <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
+              </svg>
+              {apiError}
+            </div>
+          )}
+
+          {/* Step fields — wrapped in form for enter-key and validation */}
+          <form onSubmit={step < TOTAL_STEPS - 1 ? (e) => { e.preventDefault(); goNext(); } : (e) => { e.preventDefault(); handleSubmit(); }}>
+            {renderStep()}
+
+            {/* Navigation */}
+            <div className={`flex gap-3 mt-8 ${step === 0 ? 'justify-end' : 'justify-between'}`}>
+              {step > 0 && (
+                <Button type="button" onClick={goBack} disabled={isLoading}
+                  className="h-[50px] px-6 rounded-lg font-semibold text-shnoor-navy border-2 border-shnoor-mist hover:border-shnoor-indigo hover:bg-shnoor-lavender transition-all flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Back
+                </Button>
+              )}
+
+              {step < TOTAL_STEPS - 1 ? (
+                <Button type="submit" variant="primary" className="flex-1 !h-[50px]">
+                  Continue
+                  <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </Button>
+              ) : (
+                <Button type="submit" variant="primary" className="flex-1 !h-[50px]" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <div className="w-5 h-5 border-[3px] border-white border-t-transparent rounded-full animate-spin" />
+                      Creating Account...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Confirm & Register
+                    </>
+                  )}
+                </Button>
               )}
             </div>
-            {errors.institute && (
-              <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-                  <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
-                </svg>
-                {errors.institute}
-              </span>
-            )}
-          </div>
+          </form>
 
-          <div className="flex flex-col gap-2">
-            <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-              Phone Number <span className="text-red-600 font-bold">*</span>
-            </label>
-            <input
-              type="tel"
-              name="phone"
-              className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.phone ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
-                }`}
-              placeholder="e.g., 9876543210"
-              value={formData.phone}
-              onChange={handleChange}
-              disabled={isLoading}
-              autoComplete="tel"
-              maxLength="10"
-            />
-            {errors.phone && (
-              <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-                  <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
-                </svg>
-                {errors.phone}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-              Address <span className="text-red-600 font-bold">*</span>
-            </label>
-            <textarea
-              name="address"
-              className={`w-full h-[100px] px-4 sm:px-[18px] py-3 border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] resize-none ${errors.address ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
-                }`}
-              placeholder="Enter your full address"
-              value={formData.address}
-              onChange={handleChange}
-              disabled={isLoading}
-              autoComplete="street-address"
-            />
-            {errors.address && (
-              <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-                  <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
-                </svg>
-                {errors.address}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-              Course <span className="text-red-600 font-bold">*</span>
-            </label>
-            <input
-              type="text"
-              name="course"
-              className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.course ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
-                }`}
-              placeholder="e.g., B.Tech, M.Sc, BCA"
-              value={formData.course}
-              onChange={handleChange}
-              disabled={isLoading}
-              autoComplete="off"
-            />
-            {errors.course && (
-              <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-                  <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
-                </svg>
-                {errors.course}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-              Specialization <span className="text-red-600 font-bold">*</span>
-            </label>
-            <input
-              type="text"
-              name="specialization"
-              className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.specialization ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
-                }`}
-              placeholder="e.g., Computer Science, Electronics"
-              value={formData.specialization}
-              onChange={handleChange}
-              disabled={isLoading}
-              autoComplete="off"
-            />
-            {errors.specialization && (
-              <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-                  <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
-                </svg>
-                {errors.specialization}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-              Resume Link <span className="text-red-600 font-bold">*</span>
-            </label>
-            <input
-              type="text"
-              name="resumeLink"
-              className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.resumeLink ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
-                }`}
-              placeholder="Paste your resume link here"
-              value={formData.resumeLink}
-              onChange={handleChange}
-              disabled={isLoading}
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-              spellCheck="false"
-            />
-            <p className="text-xs text-slate-500 flex items-start gap-1.5 mt-0.5">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0 mt-0.5">
-                <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM7 5v2h2V5H7zm0 3v5h2V8H7z" />
-              </svg>
-              <span>Enter any link to your resume (Google Drive, Dropbox, personal website, etc.)</span>
+          {/* Footer */}
+          <div className="mt-7 pt-6 border-t border-shnoor-lavender">
+            <p className="text-center text-sm text-shnoor-soft">
+              Already registered?{' '}
+              <Link to="/login" className="text-shnoor-indigo font-semibold hover:text-shnoor-navy transition-colors">
+                Sign in to examination
+              </Link>
             </p>
-            {errors.resumeLink && (
-              <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-                  <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
-                </svg>
-                {errors.resumeLink}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-              Email Address <span className="text-red-600 font-bold">*</span>
-            </label>
-            <input
-              type="email"
-              name="email"
-              className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.email ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
-                }`}
-              placeholder="student@institution.edu"
-              value={formData.email}
-              onChange={handleChange}
-              disabled={isLoading}
-              autoComplete="email"
-            />
-            {errors.email && (
-              <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-                  <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
-                </svg>
-                {errors.email}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-              Password <span className="text-red-600 font-bold">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                name="password"
-                className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] pr-12 border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.password ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
-                  }`}
-                placeholder="Minimum 8 characters"
-                value={formData.password}
-                onChange={handleChange}
-                disabled={isLoading}
-                autoComplete="new-password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors duration-200 p-1"
-                disabled={isLoading}
-                tabIndex={-1}
-              >
-                {showPassword ? (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                  </svg>
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                )}
-              </button>
-            </div>
-            {errors.password && (
-              <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-                  <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
-                </svg>
-                {errors.password}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-              Confirm Password <span className="text-red-600 font-bold">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type={showConfirmPassword ? "text" : "password"}
-                name="confirmPassword"
-                className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] pr-12 border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.confirmPassword ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
-                  }`}
-                placeholder="Re-enter your password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                disabled={isLoading}
-                autoComplete="new-password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors duration-200 p-1"
-                disabled={isLoading}
-                tabIndex={-1}
-              >
-                {showConfirmPassword ? (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                  </svg>
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                )}
-              </button>
-            </div>
-            {errors.confirmPassword && (
-              <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-                  <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
-                </svg>
-                {errors.confirmPassword}
-              </span>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            className={`w-full h-12 sm:h-14 mt-2 bg-slate-900 text-white rounded-md text-sm sm:text-base font-semibold uppercase tracking-wider shadow-sm hover:bg-slate-800 hover:-translate-y-px hover:shadow-md active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none transition-all duration-200 ${isLoading ? 'text-transparent relative' : ''
-              }`}
-            disabled={isLoading}
-          >
-            {isLoading && (
-              <div className="absolute top-1/2 left-1/2 -ml-2.5 -mt-2.5 w-5 h-5 border-[3px] border-white border-t-transparent rounded-full animate-spin"></div>
-            )}
-            {isLoading ? 'Creating Account...' : 'Complete Registration'}
-          </button>
-        </form>
-
-        <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 flex-shrink-0">
-          <div className="text-center text-sm sm:text-[15px] text-slate-500 font-medium">
-            Already registered?{' '}
-            <Link to="/login" className="text-blue-500 font-semibold no-underline ml-1 hover:text-blue-600 hover:underline transition-colors duration-200">
-              Sign in to examination
-            </Link>
-          </div>
-
-          <div className="h-px bg-slate-200 my-4 sm:my-6"></div>
-
-          <div className="text-center text-xs text-slate-500 flex items-center justify-center gap-1.5 font-medium">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-              <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
-            </svg>
-            <span className="break-words">Secure, proctored examination environment</span>
+            <p className="text-center text-xs text-[#8F8FC4] mt-3 flex items-center justify-center gap-1.5">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
+              </svg>
+              Secure, proctored examination environment
+            </p>
           </div>
         </div>
       </div>

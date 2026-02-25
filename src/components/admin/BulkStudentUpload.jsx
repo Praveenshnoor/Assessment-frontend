@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Button from '../Button';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -87,13 +88,13 @@ Robert Johnson,robert.johnson@example.com,5551234567,Harvard University`;
     };
 
     return (
-        <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">Bulk Student Upload</h2>
-            
+        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] p-8 border border-shnoor-light">
+            <h2 className="text-2xl font-bold mb-4 text-shnoor-navy">Bulk Student Upload</h2>
+
             {/* Instructions */}
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
-                <h3 className="font-semibold text-blue-800 mb-2">Instructions:</h3>
-                <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+            <div className="bg-shnoor-lavender border-l-4 border-shnoor-indigo p-4 mb-6 rounded-r-lg">
+                <h3 className="font-semibold text-shnoor-navy mb-2">Instructions:</h3>
+                <ul className="text-sm text-shnoor-indigoMedium space-y-1 list-disc list-inside">
                     <li>Upload a CSV or Excel file with student details</li>
                     <li>Required columns: <strong>fullname, email, institute</strong></li>
                     <li>Optional column: <strong>contact</strong></li>
@@ -104,17 +105,16 @@ Robert Johnson,robert.johnson@example.com,5551234567,Harvard University`;
 
             {/* Sample CSV Download */}
             <div className="mb-6">
-                <button
+                <Button
                     onClick={downloadSampleCSV}
-                    className="text-blue-600 hover:text-blue-800 underline text-sm font-medium"
-                >
+                    className="text-shnoor-indigo hover:text-shnoor-navy underline text-sm font-medium transition-colors"                >
                     📥 Download Sample CSV Template
-                </button>
+                </Button>
             </div>
 
             {/* File Upload Section */}
-            <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="mb-8 p-6 bg-white border border-shnoor-light rounded-xl shadow-sm">
+                <label className="block text-sm font-bold text-shnoor-navy mb-3">
                     Select CSV or Excel File
                 </label>
                 <div className="flex items-center space-x-4">
@@ -123,17 +123,17 @@ Robert Johnson,robert.johnson@example.com,5551234567,Harvard University`;
                         type="file"
                         accept=".csv,.xlsx,.xls"
                         onChange={handleFileChange}
-                        className="block w-full text-sm text-gray-500
-                            file:mr-4 file:py-2 file:px-4
-                            file:rounded-md file:border-0
+                        className="block w-full text-sm text-shnoor-navy font-medium
+                            file:mr-4 file:py-2.5 file:px-5
+                            file:rounded-xl file:border-0
                             file:text-sm file:font-semibold
-                            file:bg-blue-50 file:text-blue-700
-                            hover:file:bg-blue-100
+                            file:bg-shnoor-lavender file:text-shnoor-indigo
+                            hover:file:bg-[#e0e0ef] file:cursor-pointer file:transition-colors
                             cursor-pointer"
                     />
                 </div>
                 {file && (
-                    <p className="mt-2 text-sm text-green-600">
+                    <p className="mt-3 text-sm text-green-600 font-medium">
                         ✓ Selected: {file.name}
                     </p>
                 )}
@@ -141,14 +141,11 @@ Robert Johnson,robert.johnson@example.com,5551234567,Harvard University`;
 
             {/* Upload Button */}
             <div className="mb-6">
-                <button
+                <Button
+                    variant="primary"
                     onClick={handleUpload}
                     disabled={!file || uploading}
-                    className={`px-6 py-3 rounded-md font-semibold text-white transition-colors
-                        ${!file || uploading 
-                            ? 'bg-gray-400 cursor-not-allowed' 
-                            : 'bg-blue-600 hover:bg-blue-700'
-                        }`}
+                    className={`text-lg px-8 py-4 ${!file || uploading ? 'opacity-50 cursor-not-allowed bg-shnoor-light' : 'bg-shnoor-indigo shadow-lg hover:-translate-y-1 transition-transform'}`}
                 >
                     {uploading ? (
                         <span className="flex items-center">
@@ -161,27 +158,27 @@ Robert Johnson,robert.johnson@example.com,5551234567,Harvard University`;
                     ) : (
                         '📤 Upload Students'
                     )}
-                </button>
+                </Button>
             </div>
 
             {/* Results Section */}
             {result && showResults && (
-                <div className="border-t pt-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-semibold text-gray-800">Upload Results</h3>
-                        <button
+                <div className="border-t border-shnoor-light pt-6">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-xl font-bold text-shnoor-navy">Upload Results</h3>
+                        <Button
                             onClick={() => setShowResults(false)}
-                            className="text-gray-500 hover:text-gray-700"
+                            className="text-shnoor-soft hover:opacity-100 transition-opacity"
                         >
                             ✕ Close
-                        </button>
+                        </Button>
                     </div>
                     
                     {/* Summary */}
                     <div className="grid grid-cols-3 gap-4 mb-6">
-                        <div className="bg-gray-50 p-4 rounded-lg text-center">
-                            <p className="text-3xl font-bold text-gray-700">{result.results.total}</p>
-                            <p className="text-sm text-gray-600">Total Rows</p>
+                        <div className="bg-white border border-shnoor-light p-4 rounded-xl text-center">
+                            <p className="text-3xl font-bold text-shnoor-navy">{result.results.total}</p>
+                            <p className="text-sm text-shnoor-indigoMedium font-medium mt-1">Total Rows</p>
                         </div>
                         <div className="bg-green-50 p-4 rounded-lg text-center">
                             <p className="text-3xl font-bold text-green-600">{result.results.success.length}</p>

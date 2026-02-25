@@ -13,9 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Flag,
-  CheckCircle,
-  Monitor,
-  Shield
+  CheckCircle
 } from 'lucide-react';
 import { apiFetch } from '../config/api';
 // CODE EXECUTION & CODING PROBLEMS - TEMPORARILY DISABLED
@@ -663,22 +661,22 @@ int main() {
 
   if (loading) {
     return (
-      <div className="h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
+      <div className="h-screen bg-shnoor-lavender flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-shnoor-indigo"></div>
       </div>
     );
   }
 
   if (error || totalQuestions === 0) {
     return (
-      <div className="h-screen bg-gray-100 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
+      <div className="h-screen bg-shnoor-lavender flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-md border border-shnoor-light">
           <AlertTriangle className="mx-auto h-12 w-12 text-red-500 mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600">{error || 'No questions found for this test.'}</p>
+          <h2 className="text-xl font-bold text-shnoor-navy mb-2">Error</h2>
+          <p className="text-shnoor-indigoMedium">{error || 'No questions found for this test.'}</p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="mt-6 px-6 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-800"
+            className="mt-6 px-6 py-2 bg-gradient-to-r from-shnoor-indigo to-shnoor-navy text-white rounded-xl hover:from-shnoor-navy hover:to-shnoor-indigo transition-all duration-200 shadow-lg"
           >
             Return to Dashboard
           </button>
@@ -694,7 +692,7 @@ int main() {
     : questions[currentQuestion];
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
+    <div className="h-screen bg-shnoor-lavender flex flex-col overflow-hidden">
       {/* Fullscreen Warning Modal */}
       {showWarning && (
         <FullscreenWarning onEnterFullscreen={enterFullscreen} />
@@ -702,7 +700,7 @@ int main() {
 
       {/* Tab Switch Warning */}
       {showTabWarning && (
-        <div className="fixed top-4 right-4 z-50 bg-red-600 text-white px-6 py-4 rounded-lg shadow-2xl animate-pulse">
+        <div className="fixed top-4 right-4 z-50 bg-red-600 text-white px-6 py-4 rounded-xl shadow-2xl animate-pulse border border-red-500">
           <div className="flex items-center space-x-2">
             <AlertTriangle size={20} />
             <span className="font-bold">Warning {warningCount}/3: Tab Switch Detected!</span>
@@ -719,53 +717,24 @@ int main() {
       )}
 
       {/* Top Bar */}
-      <header className="bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
+      <header className="bg-white border-b border-shnoor-light shadow-lg flex-shrink-0">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-blue-900 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-shnoor-navy to-shnoor-indigo rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold">EX</span>
               </div>
               <div>
-                <h1 className="text-lg font-bold text-gray-900">Java Programming Mock Test</h1>
-                <p className="text-xs text-gray-500">Question {currentQuestion + 1} of {totalQuestions}</p>
+                <h1 className="text-lg font-bold text-shnoor-navy">Java Programming Mock Test</h1>
+                <p className="text-xs text-shnoor-indigoMedium">Question {currentQuestion + 1} of {totalQuestions}</p>
               </div>
             </div>
 
             <div className="flex items-center space-x-6">
               {/* Timer */}
-              <div className="flex items-center space-x-2 bg-gray-100 px-4 py-2 rounded-lg">
-                <Clock className="w-5 h-5 text-gray-600" />
-                <span className="text-xl font-mono font-bold text-gray-900">{formattedTime}</span>
-              </div>
-
-              {/* Fullscreen indicator */}
-              <div className={`flex items-center space-x-2 px-3 py-2 rounded-lg ${isFullscreen ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                <Monitor size={18} />
-                <span className="text-sm font-medium hidden sm:inline">
-                  {isFullscreen ? 'Fullscreen' : 'Exit FS'}
-                </span>
-              </div>
-
-              {/* AI Detection Status */}
-              <div className={`flex items-center space-x-2 px-3 py-2 rounded-lg ${
-                detectionActive 
-                  ? 'bg-blue-100 text-blue-700' 
-                  : isModelLoaded 
-                    ? 'bg-yellow-100 text-yellow-700' 
-                    : 'bg-gray-100 text-gray-500'
-              }`}>
-                <Shield size={18} />
-                <span className="text-sm font-medium hidden sm:inline">
-                  {detectionActive 
-                    ? 'AI Active' 
-                    : isModelLoaded 
-                      ? 'AI Ready' 
-                      : 'Loading AI...'}
-                </span>
-                {!isModelLoaded && (
-                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-500"></div>
-                )}
+              <div className="flex items-center space-x-2 bg-shnoor-lavender px-4 py-2 rounded-xl shadow-inner border border-shnoor-light">
+                <Clock className="w-5 h-5 text-shnoor-indigo" />
+                <span className="text-xl font-mono font-bold text-shnoor-navy">{formattedTime}</span>
               </div>
 
               {/* Timer and Info - Submit button removed, now floating at bottom-right */}
@@ -773,34 +742,33 @@ int main() {
           </div>
         </div>
       </header>
-
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Question Palette */}
-        <aside className="w-64 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
-          <div className="p-4 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-900 mb-3">Question Palette</h3>
+        <aside className="w-64 bg-white border-r border-shnoor-mist flex flex-col flex-shrink-0">
+          <div className="p-4 border-b border-shnoor-mist">
+            <h3 className="font-bold text-shnoor-navy mb-3">Question Palette</h3>
             
             {/* MCQ Questions */}
             {questions.length > 0 && (
               <>
-                <p className="text-xs text-gray-500 mb-2">MCQ Questions</p>
+                <p className="text-xs text-shnoor-indigoMedium mb-2 font-medium">MCQ Questions</p>
                 <div className="grid grid-cols-5 gap-2 mb-4">
                   {questions.map((_, index) => {
                     const status = getQuestionStatus(index);
-                    let bgClass = 'bg-gray-100 text-gray-600'; // not-visited
-                    if (status === 'answered') bgClass = 'bg-green-500 text-white';
-                    else if (status === 'review') bgClass = 'bg-yellow-500 text-white';
-                    else if (status === 'visited') bgClass = 'bg-gray-300 text-gray-700';
+                    let bgClass = 'bg-[#F8F8FB] text-shnoor-indigoMedium border border-shnoor-mist/50'; // not-visited
+                    if (status === 'answered') bgClass = 'bg-green-500 text-white border border-green-600';
+                    else if (status === 'review') bgClass = 'bg-yellow-500 text-white border border-yellow-600';
+                    else if (status === 'visited') bgClass = 'bg-shnoor-mist text-shnoor-navy border border-shnoor-mist shadow-inner';
 
                     return (
                       <button
                         key={index}
                         onClick={() => handleNavigate(index)}
                         className={`
-                          w-10 h-10 rounded-lg font-semibold text-sm transition-all
+                          w-10 h-10 rounded-lg font-bold text-sm transition-all shadow-sm
                           ${bgClass}
-                          ${currentQuestion === index ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
+                          ${currentQuestion === index ? 'ring-2 ring-shnoor-indigo ring-offset-2' : ''}
                           hover:opacity-80
                         `}
                       >
@@ -815,15 +783,15 @@ int main() {
             {/* Coding Questions */}
             {codingQuestions.length > 0 && (
               <>
-                <p className="text-xs text-gray-500 mb-2">Coding Questions</p>
+                <p className="text-xs text-shnoor-indigoMedium mb-2 font-medium">Coding Questions</p>
                 <div className="grid grid-cols-5 gap-2">
                   {codingQuestions.map((_, index) => {
                     const actualIndex = questions.length + index;
                     const status = getQuestionStatus(actualIndex);
-                    let bgClass = 'bg-gray-100 text-gray-600'; // not-visited
-                    if (status === 'answered') bgClass = 'bg-purple-500 text-white';
-                    else if (status === 'review') bgClass = 'bg-yellow-500 text-white';
-                    else if (status === 'visited') bgClass = 'bg-gray-300 text-gray-700';
+                    let bgClass = 'bg-[#F8F8FB] text-shnoor-indigoMedium border border-shnoor-mist/50'; // not-visited
+                    if (status === 'answered') bgClass = 'bg-purple-500 text-white border border-purple-600';
+                    else if (status === 'review') bgClass = 'bg-yellow-500 text-white border border-yellow-600';
+                    else if (status === 'visited') bgClass = 'bg-shnoor-mist text-shnoor-navy border border-shnoor-mist shadow-inner';
 
                     return (
                       <button
@@ -846,26 +814,26 @@ int main() {
           </div>
 
           <div className="p-4 space-y-3">
-            <div className="text-xs font-semibold text-gray-500 uppercase mb-2">Summary</div>
-            <div className="flex items-center space-x-2 text-sm">
-              <div className="w-4 h-4 bg-green-500 rounded"></div>
-              <span className="text-gray-600">Answered ({Object.keys(answers).filter(key => !markedForReview.has(parseInt(key))).length})</span>
+            <div className="text-xs font-bold text-shnoor-indigoMedium uppercase mb-2">Summary</div>
+            <div className="flex items-center space-x-2 text-sm font-medium">
+              <div className="w-4 h-4 bg-green-500 rounded border border-green-600"></div>
+              <span className="text-shnoor-navy">Answered ({Object.keys(answers).filter(key => !markedForReview.has(parseInt(key))).length})</span>
             </div>
-            <div className="flex items-center space-x-2 text-sm">
-              <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-              <span className="text-gray-600">Marked for Review ({markedForReview.size})</span>
+            <div className="flex items-center space-x-2 text-sm font-medium">
+              <div className="w-4 h-4 bg-yellow-500 rounded border border-yellow-600"></div>
+              <span className="text-shnoor-navy">Marked for Review ({markedForReview.size})</span>
             </div>
-            <div className="flex items-center space-x-2 text-sm">
-              <div className="w-4 h-4 bg-gray-300 rounded"></div>
-              <span className="text-gray-600">Not Answered ({totalQuestions - Object.keys(answers).length})</span>
+            <div className="flex items-center space-x-2 text-sm font-medium">
+              <div className="w-4 h-4 bg-shnoor-mist rounded border border-shnoor-mist shadow-inner"></div>
+              <span className="text-shnoor-navy">Not Answered ({totalQuestions - Object.keys(answers).length})</span>
             </div>
           </div>
 
-          <div className="mt-auto p-4 bg-blue-50 border-t border-blue-100">
+          <div className="mt-auto p-4 bg-shnoor-lavender border-t border-shnoor-mist">
             <div className="space-y-2">
               <div className="flex items-start space-x-2">
-                <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-blue-800">
+                <AlertTriangle className="w-5 h-5 text-shnoor-indigo flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-shnoor-navy font-medium">
                   Tab switches: <span className="font-bold">{warningCount}/3</span>
                   <br />
                   {warningCount > 0 && "Avoid switching tabs!"}
@@ -874,16 +842,16 @@ int main() {
               
               {/* AI Violation Summary */}
               {(violations.multipleFaces > 0 || violations.noFace > 0 || violations.phoneDetected > 0) && (
-                <div className="pt-2 border-t border-blue-200">
-                  <p className="text-xs font-semibold text-blue-900 mb-1">AI Detections:</p>
+                <div className="pt-2 border-t border-shnoor-mist/50">
+                  <p className="text-xs font-bold text-shnoor-navy mb-1">AI Detections:</p>
                   {violations.multipleFaces > 0 && (
-                    <p className="text-xs text-red-700">• Multiple faces: {violations.multipleFaces}</p>
+                    <p className="text-xs text-red-700 font-medium">• Multiple faces: {violations.multipleFaces}</p>
                   )}
                   {violations.noFace > 0 && (
-                    <p className="text-xs text-orange-700">• Face absent: {violations.noFace}</p>
+                    <p className="text-xs text-orange-700 font-medium">• Face absent: {violations.noFace}</p>
                   )}
                   {violations.phoneDetected > 0 && (
-                    <p className="text-xs text-red-700">• Phone detected: {violations.phoneDetected}</p>
+                    <p className="text-xs text-red-700 font-medium">• Phone detected: {violations.phoneDetected}</p>
                   )}
                 </div>
               )}
@@ -892,18 +860,19 @@ int main() {
         </aside>
 
         {/* Main Question Area - MCQ */}
+        {/* Main Question Area - MCQ */}
         {!isCodingQuestion && (
-          <main className="flex-1 overflow-y-auto p-6 bg-gray-100">
+          <main className="flex-1 overflow-y-auto p-6 bg-shnoor-lavender">
           <div className="max-w-4xl mx-auto">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
+            <div className="bg-white rounded-2xl shadow-xl border border-shnoor-light p-8 mb-6">
               {/* Question Header */}
               <div className="flex items-start justify-between mb-6">
                 <div className="flex items-center space-x-3">
-                  <span className="w-10 h-10 bg-blue-100 text-blue-700 rounded-lg flex items-center justify-center font-bold">
+                  <span className="w-10 h-10 bg-gradient-to-br from-shnoor-indigo to-shnoor-navy text-white rounded-xl flex items-center justify-center font-bold shadow-lg">
                     Q{currentQuestion + 1}
                   </span>
                   {markedForReview.has(currentQuestion) && (
-                    <span className="flex items-center space-x-1 text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full text-sm font-medium">
+                    <span className="flex items-center space-x-1 text-yellow-700 bg-yellow-50 px-3 py-1 rounded-full text-sm font-medium border border-yellow-200 shadow-sm">
                       <Flag size={14} />
                       <span>Marked for Review</span>
                     </span>
@@ -912,10 +881,10 @@ int main() {
                 <button
                   onClick={toggleMarkForReview}
                   className={`
-                    flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors
+                    flex items-center space-x-2 px-4 py-2 rounded-xl font-medium transition-all duration-200 shadow-sm
                     ${markedForReview.has(currentQuestion)
-                      ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}
+                      ? 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200'
+                      : 'bg-shnoor-lavender text-shnoor-indigo hover:bg-shnoor-mist border border-shnoor-light'}
                   `}
                 >
                   <Flag size={18} />
@@ -928,7 +897,7 @@ int main() {
                 <>
                   {/* MCQ Question Text */}
                   <div className="mb-8">
-                    <p className="text-lg text-gray-900 leading-relaxed whitespace-pre-wrap font-medium">
+                    <p className="text-lg text-shnoor-navy leading-relaxed whitespace-pre-wrap font-medium">
                       {currentQ.question}
                     </p>
                   </div>
@@ -939,10 +908,10 @@ int main() {
                       <label
                         key={index}
                         className={`
-                          flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all
+                          flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 shadow-sm
                           ${answers[currentQuestion] === index
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}
+                            ? 'border-shnoor-indigo bg-shnoor-lavender shadow-lg'
+                            : 'border-shnoor-light hover:border-shnoor-soft hover:bg-shnoor-mist/30'}
                         `}
                       >
                         <input
@@ -950,11 +919,11 @@ int main() {
                           name={`question-${currentQuestion}`}
                           checked={answers[currentQuestion] === index}
                           onChange={() => handleAnswerSelect(index)}
-                          className="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500"
+                          className="w-5 h-5 text-shnoor-indigo border-shnoor-light focus:ring-shnoor-indigo"
                         />
-                        <span className="ml-4 text-gray-700 font-medium">{option}</span>
+                        <span className="ml-4 text-shnoor-navy font-medium">{option}</span>
                         {answers[currentQuestion] === index && (
-                          <CheckCircle className="ml-auto w-5 h-5 text-blue-600" />
+                          <CheckCircle className="ml-auto w-5 h-5 text-shnoor-indigo" />
                         )}
                       </label>
                     ))}
@@ -970,10 +939,10 @@ int main() {
                   onClick={handlePrevious}
                   disabled={currentQuestion === 0}
                   className={`
-                    flex items-center space-x-2 px-6 py-3 rounded-lg font-semibold transition-colors
+                    flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 shadow-sm
                     ${currentQuestion === 0
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-white border-2 border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'}
+                      ? 'bg-shnoor-mist text-shnoor-soft cursor-not-allowed'
+                      : 'bg-white border-2 border-shnoor-light text-shnoor-navy hover:border-shnoor-soft hover:bg-shnoor-mist/30 shadow-lg'}
                   `}
                 >
                   <ChevronLeft size={20} />
@@ -986,7 +955,7 @@ int main() {
                       await saveProgressNow(); // Save before skipping
                       handleNext();
                     }}
-                    className="px-6 py-3 border-2 border-gray-300 text-gray-600 rounded-lg font-semibold hover:border-gray-400 hover:bg-gray-50 transition-colors"
+                    className="px-6 py-3 border-2 border-shnoor-light text-shnoor-indigoMedium rounded-xl font-semibold hover:border-shnoor-soft hover:bg-shnoor-mist/30 transition-all duration-200 shadow-sm"
                   >
                     Skip
                   </button>
@@ -1000,7 +969,7 @@ int main() {
                         alert('Please select an answer or click Skip');
                       }
                     }}
-                    className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors shadow-sm"
+                    className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-shnoor-indigo to-shnoor-navy hover:from-shnoor-navy hover:to-shnoor-indigo text-white rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
                   >
                     <span>Save & Next</span>
                     <ChevronRight size={20} />
@@ -1011,21 +980,21 @@ int main() {
           </div>
         </main>
         )}
-
+        {/* Coding Question - Split Screen Layout */}
         {/* Coding Question - Split Screen Layout */}
         {isCodingQuestion && (
-          <main className="flex-1 flex bg-gray-100 overflow-hidden coding-container">
+          <main className="flex-1 flex bg-shnoor-lavender overflow-hidden coding-container">
             {/* Left Panel - Problem Description */}
             <div 
-              className="bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0"
+              className="bg-white border-r border-shnoor-light overflow-y-auto flex-shrink-0 shadow-lg"
               style={{ width: `${leftPanelWidth}%`, minWidth: '20%', maxWidth: '50%' }}
             >
               <div className="p-6">
                 {/* Title */}
                 <div className="mb-4">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{currentQ.title}</h3>
+                  <h3 className="text-xl font-bold text-shnoor-navy mb-2">{currentQ.title}</h3>
                   <div className="flex items-center space-x-2">
-                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">
+                    <span className="px-3 py-1 bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 text-xs font-semibold rounded-full border border-yellow-300 shadow-sm">
                       MEDIUM
                     </span>
                   </div>
@@ -1033,34 +1002,34 @@ int main() {
 
                     {/* Description */}
                     <div className="mb-6">
-                      <h4 className="text-sm font-semibold text-gray-500 uppercase mb-2">Description</h4>
-                      <div className="text-gray-700 text-sm leading-relaxed">
+                      <h4 className="text-sm font-semibold text-shnoor-indigoMedium uppercase mb-2">Description</h4>
+                      <div className="text-shnoor-navy text-sm leading-relaxed">
                         <pre className="whitespace-pre-wrap font-sans">{currentQ.description}</pre>
                       </div>
                     </div>
 
                     {/* Examples */}
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-500 uppercase mb-3">Examples</h4>
+                      <h4 className="text-sm font-semibold text-shnoor-indigoMedium uppercase mb-3">Examples</h4>
                       <div className="space-y-4">
                         {currentQ.testCases && currentQ.testCases.map((testCase, index) => (
-                          <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                          <div key={index} className="bg-shnoor-mist rounded-xl p-4 border border-shnoor-light shadow-sm">
                             <div className="mb-3">
-                              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Input</p>
-                              <div className="bg-gray-800 text-gray-100 p-3 rounded font-mono text-sm">
+                              <p className="text-xs font-semibold text-shnoor-indigoMedium uppercase mb-1">Input</p>
+                              <div className="bg-shnoor-navy text-shnoor-lavender p-3 rounded-lg font-mono text-sm shadow-inner">
                                 {testCase.input}
                               </div>
                             </div>
                             <div className="mb-3">
-                              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Output</p>
-                              <div className="bg-gray-800 text-gray-100 p-3 rounded font-mono text-sm">
+                              <p className="text-xs font-semibold text-shnoor-indigoMedium uppercase mb-1">Output</p>
+                              <div className="bg-shnoor-navy text-shnoor-lavender p-3 rounded-lg font-mono text-sm shadow-inner">
                                 {testCase.output}
                               </div>
                             </div>
                             {testCase.explanation && (
                               <div>
-                                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Explanation</p>
-                                <p className="text-sm text-gray-600">{testCase.explanation}</p>
+                                <p className="text-xs font-semibold text-shnoor-indigoMedium uppercase mb-1">Explanation</p>
+                                <p className="text-sm text-shnoor-navy">{testCase.explanation}</p>
                               </div>
                             )}
                           </div>
@@ -1072,15 +1041,15 @@ int main() {
 
                 {/* Horizontal Resize Handle */}
                 <div
-                  className="w-1 bg-gray-300 hover:bg-blue-500 cursor-col-resize flex-shrink-0 transition-colors"
+                  className="w-1 bg-shnoor-light hover:bg-shnoor-indigo cursor-col-resize flex-shrink-0 transition-colors duration-200"
                   onMouseDown={handleHorizontalMouseDown}
                   style={{ cursor: 'col-resize' }}
                 />
 
                 {/* Right Panel - Code Editor */}
-                <div className="flex-1 flex flex-col bg-gray-900 code-editor-container min-w-0">
+                <div className="flex-1 flex flex-col bg-shnoor-navy code-editor-container min-w-0 shadow-xl">
                   {/* Editor Header */}
-                  <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
+                  <div className="flex items-center justify-between px-4 py-2 bg-shnoor-navy border-b border-shnoor-indigo/30">
                     <select
                       value={answers[currentQuestion]?.language || 'java'}
                       onChange={(e) => {
@@ -1106,7 +1075,7 @@ int main() {
                           };
                         });
                       }}
-                      className="px-3 py-1.5 bg-gray-700 text-gray-200 text-sm rounded border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="px-3 py-1.5 bg-shnoor-indigo text-shnoor-lavender text-sm rounded-lg border border-shnoor-indigo/50 focus:ring-2 focus:ring-shnoor-lavender focus:border-transparent shadow-sm"
                     >
                       <option value="java">Java</option>
                       <option value="python">Python</option>
@@ -1228,7 +1197,7 @@ int main() {
                           }
                         }}
                         disabled={codingConsoleOutput[currentQuestion]?.running}
-                        className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                        className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-sm"
                       >
                         <span>▶</span>
                         <span>{codingConsoleOutput[currentQuestion]?.running ? 'Running...' : 'Run'}</span>
@@ -1264,13 +1233,12 @@ int main() {
                           await saveProgressNow();
                           alert('Code submitted successfully!');
                         }}
-                        className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded font-medium transition-colors"
+                        className="px-4 py-1.5 bg-gradient-to-r from-shnoor-indigo to-shnoor-navy hover:from-shnoor-navy hover:to-shnoor-indigo text-white text-sm rounded-lg font-medium transition-all duration-200 shadow-sm"
                       >
                         Submit
                       </button>
                     </div>
                   </div>
-
                   {/* Code Editor */}
                   <div className="flex-1 overflow-hidden">
                     <Editor
@@ -1336,27 +1304,28 @@ int main() {
                   </div>
 
                   {/* Vertical Resize Handle */}
+                  {/* Vertical Resize Handle */}
                   <div
-                    className="h-1 bg-gray-700 hover:bg-blue-500 cursor-row-resize flex-shrink-0 transition-colors"
+                    className="h-1 bg-shnoor-indigo/30 hover:bg-shnoor-indigo cursor-row-resize flex-shrink-0 transition-colors duration-200"
                     onMouseDown={handleVerticalMouseDown}
                     style={{ cursor: 'row-resize' }}
                   />
 
                   {/* Test Cases / Console Tabs */}
                   <div 
-                    className="border-t border-gray-700 flex flex-col"
+                    className="border-t border-shnoor-indigo/30 flex flex-col"
                     style={{ height: `${consolePanelHeight}px` }}
                   >
-                    <div className="flex items-center space-x-4 px-4 py-2 bg-gray-800 border-b border-gray-700">
-                      <button className="text-sm font-medium text-blue-400 border-b-2 border-blue-400 pb-2">
+                    <div className="flex items-center space-x-4 px-4 py-2 bg-shnoor-navy border-b border-shnoor-indigo/30">
+                      <button className="text-sm font-medium text-shnoor-lavender border-b-2 border-shnoor-lavender pb-2">
                         Test Cases
                       </button>
-                      <button className="text-sm font-medium text-gray-400 hover:text-gray-200 pb-2">
+                      <button className="text-sm font-medium text-shnoor-soft hover:text-shnoor-lavender pb-2 transition-colors">
                         Console
                       </button>
                     </div>
                     
-                    <div className="flex-1 overflow-y-auto p-4 bg-gray-800">
+                    <div className="flex-1 overflow-y-auto p-4 bg-shnoor-navy">
                       {codingConsoleOutput[currentQuestion]?.running ? (
                         <div className="flex items-center space-x-2 text-yellow-400">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
@@ -1366,10 +1335,10 @@ int main() {
                         <div className="space-y-3">
                           {/* Summary */}
                           {codingConsoleOutput[currentQuestion]?.summary && (
-                            <div className="mb-4 p-3 bg-gray-700 rounded border">
+                            <div className="mb-4 p-3 bg-shnoor-indigo/20 rounded-lg border border-shnoor-indigo/30">
                               <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-semibold text-gray-200">Test Results Summary</span>
-                                <span className="text-xs text-gray-400">
+                                <span className="text-sm font-semibold text-shnoor-lavender">Test Results Summary</span>
+                                <span className="text-xs text-shnoor-soft">
                                   {codingConsoleOutput[currentQuestion].timestamp}
                                 </span>
                               </div>
@@ -1378,19 +1347,19 @@ int main() {
                                   <div className="text-lg font-bold text-green-400">
                                     {codingConsoleOutput[currentQuestion].summary.passedTestCases}
                                   </div>
-                                  <div className="text-gray-400">Passed</div>
+                                  <div className="text-shnoor-soft">Passed</div>
                                 </div>
                                 <div className="text-center">
                                   <div className="text-lg font-bold text-red-400">
                                     {codingConsoleOutput[currentQuestion].summary.failedTestCases}
                                   </div>
-                                  <div className="text-gray-400">Failed</div>
+                                  <div className="text-shnoor-soft">Failed</div>
                                 </div>
                                 <div className="text-center">
-                                  <div className="text-lg font-bold text-blue-400">
+                                  <div className="text-lg font-bold text-shnoor-lavender">
                                     {codingConsoleOutput[currentQuestion].summary.percentage}%
                                   </div>
-                                  <div className="text-gray-400">Score</div>
+                                  <div className="text-shnoor-soft">Score</div>
                                 </div>
                               </div>
                             </div>
@@ -1400,36 +1369,36 @@ int main() {
                           {codingConsoleOutput[currentQuestion].results.map((result, idx) => (
                             <div
                               key={idx}
-                              className={`p-3 rounded border ${
+                              className={`p-3 rounded-lg border shadow-sm ${
                                 result.passed
-                                  ? 'bg-green-900/20 border-green-500'
-                                  : 'bg-red-900/20 border-red-500'
+                                  ? 'bg-green-900/20 border-green-500/50'
+                                  : 'bg-red-900/20 border-red-500/50'
                               }`}
                             >
                               <div className="flex items-center justify-between mb-2">
                                 <span className={`text-sm font-semibold ${result.passed ? 'text-green-400' : 'text-red-400'}`}>
                                   TEST CASE {result.testCase}: {result.passed ? '✓ PASSED' : '✗ FAILED'}
                                 </span>
-                                <span className="text-xs text-gray-400">{result.executionTime}</span>
+                                <span className="text-xs text-shnoor-soft">{result.executionTime}</span>
                               </div>
                               <div className="text-xs font-mono space-y-1">
                                 <div>
-                                  <span className="text-gray-400">Input: </span>
-                                  <span className="text-gray-300">{result.input}</span>
+                                  <span className="text-shnoor-soft">Input: </span>
+                                  <span className="text-shnoor-lavender">{result.input}</span>
                                 </div>
                                 <div>
-                                  <span className="text-gray-400">Expected: </span>
-                                  <span className="text-gray-300">{result.expectedOutput}</span>
+                                  <span className="text-shnoor-soft">Expected: </span>
+                                  <span className="text-shnoor-lavender">{result.expectedOutput}</span>
                                 </div>
                                 <div>
-                                  <span className="text-gray-400">Got: </span>
+                                  <span className="text-shnoor-soft">Got: </span>
                                   <span className={result.passed ? 'text-green-400' : 'text-red-400'}>
                                     {result.actualOutput}
                                   </span>
                                 </div>
                                 {result.error && (
                                   <div>
-                                    <span className="text-gray-400">Error: </span>
+                                    <span className="text-shnoor-soft">Error: </span>
                                     <span className="text-red-400">{result.error}</span>
                                   </div>
                                 )}
@@ -1438,7 +1407,7 @@ int main() {
                           ))}
                         </div>
                       ) : (
-                        <div className="text-center text-gray-500 text-sm py-8">
+                        <div className="text-center text-shnoor-soft text-sm py-8">
                           Click "Run" to test your code
                         </div>
                       )}
@@ -1446,16 +1415,16 @@ int main() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex items-center justify-between px-4 py-3 bg-gray-800 border-t border-gray-700">
+                  <div className="flex items-center justify-between px-4 py-3 bg-shnoor-navy border-t border-shnoor-indigo/30">
                     <div className="flex items-center space-x-3">
                       <button
                         onClick={handlePrevious}
                         disabled={currentQuestion === 0}
                         className={`
-                          flex items-center space-x-2 px-4 py-2 rounded font-medium transition-colors
+                          flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200
                           ${currentQuestion === 0
-                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                            : 'bg-gray-700 hover:bg-gray-600 text-white'}
+                            ? 'bg-shnoor-indigo/20 text-shnoor-soft cursor-not-allowed'
+                            : 'bg-shnoor-indigo/30 hover:bg-shnoor-indigo/50 text-shnoor-lavender'}
                         `}
                       >
                         <ChevronLeft size={18} />
@@ -1465,10 +1434,10 @@ int main() {
                         onClick={handleNext}
                         disabled={currentQuestion >= totalQuestions - 1}
                         className={`
-                          flex items-center space-x-2 px-4 py-2 rounded font-medium transition-colors
+                          flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200
                           ${currentQuestion >= totalQuestions - 1
-                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                            : 'bg-gray-700 hover:bg-gray-600 text-white'}
+                            ? 'bg-shnoor-indigo/20 text-shnoor-soft cursor-not-allowed'
+                            : 'bg-shnoor-indigo/30 hover:bg-shnoor-indigo/50 text-shnoor-lavender'}
                         `}
                       >
                         <span>Next</span>
@@ -1488,13 +1457,14 @@ int main() {
             submitTest('manual');
           }
         }}
-        className="fixed bottom-4 right-4 z-40 flex items-center space-x-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-2xl transition-all hover:scale-105 border-2 border-red-700"
+        className="fixed bottom-4 right-4 z-40 flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold rounded-xl shadow-2xl transition-all duration-200 hover:scale-105 border-2 border-red-700"
       >
         <CheckCircle size={20} />
         <span>Finish Test</span>
       </button>
     </div>
   );
+
 };
 
 export default TestScreen;

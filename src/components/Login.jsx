@@ -2,6 +2,32 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { apiFetch } from '../config/api';
 import shnoorLogo from '../../public/favicon.png';
+import Button from './Button';
+import Badge from './Badge';
+import InputField from './InputField';
+
+// Eye icons
+const EyeOpen = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const EyeOff = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+    <line x1="1" y1="1" x2="23" y2="23" />
+  </svg>
+);
+
+// Feature items shown on the left dark panel
+const LEFT_FEATURES = [
+  { icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', label: 'Secure Proctored Exams' },
+  { icon: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z', label: 'Live Camera Monitoring' },
+  { icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', label: 'Auto-Save & Timer' },
+  { icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', label: 'Instant Results & Reports' },
+];
 
 
 const Login = () => {
@@ -143,91 +169,124 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 font-sans p-4 sm:p-6 overflow-auto">
-      <div className="bg-white w-full max-w-[520px] p-6 sm:p-8 md:p-12 lg:p-14 flex flex-col justify-center rounded-lg shadow-xl border border-slate-200 relative my-4">
-        <div className="text-center mb-6 flex-shrink-0">
-          <div className="flex items-center justify-center mb-2 gap-3">
-            <img
-              src={shnoorLogo}
-              alt="Shnoor Assessment Platform"
-              className="w-[55px] h-[50px] object-contain"
-            />
-            <div className="text-left">
-              <h1 className="brand-logo text-slate-900 text-xl md:text-2xl font-semibold mb-1 tracking-tight leading-tight">
-                SHNOOR International LLC
-              </h1>
-              <p className="text-xs md:text-sm text-slate-500 font-medium tracking-[0.18em] uppercase">
-                Assessment Platform
-              </p>
+    <div className="min-h-screen w-full flex font-['Plus_Jakarta_Sans',sans-serif]">
+      {/* ── LEFT PANEL (dark) ─────────────────────────────── */}
+      <div className="hidden lg:flex lg:w-[45%] flex-col justify-between bg-shnoor-navy px-14 py-12 relative overflow-hidden">
+        {/* Decorative gradient orbs */}
+        <div className="absolute top-[-60px] left-[-60px] w-72 h-72 rounded-full bg-shnoor-indigo opacity-20 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-[-40px] right-[-40px] w-56 h-56 rounded-full bg-[#6868AC] opacity-15 blur-3xl pointer-events-none" />
+
+        {/* Brand */}
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-12">
+            <img src={shnoorLogo} alt="Shnoor" className="h-11 w-11 object-contain" />
+            <div>
+              <p className="font-extrabold text-white text-lg leading-tight">SHNOOR Assessments</p>
+              <p className="text-[11px] text-[#8F8FC4] uppercase tracking-widest font-semibold">Secure Examination Portal</p>
             </div>
           </div>
-          <p className="text-sm sm:text-[15px] text-slate-500 font-normal leading-relaxed px-2">
-            Enter your credentials to access the examination
+
+          <h2 className="text-3xl font-extrabold text-white leading-tight mb-3">
+            Welcome back to<br />
+            <span className="text-[#8F8FC4]">your portal</span>
+          </h2>
+          <p className="text-[#8F8FC4] text-sm leading-relaxed mb-10">
+            Sign in to access your assigned assessments, track your progress, and complete recruitment tests.
           </p>
+
+          {/* Feature list */}
+          <div className="flex flex-col gap-5">
+            {LEFT_FEATURES.map(f => (
+              <div key={f.label} className="flex items-center gap-4">
+                <div className="w-9 h-9 rounded-xl bg-shnoor-indigo/40 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-[#B7B7D9]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d={f.icon} />
+                  </svg>
+                </div>
+                <span className="text-sm text-[#B7B7D9] font-medium">{f.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {successMessage && (
-          <div className="bg-emerald-50 border-l-4 border-emerald-600 text-emerald-600 p-3 sm:p-4 rounded-r-md text-xs sm:text-sm font-medium flex items-center gap-2.5 mb-4 sm:mb-6 flex-shrink-0">
-            <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-              <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.5 6.5L7 11l-2.5-2.5 1-1L7 9l3.5-3.5 1 1z" />
-            </svg>
-            <span className="break-words">{successMessage}</span>
-          </div>
-        )}
+        {/* Bottom quote */}
+        <div className="relative z-10 border-t border-white/10 pt-6">
+          <p className="text-xs text-[#6868AC] italic leading-relaxed">
+            "These measures ensure a fair and secure assessment process for all candidates."
+          </p>
+        </div>
+      </div>
 
-        {apiError && (
-          <div className="bg-red-50 border-l-4 border-red-600 text-red-600 p-3 sm:p-4 rounded-r-md text-xs sm:text-sm font-medium flex items-center gap-2.5 mb-4 sm:mb-6 flex-shrink-0">
-            <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-              <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
-            </svg>
-            <span className="break-words">{apiError}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 sm:gap-5 md:gap-6 flex-1 justify-center">
-          <div className="flex flex-col gap-2">
-            <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-              Email Address <span className="text-red-600 font-bold">*</span>
-            </label>
-            <input
-              type="email"
-              className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.email ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
-                }`}
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
-                setApiError('');
-              }}
-              disabled={isLoading}
-              autoComplete="username"
-            />
-            {errors.email && (
-              <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-                  <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
-                </svg>
-                {errors.email}
-              </span>
-            )}
+      {/* ── RIGHT PANEL (white form) ───────────────────────── */}
+      <div className="flex-1 flex items-center justify-center bg-white px-6 py-12 overflow-auto">
+        <div className="w-full max-w-[440px]">
+          {/* Mobile brand header */}
+          <div className="flex items-center gap-3 mb-8 lg:hidden">
+            <img src={shnoorLogo} alt="Shnoor" className="h-9 w-9 object-contain" />
+            <div>
+              <p className="font-extrabold text-shnoor-navy text-base">SHNOOR Assessments</p>
+              <p className="text-[10px] text-shnoor-soft uppercase tracking-widest">Secure Examination Portal</p>
+            </div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <label className="text-xs sm:text-[13px] font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-              Password <span className="text-red-600 font-bold">*</span>
-            </label>
+          {/* Heading */}
+          <div className="mb-8">
+            <h1 className="text-2xl font-extrabold text-shnoor-navy mb-1">Sign In</h1>
+            <p className="text-sm text-shnoor-soft">Enter your credentials to access the examination</p>
+          </div>
+
+          {/* Alerts */}
+          {successMessage && (
+            <div className="mb-5 flex items-start gap-3 bg-green-50 border border-green-200 text-green-800 rounded-xl px-4 py-3 text-sm">
+              <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.97 4.97a.75.75 0 0 0-1.08-.022L6.477 9.417 4.384 7.323a.75.75 0 0 0-1.06 1.06l2.75 2.75a.75.75 0 0 0 1.137-.089l4-5.5a.75.75 0 0 0-.24-1.573z" />
+              </svg>
+              {successMessage}
+            </div>
+          )}
+
+          {apiError && (
+            <div className="mb-5 flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+              <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
+              </svg>
+              {apiError}
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <div>
+              <InputField
+                label="Email Address"
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                required
+                value={email}
+                onChange={(e) => { 
+                  setEmail(e.target.value); 
+                  if (errors.email) setErrors(p => ({ ...p, email: '' })); 
+                  setApiError(''); 
+                }}
+                disabled={isLoading}
+                autoComplete="username"
+              />
+              {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
+            </div>
+
             <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                className={`w-full h-[48px] sm:h-[52px] px-4 sm:px-[18px] pr-12 border-2 rounded-md text-sm sm:text-base text-slate-900 bg-white transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 placeholder:text-sm sm:placeholder:text-[15px] ${errors.password ? 'border-red-600 bg-red-50 focus:ring-red-600/10' : 'border-slate-200'
-                  }`}
+              <InputField
+                label="Password"
+                id="password"
+                type={showPassword ? 'text' : 'password'}
                 placeholder="Enter your password"
+                required
                 value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
-                  setApiError('');
+                onChange={(e) => { 
+                  setPassword(e.target.value); 
+                  if (errors.password) setErrors(p => ({ ...p, password: '' })); 
+                  setApiError(''); 
                 }}
                 disabled={isLoading}
                 autoComplete="current-password"
@@ -235,64 +294,41 @@ const Login = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors duration-200 p-1"
-                disabled={isLoading}
+                className="absolute right-3 top-[37px] text-shnoor-soft hover:text-shnoor-navy transition-colors p-1"
                 tabIndex={-1}
+                disabled={isLoading}
               >
-                {showPassword ? (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                  </svg>
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                )}
+                {showPassword ? <EyeOff /> : <EyeOpen />}
               </button>
+              {errors.password && <p className="text-xs text-red-600 mt-1">{errors.password}</p>}
             </div>
-            {errors.password && (
-              <span className="text-xs sm:text-[13px] text-red-600 font-medium flex items-center gap-1.5 mt-1">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-                  <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
-                </svg>
-                {errors.password}
-              </span>
-            )}
+
+            <Button 
+              type="submit" 
+              variant="primary" 
+              className="w-full !h-[52px] text-base" 
+              disabled={isLoading}
+            >
+              {isLoading && <div className="w-5 h-5 border-[3px] border-white border-t-transparent rounded-full animate-spin" />}
+              {isLoading ? 'Signing In...' : 'Sign In to Examination'}
+            </Button>
+          </form>
+
+          {/* Footer links */}
+          <div className="mt-8 pt-6 border-t border-shnoor-lavender">
+            <p className="text-center text-sm text-shnoor-soft">
+              New candidate?{' '}
+              <Link to="/register" className="text-shnoor-indigo font-semibold hover:text-shnoor-navy transition-colors">
+                Register for examination
+              </Link>
+            </p>
+            <p className="text-center text-xs text-[#8F8FC4] mt-4 flex items-center justify-center gap-1.5">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
+              </svg>
+              Secure, proctored examination environment
+            </p>
           </div>
-
-          <button
-            type="submit"
-            className={`w-full h-12 sm:h-14 mt-2 bg-slate-900 text-white rounded-md text-sm sm:text-base font-semibold uppercase tracking-wider shadow-sm hover:bg-slate-800 hover:-translate-y-px hover:shadow-md active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none transition-all duration-200 ${isLoading ? 'text-transparent relative' : ''
-              }`}
-            disabled={isLoading}
-          >
-            {isLoading && (
-              <div className="absolute top-1/2 left-1/2 -ml-2.5 -mt-2.5 w-5 h-5 border-[3px] border-white border-t-transparent rounded-full animate-spin"></div>
-            )}
-            Sign In to Examination
-          </button>
-        </form>
-
-        <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 flex-shrink-0">
-          <div className="text-center text-sm sm:text-[15px] text-slate-500 font-medium">
-            New candidate?{' '}
-            <Link to="/register" className="text-blue-500 font-semibold no-underline ml-1 hover:text-blue-600 hover:underline transition-colors duration-200">
-              Register for examination
-            </Link>
-          </div>
-
-          <div className="h-px bg-slate-200 my-4 sm:my-6"></div>
-
-          <div className="text-center text-xs text-slate-500 flex items-center justify-center gap-1.5 font-medium">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
-              <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
-            </svg>
-            <span className="break-words">Secure, proctored examination environment</span>
-          </div>
-
-
         </div>
       </div>
     </div>

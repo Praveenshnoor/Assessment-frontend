@@ -186,14 +186,14 @@ const Instructions = () => {
   if (!testDetails) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-[#F8F8FB] py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
+        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-mist p-8 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Examination Instructions</h1>
-              <p className="text-lg text-gray-600">{testDetails.title}</p>
+              <h1 className="text-3xl font-bold text-shnoor-navy mb-2">Examination Instructions</h1>
+              <p className="text-lg text-shnoor-indigoMedium">{testDetails.title}</p>
               {hasProgress && (
                 <div className="mt-3 flex items-center space-x-2 text-green-700 bg-green-50 px-4 py-2 rounded-lg inline-flex">
                   <CheckCircle className="w-5 h-5" />
@@ -201,11 +201,11 @@ const Instructions = () => {
                 </div>
               )}
             </div>
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-              <Shield className="w-8 h-8 text-blue-600" />
+            <div className="w-16 h-16 bg-shnoor-lavender rounded-full flex items-center justify-center">
+              <Shield className="w-8 h-8 text-shnoor-indigo" />
             </div>
           </div>
-          <div className="flex items-center space-x-4 text-sm text-gray-500">
+          <div className="flex items-center space-x-4 text-sm text-shnoor-indigoMedium font-medium">
             <span className="flex items-center">
               <Clock className="w-4 h-4 mr-1" />
               Duration: {testDetails?.duration || 60} Minutes
@@ -220,27 +220,27 @@ const Instructions = () => {
         {/* Rules Grid */}
         <div className="grid gap-4 mb-8">
           {rules.map((rule, index) => (
-            <div 
-              key={index} 
-              className="bg-white rounded-lg border border-gray-200 p-6 flex items-start space-x-4 hover:shadow-md transition-shadow"
+            <div
+              key={index}
+              className="bg-white rounded-xl border border-shnoor-mist p-6 flex items-start space-x-4 hover:shadow-[0_8px_30px_rgba(14,14,39,0.08)] hover:border-shnoor-indigo transition-all duration-200"
             >
-              <div className="flex-shrink-0 w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center">
+              <div className="flex-shrink-0 w-12 h-12 bg-[#F8F8FB] rounded-lg flex items-center justify-center">
                 {rule.icon}
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">{rule.title}</h3>
-                <p className="text-gray-600 leading-relaxed">{rule.description}</p>
+                <h3 className="text-lg font-bold text-shnoor-navy mb-1">{rule.title}</h3>
+                <p className="text-shnoor-indigoMedium leading-relaxed text-sm">{rule.description}</p>
               </div>
             </div>
           ))}
         </div>
 
         {/* Warning Box */}
-        <div className="bg-red-50 border-l-4 border-red-500 rounded-r-lg p-6 mb-8">
+        <div className="bg-red-50 border-l-4 border-red-500 rounded-r-xl p-6 mb-8 border border-y-red-100 border-r-red-100 shadow-sm">
           <div className="flex items-start">
             <AlertTriangle className="w-6 h-6 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
             <div>
-              <h4 className="text-lg font-semibold text-red-900 mb-2">Important Warning</h4>
+              <h4 className="text-lg font-bold text-red-900 mb-2">Important Warning</h4>
               <p className="text-red-800 text-sm leading-relaxed">
                 Any attempt to cheat, switch tabs, or exit fullscreen mode will be recorded. 
                 After 3 warnings, your test will be automatically submitted with your current progress. 
@@ -251,30 +251,30 @@ const Instructions = () => {
         </div>
 
         {/* Action Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-mist p-8">
           <label className="flex items-start space-x-3 cursor-pointer group">
             <div className="flex-shrink-0 mt-1">
               <input
                 type="checkbox"
                 checked={hasRead}
                 onChange={(e) => setHasRead(e.target.checked)}
-                className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                className="w-5 h-5 text-shnoor-indigo border-shnoor-mist rounded focus:ring-shnoor-indigo cursor-pointer"
               />
             </div>
             <div className="flex-1">
-              <span className="text-gray-900 font-medium group-hover:text-blue-700 transition-colors">
+              <span className="text-shnoor-navy font-bold group-hover:text-shnoor-indigo transition-colors flex items-center">
                 I have read and understood all the instructions
               </span>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-shnoor-indigoMedium mt-1">
                 By checking this box, you agree to abide by the examination rules and regulations.
               </p>
             </div>
           </label>
 
-          <div className="mt-6 flex items-center justify-between">
+          <div className="mt-6 flex items-center justify-between pt-6 border-t border-shnoor-mist">
             <button
               onClick={() => navigate('/dashboard')}
-              className="px-6 py-3 text-gray-600 hover:text-gray-900 font-medium transition-colors"
+              className="px-6 py-3 text-shnoor-indigoMedium hover:text-shnoor-navy font-bold transition-colors"
             >
               ← Back to Dashboard
             </button>
@@ -283,12 +283,12 @@ const Instructions = () => {
               onClick={handleStartExam}
               disabled={!hasRead}
               className={`
-                px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200
-                ${hasRead 
+                px-8 py-4 rounded-xl font-bold text-lg transition-all duration-200
+                ${hasRead
                   ? hasProgress
-                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
-                    : 'bg-blue-900 hover:bg-blue-800 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'}
+                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5'
+                    : 'bg-shnoor-indigo hover:bg-[#4d4d9c] text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5'
+                  : 'bg-shnoor-mist/30 text-shnoor-indigoMedium cursor-not-allowed'}
               `}
             >
               {hasRead 

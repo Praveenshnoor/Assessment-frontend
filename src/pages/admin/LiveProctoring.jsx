@@ -138,9 +138,9 @@ const LiveProctoring = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#E0E0EF]">
       {/* Header */}
-      <header className="bg-slate-900 text-white shadow-lg">
+      <header className="bg-shnoor-navy text-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
@@ -151,16 +151,15 @@ const LiveProctoring = () => {
                 <ArrowLeft size={20} className="mr-2" />
                 Back
               </button>
-              <div className="h-8 w-px bg-gray-600"></div>
+              <div className="h-8 w-px bg-white/20"></div>
               <div>
-                <h1 className="font-bold text-lg">Live Proctoring</h1>
-                <p className="text-xs text-gray-400">Monitor students in real-time</p>
+                <h1 className="font-bold text-lg text-white">Live Proctoring</h1>
+                <p className="text-xs text-shnoor-light opacity-80">Monitor students in real-time</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg ${
-                isConnected ? 'bg-green-600' : 'bg-red-600'
-              }`}>
+              <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg ${isConnected ? 'bg-green-600' : 'bg-red-600'
+                }`}>
                 {isConnected ? <Wifi size={16} /> : <WifiOff size={16} />}
                 <span className="text-sm font-medium">
                   {isConnected ? 'Connected' : 'Disconnected'}
@@ -178,10 +177,10 @@ const LiveProctoring = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeSessions.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-            <Camera size={64} className="mx-auto text-gray-300 mb-4" />
-            <h2 className="text-xl font-bold text-gray-900 mb-2">No Active Sessions</h2>
-            <p className="text-gray-600">
+          <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light p-12 text-center">
+            <Camera size={64} className="mx-auto text-shnoor-light mb-4" />
+            <h2 className="text-xl font-bold text-shnoor-navy mb-2">No Active Sessions</h2>
+            <p className="text-shnoor-indigoMedium">
               Students taking exams with proctoring enabled will appear here
             </p>
           </div>
@@ -195,7 +194,7 @@ const LiveProctoring = () => {
               return (
                 <div
                   key={sessionKey}
-                  className="bg-white rounded-xl shadow-sm border-2 border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
+                  className="bg-white rounded-xl shadow-sm border border-shnoor-light overflow-hidden hover:shadow-md transition-shadow"
                 >
                   {/* Video Feed */}
                   <div className="relative bg-gray-900 aspect-video">
@@ -206,10 +205,10 @@ const LiveProctoring = () => {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-full h-full flex items-center justify-center bg-shnoor-lavender">
                         <div className="text-center">
-                          <Camera size={48} className="mx-auto text-gray-600 mb-2" />
-                          <p className="text-gray-400 text-sm">Waiting for video...</p>
+                          <Camera size={48} className="mx-auto text-shnoor-light mb-2" />
+                          <p className="text-shnoor-soft text-sm">Waiting for video...</p>
                         </div>
                       </div>
                     )}
@@ -228,17 +227,17 @@ const LiveProctoring = () => {
                   </div>
 
                   {/* Student Info */}
-                  <div className="p-4">
-                    <h3 className="font-bold text-gray-900 text-lg mb-1">
+                  <div className="p-5">
+                    <h3 className="font-bold text-shnoor-navy text-lg mb-1">
                       {session.studentName}
                     </h3>
-                    <p className="text-sm text-gray-600 mb-2">
+                    <p className="text-sm text-shnoor-indigoMedium mb-3">
                       ID: {session.studentId}
                     </p>
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                    <div className="flex items-center justify-between pt-3 border-t border-shnoor-light">
                       <div>
-                        <p className="text-xs text-gray-500">Test</p>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-xs text-shnoor-soft">Test</p>
+                        <p className="text-sm font-semibold text-shnoor-navy">
                           {session.testTitle}
                         </p>
                       </div>

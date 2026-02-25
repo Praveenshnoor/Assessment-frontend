@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Search, Filter, X, ChevronDown } from 'lucide-react';
+import InputField from './InputField';
 
 const ExamSearchFilter = ({ 
   onSearchChange, 
@@ -71,29 +72,31 @@ const ExamSearchFilter = ({
   const activeFilterBadges = getActiveFilterBadges();
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-3 mb-4 shadow-sm">
+    <div className="bg-white rounded-xl border border-shnoor-mist p-3 mb-4 shadow-[0_8px_30px_rgba(14,14,39,0.06)]">
       {/* Main Controls Row */}
       <div className="flex flex-col sm:flex-row gap-2">
         {/* Search Bar */}
         <div className="flex-1 relative group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
-          <input
+          <div className="absolute left-3 top-4 text-gray-400 group-focus-within:text-shnoor-indigo transition-colors z-10 w-5 h-5 pointer-events-none">
+            <Search size={18} />
+          </div>
+          <InputField
             type="text"
             placeholder="Search exams..."
             value={searchTerm}
             onChange={handleSearchChange}
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all shadow-sm"
+            style={{ paddingLeft: '2.5rem' }}
           />
         </div>
 
         {/* Controls */}
         <div className="flex gap-2">
           {/* Sort Dropdown */}
-          <div className="relative">
+          <div className="relative flex items-center">
             <select
               value={sortBy}
               onChange={(e) => handleSortChange(e.target.value)}
-              className="appearance-none px-3 py-2 pr-8 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[140px] cursor-pointer hover:border-blue-400 transition-all shadow-sm font-medium"
+              className="appearance-none px-3 py-2 pr-8 text-sm border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-shnoor-indigo bg-white min-w-[140px] cursor-pointer hover:border-shnoor-indigo transition-all shadow-sm font-bold text-shnoor-navy"
             >
               {sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -101,22 +104,22 @@ const ExamSearchFilter = ({
                 </option>
               ))}
             </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-shnoor-indigoMedium pointer-events-none" size={16} />
           </div>
 
           {/* Filter Toggle Button */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg font-medium transition-all whitespace-nowrap shadow-sm ${
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg font-bold transition-all whitespace-nowrap shadow-sm ${
               showFilters 
-                ? 'bg-blue-600 text-white shadow-md' 
-                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                ? 'bg-shnoor-indigo text-white shadow-md' 
+                : 'bg-white text-shnoor-navy hover:bg-shnoor-lavender border border-shnoor-mist hover:border-shnoor-indigo'
             }`}
           >
             <Filter size={16} />
             <span className="hidden sm:inline">Filter</span>
             {activeFilterBadges.length > 0 && !showFilters && (
-              <span className="ml-1 px-1.5 py-0.5 bg-blue-500 text-white text-xs rounded-full font-bold">
+              <span className="ml-1 px-1.5 py-0.5 bg-shnoor-lavender text-shnoor-indigo text-xs rounded-full font-bold">
                 {activeFilterBadges.length}
               </span>
             )}
@@ -138,11 +141,11 @@ const ExamSearchFilter = ({
 
       {/* Active Filter Badges */}
       {activeFilterBadges.length > 0 && !showFilters && (
-        <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-gray-200">
+        <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-shnoor-mist">
           {activeFilterBadges.map((badge) => (
             <span
               key={badge.key}
-              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-md font-medium"
+              className="inline-flex items-center gap-1 px-2 py-1 bg-shnoor-lavender text-shnoor-indigo text-xs rounded-md font-bold"
             >
               {badge.label}
             </span>
@@ -152,46 +155,46 @@ const ExamSearchFilter = ({
 
       {/* Expanded Filters */}
       {showFilters && (
-        <div className="flex flex-wrap gap-2 pt-3 mt-3 border-t border-gray-200 animate-in slide-in-from-top-2 duration-200">
+        <div className="flex flex-wrap gap-2 pt-3 mt-3 border-t border-shnoor-mist animate-in slide-in-from-top-2 duration-200">
           {/* Published/Draft Filter */}
           {showPublishedFilter && (
-            <div className="relative">
+            <div className="relative flex items-center">
               <select
                 value={filters.published}
                 onChange={(e) => handleFilterChange('published', e.target.value)}
-                className="appearance-none px-3 py-1.5 pr-8 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white cursor-pointer hover:border-blue-400 transition-all shadow-sm"
+                className="appearance-none px-3 py-1.5 pr-8 text-sm border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-shnoor-indigo bg-white cursor-pointer hover:border-shnoor-indigo transition-all shadow-sm font-bold text-shnoor-navy"
               >
                 <option value="all">All Status</option>
                 <option value="published">Published</option>
                 <option value="draft">Draft</option>
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-shnoor-indigoMedium pointer-events-none" size={14} />
             </div>
           )}
 
           {/* Attempted Filter */}
           {showAttemptedFilter && (
-            <div className="relative">
+            <div className="relative flex items-center">
               <select
                 value={filters.attempted}
                 onChange={(e) => handleFilterChange('attempted', e.target.value)}
-                className="appearance-none px-3 py-1.5 pr-8 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white cursor-pointer hover:border-blue-400 transition-all shadow-sm"
+                className="appearance-none px-3 py-1.5 pr-8 text-sm border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-shnoor-indigo bg-white cursor-pointer hover:border-shnoor-indigo transition-all shadow-sm font-bold text-shnoor-navy"
               >
                 <option value="all">All Attempts</option>
                 <option value="attempted">Attempted</option>
                 <option value="not-attempted">Not Attempted</option>
                 <option value="in-progress">In Progress</option>
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-shnoor-indigoMedium pointer-events-none" size={14} />
             </div>
           )}
 
           {/* Date Filter */}
-          <div className="relative">
+          <div className="relative flex items-center">
             <select
               value={filters.dateRange}
               onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-              className="appearance-none px-3 py-1.5 pr-8 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white cursor-pointer hover:border-blue-400 transition-all shadow-sm"
+              className="appearance-none px-3 py-1.5 pr-8 text-sm border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-shnoor-indigo bg-white cursor-pointer hover:border-shnoor-indigo transition-all shadow-sm font-bold text-shnoor-navy"
             >
               <option value="all">All Time</option>
               <option value="today">Today</option>
@@ -199,7 +202,7 @@ const ExamSearchFilter = ({
               <option value="month">This Month</option>
               <option value="year">This Year</option>
             </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-shnoor-indigoMedium pointer-events-none" size={14} />
           </div>
         </div>
       )}
@@ -207,8 +210,8 @@ const ExamSearchFilter = ({
       {/* Result Count */}
       {resultCount !== undefined && (
         <div className="mt-2 pt-2 border-t border-gray-200">
-          <p className="text-xs text-gray-600 font-medium">
-            Showing <span className="text-blue-600 font-bold">{resultCount}</span> {resultCount === 1 ? 'exam' : 'exams'}
+          <p className="text-xs text-shnoor-indigoMedium font-bold">
+            Showing <span className="text-shnoor-indigo font-bold">{resultCount}</span> {resultCount === 1 ? 'exam' : 'exams'}
           </p>
         </div>
       )}

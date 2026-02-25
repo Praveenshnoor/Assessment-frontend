@@ -728,9 +728,9 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
         <div className="space-y-6">
             {/* Step 1: Initialization */}
             {step === 'init' && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-3xl mx-auto">
+                <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light p-8 max-w-3xl mx-auto">
                     <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900">{isEditMode ? (viewMode ? 'View Assessment' : 'Edit Assessment') : 'Create New Assessment'}</h2>
+                        <h2 className="text-2xl font-bold text-shnoor-navy">{isEditMode ? (viewMode ? 'View Assessment' : 'Edit Assessment') : 'Create New Assessment'}</h2>
                         {viewMode && (
                             <button
                                 onClick={() => setViewMode(false)}
@@ -745,20 +745,19 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                     <div className="space-y-6">
                         {/* Test Title */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Test Title *</label>
+                            <label className="block text-sm font-bold text-shnoor-navy mb-2">Test Title *</label>
                             <div className="relative">
                                 <input
                                     type="text"
                                     value={testTitle}
                                     onChange={(e) => setTestTitle(e.target.value)}
                                     disabled={viewMode}
-                                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent pr-10 ${
-                                        viewMode ? 'bg-gray-100 cursor-not-allowed' :
-                                        nameAvailability.available === false 
-                                            ? 'border-red-300 bg-red-50' 
-                                            : nameAvailability.available === true 
-                                            ? 'border-green-300 bg-green-50' 
-                                            : 'border-gray-300'
+                                    className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:border-shnoor-indigo focus:ring-shnoor-indigo/20 transition-all font-medium text-shnoor-navy shadow-sm pr-10 ${viewMode ? 'bg-shnoor-light opacity-50 cursor-not-allowed border-shnoor-light' :
+                                            nameAvailability.available === false
+                                                ? 'border-red-500 bg-red-50'
+                                                : nameAvailability.available === true
+                                                    ? 'border-green-500 bg-white'
+                                                    : 'border-shnoor-light bg-white'
                                     }`}
                                     placeholder="e.g., Java Fundamentals - Batch A"
                                     required
@@ -793,12 +792,12 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         {/* Job Roles Section */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <label className="block text-sm font-medium text-gray-700">Job Roles & Descriptions *</label>
+                                <label className="block text-sm font-bold text-shnoor-navy">Job Roles & Descriptions *</label>
                                 {!viewMode && (
                                     <button
                                         type="button"
                                         onClick={handleAddJobRole}
-                                        className="flex items-center space-x-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-100 transition-colors text-sm font-medium"
+                                        className="flex items-center space-x-1 px-3 py-1.5 bg-white text-shnoor-indigo hover:text-shnoor-navy rounded-lg hover:bg-shnoor-light/30 border border-shnoor-light transition-colors text-sm font-medium"
                                     >
                                         <Plus size={16} />
                                         <span>Add Role</span>
@@ -807,16 +806,16 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                             </div>
                             
                             {jobRoles.map((role, index) => (
-                                <div key={index} className="p-4 border-2 border-gray-200 rounded-lg space-y-3 bg-gray-50">
+                                <div key={index} className="p-5 border border-shnoor-light rounded-xl space-y-3 bg-white shadow-sm">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm font-semibold text-gray-700">
-                                            Role {index + 1} {index === 0 && <span className="text-blue-600">(Default)</span>}
+                                        <span className="text-sm font-bold text-shnoor-navy">
+                                            Role {index + 1} {index === 0 && <span className="text-shnoor-indigo ml-2 px-2 py-1 bg-shnoor-lavender rounded-md text-xs">(Default)</span>}
                                         </span>
                                         {!viewMode && jobRoles.length > 1 && (
                                             <button
                                                 type="button"
                                                 onClick={() => handleRemoveJobRole(index)}
-                                                className="text-red-600 hover:text-red-700 p-1"
+                                                className="text-red-500 hover:text-red-600 p-1"
                                                 title="Remove this role"
                                             >
                                                 <Trash2 size={16} />
@@ -830,7 +829,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                             value={role.job_role}
                                             onChange={(e) => handleJobRoleChange(index, 'job_role', e.target.value)}
                                             disabled={viewMode}
-                                            className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent ${viewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                            className={`w-full px-4 py-3 border-2 border-shnoor-light rounded-xl focus:ring-4 focus:ring-shnoor-indigo/20 focus:border-shnoor-indigo transition-all font-medium text-shnoor-navy ${viewMode ? 'bg-shnoor-light opacity-50 cursor-not-allowed' : 'bg-white'}`}
                                             placeholder="e.g., Senior Software Engineer, Junior Developer"
                                             required
                                         />
