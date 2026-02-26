@@ -5,7 +5,7 @@ const Badge = ({ status, text }) => {
     published: "bg-[#DCFCE7] text-[#16A34A] border-[#16A34A]/20", // Success Green
     draft: "bg-shnoor-lavender text-shnoor-navy border-shnoor-light", // Neutral Lavender
     active: "bg-shnoor-lavender text-shnoor-indigo border-shnoor-indigo/20", // Brand Indigo
-    error: "bg-red-50 text-red-600 border-red-200" // Warning Red
+    error: "bg-shnoor-dangerLight text-shnoor-danger border-shnoor-dangerLight" // Warning Red
   };
 
   // Default to 'draft' styling if status is not found

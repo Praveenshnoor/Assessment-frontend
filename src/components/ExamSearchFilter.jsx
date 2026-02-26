@@ -77,7 +77,7 @@ const ExamSearchFilter = ({
       <div className="flex flex-col sm:flex-row gap-2">
         {/* Search Bar */}
         <div className="flex-1 relative group">
-          <div className="absolute left-3 top-4 text-gray-400 group-focus-within:text-shnoor-indigo transition-colors z-10 w-5 h-5 pointer-events-none">
+          <div className="absolute left-3 top-4 text-shnoor-navy group-focus-within:text-shnoor-indigo transition-colors z-10 w-5 h-5 pointer-events-none">
             <Search size={18} />
           </div>
           <InputField
@@ -129,7 +129,7 @@ const ExamSearchFilter = ({
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg font-medium bg-white text-red-600 hover:bg-red-50 transition-all border border-red-300 shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg font-medium bg-white text-shnoor-danger hover:bg-shnoor-dangerLight transition-all border border-shnoor-dangerLight shadow-sm"
               title="Clear all filters"
             >
               <X size={16} />
@@ -209,7 +209,7 @@ const ExamSearchFilter = ({
 
       {/* Result Count */}
       {resultCount !== undefined && (
-        <div className="mt-2 pt-2 border-t border-gray-200">
+        <div className="mt-2 pt-2 border-t border-shnoor-mist">
           <p className="text-xs text-shnoor-indigoMedium font-bold">
             Showing <span className="text-shnoor-indigo font-bold">{resultCount}</span> {resultCount === 1 ? 'exam' : 'exams'}
           </p>

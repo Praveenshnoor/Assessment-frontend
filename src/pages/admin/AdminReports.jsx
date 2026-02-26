@@ -198,7 +198,7 @@ const AdminReports = () => {
                         </div>
 
                         {error && (
-                            <div className="p-4 bg-red-50 text-red-700 rounded-xl border border-red-100 flex items-center mb-4">
+                            <div className="p-4 bg-shnoor-dangerLight text-shnoor-danger rounded-xl border border-shnoor-dangerLight flex items-center mb-4">
                                 <AlertCircle className="w-5 h-5 mr-2" />
                                 {error}
                             </div>

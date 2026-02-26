@@ -21,7 +21,7 @@ const EyeOff = () => (
 );
 
 const FieldError = ({ msg }) => msg ? (
-  <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1.5">
+  <p className="text-xs text-shnoor-danger mt-1.5 flex items-center gap-1.5">
     <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
       <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
     </svg>
@@ -246,11 +246,11 @@ const Register = () => {
         </div>
         <div>
           <label className="text-[11px] font-semibold text-shnoor-navy mb-1.5 uppercase tracking-wide flex items-center gap-1 block">
-            Address <span className="text-red-500">*</span>
+            Address <span className="text-shnoor-danger">*</span>
           </label>
           <textarea name="address"
             className={`w-full h-[90px] px-4 py-3 rounded-lg border bg-white text-sm text-shnoor-navy placeholder-shnoor-soft transition-colors focus:outline-none focus:ring-1 resize-none
-              ${errors.address ? 'border-red-400 focus:ring-red-400' : 'border-shnoor-mist focus:border-shnoor-indigo focus:ring-shnoor-indigo'}`}
+              ${errors.address ? 'border-shnoor-danger focus:ring-shnoor-danger' : 'border-shnoor-mist focus:border-shnoor-indigo focus:ring-shnoor-indigo'}`}
             placeholder="Enter your full address"
             value={formData.address} onChange={handleChange} disabled={isLoading} />
           <FieldError msg={errors.address} />
@@ -263,12 +263,12 @@ const Register = () => {
       <div className="flex flex-col gap-5">
         <div ref={dropdownRef}>
           <label className="text-[11px] font-semibold text-shnoor-navy mb-1.5 uppercase tracking-wide flex items-center gap-1 block">
-            Institute / University <span className="text-red-500">*</span>
+            Institute / University <span className="text-shnoor-danger">*</span>
           </label>
           <div className="relative">
             <div
               className={`w-full h-[50px] px-4 rounded-lg border bg-white transition-colors cursor-pointer flex items-center justify-between text-sm
-                ${errors.institute ? 'border-red-400' : 'border-shnoor-mist hover:border-shnoor-indigo'}`}
+                ${errors.institute ? 'border-shnoor-danger' : 'border-shnoor-mist hover:border-shnoor-indigo'}`}
               onClick={() => !isLoading && setShowInstituteDropdown(v => !v)}
             >
               <span className={formData.institute ? 'text-shnoor-navy' : 'text-shnoor-soft'}>
@@ -277,7 +277,7 @@ const Register = () => {
               <div className="flex items-center gap-2">
                 {formData.institute && (
                   <Button type="Button" onClick={e => { e.stopPropagation(); setFormData(p => ({ ...p, institute: '' })); }}
-                    className="text-shnoor-soft hover:text-red-500 transition-colors">
+                    className="text-shnoor-soft hover:text-shnoor-danger transition-colors">
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
                       <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z" />
                     </svg>
@@ -356,11 +356,11 @@ const Register = () => {
     return (
       <div className="flex flex-col gap-4">
         {/* Banner */}
-        <div className="flex items-start gap-3 bg-[#EEF9F0] border border-green-200 rounded-xl px-4 py-3">
-          <svg className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 16 16">
+        <div className="flex items-start gap-3 bg-[#EEF9F0] border border-shnoor-successLight rounded-xl px-4 py-3">
+          <svg className="w-4 h-4 text-shnoor-success flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 16 16">
             <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.97 4.97a.75.75 0 0 0-1.08-.022L6.477 9.417 4.384 7.323a.75.75 0 0 0-1.06 1.06l2.75 2.75a.75.75 0 0 0 1.137-.089l4-5.5a.75.75 0 0 0-.24-1.573z" />
           </svg>
-          <p className="text-sm text-green-800 leading-relaxed">
+          <p className="text-sm text-shnoor-success leading-relaxed">
             <span className="font-bold">Almost done!</span> Please review your details carefully. Click <strong>Edit</strong> on any section to make changes before submitting.
           </p>
         </div>
@@ -426,7 +426,7 @@ const Register = () => {
               return (
                 <div key={i} className={`flex items-start gap-4 transition-all duration-300 ${isActive ? 'opacity-100' : isDone ? 'opacity-75' : 'opacity-30'}`}>
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300
-                    ${isDone ? 'bg-green-500' : isActive ? 'bg-shnoor-indigo shadow-[0_0_16px_rgba(68,68,142,0.6)]' : 'bg-white/10'}`}>
+                    ${isDone ? 'bg-shnoor-success' : isActive ? 'bg-shnoor-indigo shadow-[0_0_16px_rgba(68,68,142,0.6)]' : 'bg-white/10'}`}>
                     {isDone ? (
                       <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -484,9 +484,9 @@ const Register = () => {
               {STEP_META.map((s, i) => (
                 <div key={i} className="flex items-center gap-1">
                   <div className={`w-2 h-2 rounded-full transition-all duration-300
-                    ${i < step ? 'bg-green-500' : i === step ? 'bg-shnoor-indigo scale-125' : 'bg-shnoor-mist'}`} />
+                    ${i < step ? 'bg-shnoor-success' : i === step ? 'bg-shnoor-indigo scale-125' : 'bg-shnoor-mist'}`} />
                   <span className={`text-[10px] font-semibold hidden sm:block transition-colors duration-200
-                    ${i === step ? 'text-shnoor-navy' : i < step ? 'text-green-600' : 'text-shnoor-soft'}`}>
+                    ${i === step ? 'text-shnoor-navy' : i < step ? 'text-shnoor-success' : 'text-shnoor-soft'}`}>
                     {s.title}
                   </span>
                 </div>
@@ -502,7 +502,7 @@ const Register = () => {
 
           {/* API error */}
           {apiError && (
-            <div className="mb-5 flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+            <div className="mb-5 flex items-start gap-3 bg-shnoor-dangerLight border border-shnoor-dangerLight text-shnoor-danger rounded-xl px-4 py-3 text-sm">
               <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1z" />
               </svg>

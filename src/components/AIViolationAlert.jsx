@@ -23,13 +23,13 @@ const AIViolationAlert = ({ violation, onDismiss }) => {
   const getSeverityColor = () => {
     switch (violation.severity) {
       case 'high':
-        return 'bg-red-600 border-red-700';
+        return 'bg-shnoor-danger border-shnoor-danger';
       case 'medium':
-        return 'bg-orange-600 border-orange-700';
+        return 'bg-shnoor-warning border-shnoor-warning';
       case 'low':
-        return 'bg-yellow-600 border-yellow-700';
+        return 'bg-shnoor-warning border-shnoor-warning';
       default:
-        return 'bg-red-600 border-red-700';
+        return 'bg-shnoor-danger border-shnoor-danger';
     }
   };
 
@@ -66,7 +66,7 @@ const AIViolationAlert = ({ violation, onDismiss }) => {
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="text-white hover:text-gray-200 text-2xl leading-none"
+            className="text-white hover:text-shnoor-soft text-2xl leading-none"
           >
             ×
           </button>

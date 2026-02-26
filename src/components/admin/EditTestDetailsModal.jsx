@@ -155,7 +155,7 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
         <div className="bg-shnoor-indigo text-white px-6 py-4 flex justify-between items-center">
           <div>
             <h2 className="text-xl font-bold">Edit Test Details</h2>
-            <p className="text-blue-100 text-sm">{test.name}</p>
+            <p className="text-shnoor-indigoMedium text-sm">{test.name}</p>
           </div>
           <Button
             onClick={onClose}
@@ -170,7 +170,7 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
           {/* Error Message */}
           {saveError && (
-            <div className="bg-red-50 border-l-4 border-red-600 text-red-700 p-3 rounded-r-lg flex items-start text-sm">
+            <div className="bg-shnoor-dangerLight border-l-4 border-shnoor-danger text-shnoor-danger p-3 rounded-r-lg flex items-start text-sm">
               <AlertCircle size={18} className="mr-2 flex-shrink-0 mt-0.5" />
               <span>{saveError}</span>
             </div>
@@ -179,19 +179,19 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
           {/* Job Role */}
           <div>
             <label className="block text-sm font-semibold text-shnoor-navy mb-2">
-              Job Role <span className="text-red-500">*</span>
+              Job Role <span className="text-shnoor-danger">*</span>
             </label>
             <input
               type="text"
               value={formData.jobRole}
               onChange={(e) => handleChange('jobRole', e.target.value)}
-              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.jobRole ? 'border-red-500 bg-red-50 focus:ring-red-100' : 'border-shnoor-light focus:ring-blue-100'
+              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.jobRole ? 'border-shnoor-danger bg-shnoor-dangerLight focus:ring-shnoor-dangerLight' : 'border-shnoor-light focus:ring-shnoor-mist'
                 }`}
               placeholder="e.g., Software Developer"
               disabled={isSaving}
             />
             {errors.jobRole && (
-              <p className="text-red-600 text-xs mt-1.5 flex items-center">
+              <p className="text-shnoor-danger text-xs mt-1.5 flex items-center">
                 <AlertCircle size={12} className="mr-1" />
                 {errors.jobRole}
               </p>
@@ -207,7 +207,7 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
               value={formData.description}
               onChange={(e) => handleChange('description', e.target.value)}
               rows={3}
-              className="w-full px-4 py-2.5 border-2 border-shnoor-light rounded-lg focus:ring-4 focus:ring-blue-100 focus:border-shnoor-indigo transition-all resize-none text-sm text-shnoor-navy font-medium bg-white shadow-sm"
+              className="w-full px-4 py-2.5 border-2 border-shnoor-light rounded-lg focus:ring-4 focus:ring-shnoor-mist focus:border-shnoor-indigo transition-all resize-none text-sm text-shnoor-navy font-medium bg-white shadow-sm"
               placeholder="Describe the job role..."
               disabled={isSaving}
             />
@@ -223,7 +223,7 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
                 type="datetime-local"
                 value={formData.startDateTime}
                 onChange={(e) => handleChange('startDateTime', e.target.value)}
-                className="w-full px-4 py-2.5 border-2 border-shnoor-light rounded-lg focus:ring-4 focus:ring-blue-100 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm"
+                className="w-full px-4 py-2.5 border-2 border-shnoor-light rounded-lg focus:ring-4 focus:ring-shnoor-mist focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm"
                 disabled={isSaving}
               />
             </div>
@@ -236,12 +236,12 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
                 type="datetime-local"
                 value={formData.endDateTime}
                 onChange={(e) => handleChange('endDateTime', e.target.value)}
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.endDateTime ? 'border-red-500 bg-red-50 focus:ring-red-100' : 'border-shnoor-light focus:ring-blue-100'
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.endDateTime ? 'border-shnoor-danger bg-shnoor-dangerLight focus:ring-shnoor-dangerLight' : 'border-shnoor-light focus:ring-shnoor-mist'
                   }`}
                 disabled={isSaving}
               />
               {errors.endDateTime && (
-                <p className="text-red-600 text-xs mt-1.5 flex items-center">
+                <p className="text-shnoor-danger text-xs mt-1.5 flex items-center">
                   <AlertCircle size={12} className="mr-1" />
                   {errors.endDateTime}
                 </p>
@@ -253,7 +253,7 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-semibold text-shnoor-navy mb-2">
-                Duration (min) <span className="text-red-500">*</span>
+                Duration (min) <span className="text-shnoor-danger">*</span>
               </label>
               <input
                 type="number"
@@ -261,18 +261,18 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
                 max="300"
                 value={formData.duration}
                 onChange={(e) => handleChange('duration', e.target.value)}
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.duration ? 'border-red-500 bg-red-50 focus:ring-red-100' : 'border-shnoor-light focus:ring-blue-100'
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.duration ? 'border-shnoor-danger bg-shnoor-dangerLight focus:ring-shnoor-dangerLight' : 'border-shnoor-light focus:ring-shnoor-mist'
                   }`}
                 disabled={isSaving}
               />
               {errors.duration && (
-                <p className="text-red-600 text-xs mt-1">{errors.duration}</p>
+                <p className="text-shnoor-danger text-xs mt-1">{errors.duration}</p>
               )}
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-shnoor-navy mb-2">
-                Passing % <span className="text-red-500">*</span>
+                Passing % <span className="text-shnoor-danger">*</span>
               </label>
               <input
                 type="number"
@@ -280,18 +280,18 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
                 max="100"
                 value={formData.passingPercentage}
                 onChange={(e) => handleChange('passingPercentage', e.target.value)}
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.passingPercentage ? 'border-red-500 bg-red-50 focus:ring-red-100' : 'border-shnoor-light focus:ring-blue-100'
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.passingPercentage ? 'border-shnoor-danger bg-shnoor-dangerLight focus:ring-shnoor-dangerLight' : 'border-shnoor-light focus:ring-shnoor-mist'
                   }`}
                 disabled={isSaving}
               />
               {errors.passingPercentage && (
-                <p className="text-red-600 text-xs mt-1">{errors.passingPercentage}</p>
+                <p className="text-shnoor-danger text-xs mt-1">{errors.passingPercentage}</p>
               )}
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-shnoor-navy mb-2">
-                Max Attempts <span className="text-red-500">*</span>
+                Max Attempts <span className="text-shnoor-danger">*</span>
               </label>
               <input
                 type="number"
@@ -299,12 +299,12 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
                 max="10"
                 value={formData.maxAttempts}
                 onChange={(e) => handleChange('maxAttempts', e.target.value)}
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.maxAttempts ? 'border-red-500 bg-red-50 focus:ring-red-100' : 'border-shnoor-light focus:ring-blue-100'
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.maxAttempts ? 'border-shnoor-danger bg-shnoor-dangerLight focus:ring-shnoor-dangerLight' : 'border-shnoor-light focus:ring-shnoor-mist'
                   }`}
                 disabled={isSaving}
               />
               {errors.maxAttempts && (
-                <p className="text-red-600 text-xs mt-1">{errors.maxAttempts}</p>
+                <p className="text-shnoor-danger text-xs mt-1">{errors.maxAttempts}</p>
               )}
             </div>
           </div>

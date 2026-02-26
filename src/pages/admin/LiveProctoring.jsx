@@ -146,7 +146,7 @@ const LiveProctoring = () => {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => navigate('/admin/dashboard')}
-                className="flex items-center text-gray-300 hover:text-white transition-colors"
+                className="flex items-center text-shnoor-soft hover:text-white transition-colors"
               >
                 <ArrowLeft size={20} className="mr-2" />
                 Back
@@ -158,7 +158,7 @@ const LiveProctoring = () => {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg ${isConnected ? 'bg-green-600' : 'bg-red-600'
+              <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg ${isConnected ? 'bg-shnoor-success' : 'bg-shnoor-danger'
                 }`}>
                 {isConnected ? <Wifi size={16} /> : <WifiOff size={16} />}
                 <span className="text-sm font-medium">
@@ -197,7 +197,7 @@ const LiveProctoring = () => {
                   className="bg-white rounded-xl shadow-sm border border-shnoor-light overflow-hidden hover:shadow-md transition-shadow"
                 >
                   {/* Video Feed */}
-                  <div className="relative bg-gray-900 aspect-video">
+                  <div className="relative bg-shnoor-navyLight aspect-video">
                     {currentFrame ? (
                       <img
                         src={currentFrame}
@@ -214,7 +214,7 @@ const LiveProctoring = () => {
                     )}
                     
                     {/* Live Indicator */}
-                    <div className="absolute top-3 left-3 flex items-center space-x-1 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-medium">
+                    <div className="absolute top-3 left-3 flex items-center space-x-1 bg-shnoor-danger text-white px-2 py-1 rounded-full text-xs font-medium">
                       <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                       <span>LIVE</span>
                     </div>
@@ -241,7 +241,7 @@ const LiveProctoring = () => {
                           {session.testTitle}
                         </p>
                       </div>
-                      <div className="flex items-center space-x-1 text-green-600">
+                      <div className="flex items-center space-x-1 text-shnoor-success">
                         <Wifi size={16} />
                         <span className="text-xs font-medium">
                           {currentFrame ? 'Streaming' : 'Connected'}

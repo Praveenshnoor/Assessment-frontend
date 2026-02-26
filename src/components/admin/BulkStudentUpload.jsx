@@ -134,7 +134,7 @@ Robert Johnson,robert.johnson@example.com,5551234567,Harvard University`;
                     />
                 </div>
                 {file && (
-                    <p className="mt-3 text-sm text-green-600 font-medium">
+                    <p className="mt-3 text-sm text-shnoor-success font-medium">
                         ✓ Selected: {file.name}
                     </p>
                 )}
@@ -181,26 +181,26 @@ Robert Johnson,robert.johnson@example.com,5551234567,Harvard University`;
                             <p className="text-3xl font-bold text-shnoor-navy">{result.results.total}</p>
                             <p className="text-sm text-shnoor-indigoMedium font-medium mt-1">Total Rows</p>
                         </div>
-                        <div className="bg-green-50 p-4 rounded-lg text-center">
-                            <p className="text-3xl font-bold text-green-600">{result.results.success.length}</p>
-                            <p className="text-sm text-green-700">Success</p>
+                        <div className="bg-shnoor-successLight p-4 rounded-lg text-center">
+                            <p className="text-3xl font-bold text-shnoor-success">{result.results.success.length}</p>
+                            <p className="text-sm text-shnoor-success">Success</p>
                         </div>
-                        <div className="bg-red-50 p-4 rounded-lg text-center">
-                            <p className="text-3xl font-bold text-red-600">{result.results.errors.length}</p>
-                            <p className="text-sm text-red-700">Errors</p>
+                        <div className="bg-shnoor-dangerLight p-4 rounded-lg text-center">
+                            <p className="text-3xl font-bold text-shnoor-danger">{result.results.errors.length}</p>
+                            <p className="text-sm text-shnoor-danger">Errors</p>
                         </div>
                     </div>
 
                     {/* Success List */}
                     {result.results.success.length > 0 && (
                         <div className="mb-6">
-                            <h4 className="font-semibold text-green-700 mb-3">
+                            <h4 className="font-semibold text-shnoor-success mb-3">
                                 ✓ Successfully Created ({result.results.success.length})
                             </h4>
-                            <div className="bg-green-50 rounded-lg p-4 max-h-60 overflow-y-auto">
+                            <div className="bg-shnoor-successLight rounded-lg p-4 max-h-60 overflow-y-auto">
                                 <table className="min-w-full text-sm">
                                     <thead>
-                                        <tr className="border-b border-green-200">
+                                        <tr className="border-b border-shnoor-successLight">
                                             <th className="text-left py-2 px-2">Name</th>
                                             <th className="text-left py-2 px-2">Email</th>
                                             <th className="text-left py-2 px-2">Institute</th>
@@ -209,7 +209,7 @@ Robert Johnson,robert.johnson@example.com,5551234567,Harvard University`;
                                     </thead>
                                     <tbody>
                                         {result.results.success.map((student, idx) => (
-                                            <tr key={idx} className="border-b border-green-100">
+                                            <tr key={idx} className="border-b border-shnoor-successLight">
                                                 <td className="py-2 px-2">{student.fullname}</td>
                                                 <td className="py-2 px-2">{student.email}</td>
                                                 <td className="py-2 px-2">{student.institute}</td>
@@ -225,13 +225,13 @@ Robert Johnson,robert.johnson@example.com,5551234567,Harvard University`;
                     {/* Error List */}
                     {result.results.errors.length > 0 && (
                         <div>
-                            <h4 className="font-semibold text-red-700 mb-3">
+                            <h4 className="font-semibold text-shnoor-danger mb-3">
                                 ✕ Errors ({result.results.errors.length})
                             </h4>
-                            <div className="bg-red-50 rounded-lg p-4 max-h-60 overflow-y-auto">
+                            <div className="bg-shnoor-dangerLight rounded-lg p-4 max-h-60 overflow-y-auto">
                                 <ul className="space-y-2">
                                     {result.results.errors.map((error, idx) => (
-                                        <li key={idx} className="text-sm text-red-700 border-b border-red-100 pb-2">
+                                        <li key={idx} className="text-sm text-shnoor-danger border-b border-shnoor-dangerLight pb-2">
                                             <strong>Row {error.row}:</strong> {error.email} - {error.error}
                                         </li>
                                     ))}
@@ -242,8 +242,8 @@ Robert Johnson,robert.johnson@example.com,5551234567,Harvard University`;
 
                     {/* Note about emails */}
                     {result.results.success.length > 0 && (
-                        <div className="mt-6 bg-yellow-50 border-l-4 border-yellow-500 p-4">
-                            <p className="text-sm text-yellow-800">
+                        <div className="mt-6 bg-shnoor-warningLight border-l-4 border-shnoor-warning p-4">
+                            <p className="text-sm text-shnoor-warning">
                                 📧 <strong>Note:</strong> Credential emails are being sent to all successfully created students. 
                                 Please check your email service configuration if students don't receive their credentials.
                             </p>

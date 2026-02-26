@@ -113,8 +113,8 @@ const Result = () => {
 
                             {/* Submission Info */}
                             {submissionReason && submissionReason !== 'manual' && (
-                                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
-                                    <p className="text-sm text-yellow-800 font-medium">
+                                <div className="bg-shnoor-warningLight border-l-4 border-shnoor-warning p-4 mb-6 rounded-r-lg">
+                                    <p className="text-sm text-shnoor-warning font-medium">
                                         <strong>Note:</strong> This exam was auto-submitted due to: {
                                             submissionReason === 'time_up' ? 'Time expired' :
                                             submissionReason === 'tab_switch_violation' ? 'Multiple tab switch violations' :
@@ -139,7 +139,7 @@ const Result = () => {
                                             <Star
                                                 size={40}
                                                 className={`${star <= rating
-                                                        ? 'fill-yellow-400 text-yellow-400'
+                                                        ? 'fill-shnoor-warning text-shnoor-warning'
                                                         : 'text-shnoor-mist'
                                                     } transition-colors`}
                                             />
@@ -205,8 +205,8 @@ const Result = () => {
                         <>
                             {/* Thank You Message After Feedback */}
                             <div className="text-center py-8">
-                                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-                                    <CheckCircle className="w-10 h-10 text-green-600" />
+                                <div className="w-20 h-20 bg-shnoor-successLight rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                    <CheckCircle className="w-10 h-10 text-shnoor-success" />
                                 </div>
                                 <h2 className="text-2xl font-bold text-shnoor-navy mb-2">Thank You!</h2>
                                 <p className="text-shnoor-indigoMedium mb-8">Your feedback has been submitted successfully</p>

@@ -26,6 +26,14 @@ module.exports = {
 
           // The Canvas (Backgrounds)
           lavender: '#E0E0EF',   // The main page background
+
+          // Add Semantic Colors (Tinted to match the indigo/navy aesthetic)
+          success: '#34d399',      // A modern, soft green
+          successLight: '#d1fae5', // Light green for backgrounds
+          danger: '#f87171',       // A soft, clean red
+          dangerLight: '#fee2e2',  // Light red for backgrounds
+          warning: '#fbbf24',      // Soft amber/yellow
+          warningLight: '#fef3c7', // Light yellow for backgrounds
         }
       }
     },

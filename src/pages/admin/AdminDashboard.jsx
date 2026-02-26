@@ -1729,26 +1729,26 @@ const AdminDashboard = () => {
                       {/* Highest Score */}
                       <div className="text-center border-l border-shnoor-light">
                         <p className="text-xs text-shnoor-indigoMedium font-medium mb-1">Highest Score</p>
-                        <p className="text-2xl font-bold text-green-600">{highestScore}/{maxTotal}</p>
+                        <p className="text-2xl font-bold text-shnoor-success">{highestScore}/{maxTotal}</p>
                       </div>
 
                       {/* Lowest Score */}
                       <div className="text-center border-l border-shnoor-light">
                         <p className="text-xs text-shnoor-indigoMedium font-medium mb-1">Lowest Score</p>
-                        <p className="text-2xl font-bold text-orange-600">{lowestScore}/{maxTotal}</p>
+                        <p className="text-2xl font-bold text-shnoor-warning">{lowestScore}/{maxTotal}</p>
                       </div>
 
                       {/* Pass Rate */}
                       <div className="text-center border-l border-shnoor-light">
                         <p className="text-xs text-shnoor-indigoMedium font-medium mb-1">Pass Rate</p>
-                        <p className="text-2xl font-bold text-emerald-600">{passRate.toFixed(0)}%</p>
+                        <p className="text-2xl font-bold text-shnoor-success">{passRate.toFixed(0)}%</p>
                         <p className="text-xs text-shnoor-soft mt-0.5">({passedCount}/{selectedExamStudents.length})</p>
                       </div>
 
                       {/* Flagged Students */}
                       <div className="text-center border-l border-shnoor-light">
                         <p className="text-xs text-shnoor-indigoMedium font-medium mb-1">Flagged</p>
-                        <p className="text-2xl font-bold text-red-600">{flaggedCount}</p>
+                        <p className="text-2xl font-bold text-shnoor-danger">{flaggedCount}</p>
                         <p className="text-xs text-shnoor-soft mt-0.5">(3+ high violations)</p>
                       </div>
                     </div>
@@ -1791,7 +1791,7 @@ const AdminDashboard = () => {
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-shnoor-indigoMedium">{student.date}</td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex items-center">
-                                  <span className={`font-bold ${isPassed ? 'text-green-600' : 'text-red-600'}`}>
+                                  <span className={`font-bold ${isPassed ? 'text-shnoor-success' : 'text-shnoor-danger'}`}>
                                     {student.score}
                                   </span>
                                   <span className="text-shnoor-indigoMedium text-xs ml-1">/ {student.total}</span>
@@ -1800,8 +1800,8 @@ const AdminDashboard = () => {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${isPassed
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-red-100 text-red-800'
+                                  ? 'bg-shnoor-successLight text-shnoor-success'
+                                  : 'bg-shnoor-dangerLight text-shnoor-danger'
                                   }`}>
                                   {isPassed ? 'Pass' : 'Fail'}
                                 </span>
@@ -1814,7 +1814,7 @@ const AdminDashboard = () => {
                               <td className="px-4 py-4 text-center text-sm font-semibold text-shnoor-navy">{student.totalViolations || 0}</td>
                               <td className="px-4 py-4 text-center">
                                 <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${student.flagged
-                                  ? 'bg-red-100 text-red-800'
+                                  ? 'bg-shnoor-dangerLight text-shnoor-danger'
                                   : 'bg-shnoor-lavender opacity-80 text-shnoor-indigoMedium'
                                   }`}>
                                   {student.flagged ? 'Yes' : 'No'}
@@ -1852,7 +1852,7 @@ const AdminDashboard = () => {
                       {/* Feedback Statistics */}
                       {feedbackStats && (
                         <div className="grid grid-cols-3 gap-4 mb-6">
-                          <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-shnoor-light rounded-lg p-4">
+                          <div className="bg-gradient-to-br from-shnoor-mist to-shnoor-mist border border-shnoor-light rounded-lg p-4">
                             <div className="flex items-center justify-between mb-2">
                               <TrendingUp size={20} className="text-shnoor-indigo" />
                               <span className="text-2xl font-bold text-shnoor-indigo">
@@ -1863,27 +1863,27 @@ const AdminDashboard = () => {
                             <p className="text-xs text-shnoor-indigoMedium">{feedbackStats.totalFeedbacks} responses</p>
                           </div>
 
-                          <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-4">
-                            <BarChart3 size={20} className="text-green-600 mb-2" />
+                          <div className="bg-gradient-to-br from-shnoor-successLight to-shnoor-successLight border border-shnoor-successLight rounded-lg p-4">
+                            <BarChart3 size={20} className="text-shnoor-success mb-2" />
                             <p className="text-sm text-shnoor-indigo font-medium mb-2">Difficulty</p>
                             <div className="space-y-1">
                               <div className="flex justify-between text-xs">
                                 <span className="text-shnoor-indigoMedium">Easy:</span>
-                                <span className="font-medium text-green-600">{feedbackStats.difficultyBreakdown.Easy}</span>
+                                <span className="font-medium text-shnoor-success">{feedbackStats.difficultyBreakdown.Easy}</span>
                               </div>
                               <div className="flex justify-between text-xs">
                                 <span className="text-shnoor-indigoMedium">Medium:</span>
-                                <span className="font-medium text-yellow-600">{feedbackStats.difficultyBreakdown.Medium}</span>
+                                <span className="font-medium text-shnoor-warning">{feedbackStats.difficultyBreakdown.Medium}</span>
                               </div>
                               <div className="flex justify-between text-xs">
                                 <span className="text-shnoor-indigoMedium">Hard:</span>
-                                <span className="font-medium text-red-600">{feedbackStats.difficultyBreakdown.Hard}</span>
+                                <span className="font-medium text-shnoor-danger">{feedbackStats.difficultyBreakdown.Hard}</span>
                               </div>
                             </div>
                           </div>
 
-                          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-lg p-4">
-                            <Star size={20} className="text-yellow-600 mb-2" />
+                          <div className="bg-gradient-to-br from-shnoor-warningLight to-shnoor-warningLight border border-shnoor-warningLight rounded-lg p-4">
+                            <Star size={20} className="text-shnoor-warning mb-2" />
                             <p className="text-sm text-shnoor-indigo font-medium mb-2">Rating Distribution</p>
                             <div className="space-y-1">
                               {[5, 4, 3, 2, 1].map(rating => (
@@ -1891,7 +1891,7 @@ const AdminDashboard = () => {
                                   <span className="text-shnoor-indigoMedium w-8">{rating}★</span>
                                   <div className="flex-1 bg-shnoor-light rounded-full h-2 mx-2">
                                     <div
-                                      className="bg-yellow-500 h-2 rounded-full"
+                                      className="bg-shnoor-warning h-2 rounded-full"
                                       style={{
                                         width: `${feedbackStats.totalFeedbacks > 0
                                           ? (feedbackStats.ratingBreakdown[rating] / feedbackStats.totalFeedbacks) * 100
@@ -1924,7 +1924,7 @@ const AdminDashboard = () => {
                                       <Star
                                         key={star}
                                         size={16}
-                                        className={star <= feedback.rating ? 'fill-yellow-400 text-yellow-400' : 'text-shnoor-mist'}
+                                        className={star <= feedback.rating ? 'fill-shnoor-warning text-shnoor-warning' : 'text-shnoor-mist'}
                                       />
                                     ))}
                                   </div>
@@ -1937,9 +1937,9 @@ const AdminDashboard = () => {
 
                             {feedback.difficulty && (
                               <div className="mb-3">
-                                <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${feedback.difficulty === 'Easy' ? 'bg-green-100 text-green-700' :
-                                  feedback.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                                    'bg-red-100 text-red-700'
+                                <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${feedback.difficulty === 'Easy' ? 'bg-shnoor-successLight text-shnoor-success' :
+                                  feedback.difficulty === 'Medium' ? 'bg-shnoor-warningLight text-shnoor-warning' :
+                                    'bg-shnoor-dangerLight text-shnoor-danger'
                                   }`}>
                                   Difficulty: {feedback.difficulty}
                                 </span>
@@ -2031,7 +2031,7 @@ const AdminDashboard = () => {
                                 type="checkbox"
                                 checked={selectedTests.length === filteredTests.length && filteredTests.length > 0}
                                 onChange={toggleAllTests}
-                                className="w-5 h-5 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-blue-500"
+                                className="w-5 h-5 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-indigo"
                               />
                               <span className="text-sm font-bold text-shnoor-indigo">
                                 {selectedTests.length > 0 ? `${selectedTests.length} selected` : 'Select All'}
@@ -2040,7 +2040,7 @@ const AdminDashboard = () => {
                             {selectedTests.length > 0 && (
                               <button
                                 onClick={handleBulkDeleteTests}
-                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
+                                className="px-4 py-2 bg-shnoor-danger hover:bg-shnoor-danger text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
                               >
                                 <Trash2 size={16} />
                                 <span>Delete {selectedTests.length} Test{selectedTests.length !== 1 ? 's' : ''}</span>
@@ -2063,19 +2063,19 @@ const AdminDashboard = () => {
                                       e.stopPropagation();
                                       toggleTestSelection(test.id);
                                     }}
-                                    className="w-5 h-5 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-blue-500"
+                                    className="w-5 h-5 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-indigo"
                                   />
                                 </div>
 
                                 {/* Status Badge and 3-Dot Menu */}
                                 <div className="absolute top-4 right-4 flex items-center space-x-2">
                                   {test.status === 'published' ? (
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-shnoor-successLight text-shnoor-success">
                                       <CheckCircle size={12} className="mr-1" />
                                       Published
                                     </span>
                                   ) : test.status === 'archived' ? (
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-shnoor-dangerLight text-shnoor-danger">
                                       <XCircle size={12} className="mr-1" />
                                       Archived
                                     </span>
@@ -2225,8 +2225,8 @@ const AdminDashboard = () => {
                                   </div>
                                   <div className="text-center">
                                     <div className="flex items-center justify-center mb-1">
-                                      <CheckCircle size={16} className="text-green-600 mr-1" />
-                                      <span className="text-lg font-bold text-green-600">{test.passedCount || 0}</span>
+                                      <CheckCircle size={16} className="text-shnoor-success mr-1" />
+                                      <span className="text-lg font-bold text-shnoor-success">{test.passedCount || 0}</span>
                                     </div>
                                     <p className="text-xs text-shnoor-indigoMedium">Passed ({test.passRate || 0}%)</p>
                                   </div>
@@ -2253,7 +2253,7 @@ const AdminDashboard = () => {
                                           e.stopPropagation();
                                           handleTogglePublish(test.id, test.status);
                                         }}
-                                        className="flex-1 py-2 px-3 bg-green-100 text-green-700 hover:bg-green-600 hover:text-white rounded-lg text-sm font-medium transition-colors"
+                                        className="flex-1 py-2 px-3 bg-shnoor-successLight text-shnoor-success hover:bg-shnoor-success hover:text-white rounded-lg text-sm font-medium transition-colors"
                                         title="Publish Test"
                                       >
                                         <CheckCircle size={18} className="inline mr-1" />
@@ -2264,7 +2264,7 @@ const AdminDashboard = () => {
                                           e.stopPropagation();
                                           handleDeleteTest(test.id);
                                         }}
-                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        className="p-2 text-shnoor-danger hover:bg-shnoor-dangerLight rounded-lg transition-colors"
                                         title="Delete Test"
                                       >
                                         <Trash2 size={18} />
@@ -2288,7 +2288,7 @@ const AdminDashboard = () => {
                                           e.stopPropagation();
                                           handleDeleteTest(test.id);
                                         }}
-                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        className="p-2 text-shnoor-danger hover:bg-shnoor-dangerLight rounded-lg transition-colors"
                                         title="Delete Test"
                                       >
                                         <Trash2 size={18} />
@@ -2327,7 +2327,7 @@ const AdminDashboard = () => {
                     <select
                       value={selectedTest}
                       onChange={(e) => setSelectedTest(e.target.value)}
-                      className="w-full px-5 py-4 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-shnoor-indigo bg-white text-shnoor-navy font-medium shadow-[0_8px_30px_rgba(14,14,39,0.06)] hover:border-shnoor-indigo transition-all cursor-pointer"
+                      className="w-full px-5 py-4 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-shnoor-mist focus:border-shnoor-indigo bg-white text-shnoor-navy font-medium shadow-[0_8px_30px_rgba(14,14,39,0.06)] hover:border-shnoor-indigo transition-all cursor-pointer"
                     >
                       <option value="">-- Choose a test --</option>
                       {tests.filter(test => test.status === 'published').map((test) => (
@@ -2337,7 +2337,7 @@ const AdminDashboard = () => {
                       ))}
                     </select>
                     {tests.filter(test => test.status === 'published').length === 0 && (
-                      <p className="mt-2 text-sm text-orange-600 flex items-center">
+                      <p className="mt-2 text-sm text-shnoor-warning flex items-center">
                         <AlertCircle size={16} className="mr-1" />
                         No published tests available. Please publish a test first.
                       </p>
@@ -2544,7 +2544,7 @@ const AdminDashboard = () => {
                         value={newInstituteName}
                         onChange={(e) => setNewInstituteName(e.target.value)}
                         placeholder="Enter institute name"
-                        className="flex-1 px-5 py-4 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-shnoor-indigo bg-white text-shnoor-navy font-medium shadow-[0_8px_30px_rgba(14,14,39,0.06)]"
+                        className="flex-1 px-5 py-4 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-shnoor-mist focus:border-shnoor-indigo bg-white text-shnoor-navy font-medium shadow-[0_8px_30px_rgba(14,14,39,0.06)]"
                         onKeyPress={(e) => {
                           if (e.key === 'Enter') {
                             handleAddInstitute();
@@ -2606,10 +2606,10 @@ const AdminDashboard = () => {
                           let effectiveStatus = institute.registration_status || 'open';
                           let statusBadgeText = effectiveStatus;
                           let statusBadgeColor = effectiveStatus === 'open'
-                            ? 'bg-green-100 text-green-700'
+                            ? 'bg-shnoor-successLight text-shnoor-success'
                             : effectiveStatus === 'paused'
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : 'bg-red-100 text-red-700';
+                              ? 'bg-shnoor-warningLight text-shnoor-warning'
+                              : 'bg-shnoor-dangerLight text-shnoor-danger';
 
                           // Override if not yet open
                           if (notYetOpen) {
@@ -2619,7 +2619,7 @@ const AdminDashboard = () => {
                           // Override if deadline passed
                           else if (deadlinePassed && effectiveStatus === 'open') {
                             statusBadgeText = 'closed';
-                            statusBadgeColor = 'bg-red-100 text-red-700';
+                            statusBadgeColor = 'bg-shnoor-dangerLight text-shnoor-danger';
                           }
 
                           return (
@@ -2673,7 +2673,7 @@ const AdminDashboard = () => {
                                 </button>
                                 <button
                                   onClick={() => handleManageStudents(institute)}
-                                  className="py-2 px-3 bg-green-100 text-green-600 hover:bg-green-600 hover:text-white rounded-lg text-sm font-medium transition-colors"
+                                  className="py-2 px-3 bg-shnoor-successLight text-shnoor-success hover:bg-shnoor-success hover:text-white rounded-lg text-sm font-medium transition-colors"
                                 >
                                   <Users size={16} className="inline mr-1" />
                                   Students
@@ -2683,14 +2683,14 @@ const AdminDashboard = () => {
                                     setSelectedInstituteForRegistration(institute);
                                     setShowRegistrationControlModal(true);
                                   }}
-                                  className="py-2 px-3 bg-purple-100 text-purple-600 hover:bg-purple-600 hover:text-white rounded-lg text-sm font-medium transition-colors"
+                                  className="py-2 px-3 bg-shnoor-lavender text-shnoor-indigo hover:bg-shnoor-indigo hover:text-white rounded-lg text-sm font-medium transition-colors"
                                 >
                                   <Calendar size={16} className="inline mr-1" />
                                   Registration
                                 </button>
                                 <button
                                   onClick={() => handleDeleteInstitute(institute.id, institute.display_name)}
-                                  className="py-2 px-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
+                                  className="py-2 px-3 text-shnoor-danger hover:bg-shnoor-dangerLight rounded-lg transition-colors text-sm font-medium"
                                   title="Delete Institute"
                                 >
                                   <Trash2 size={16} className="inline mr-1" />
@@ -2909,10 +2909,10 @@ const AdminDashboard = () => {
         {showCloneModal && testToClone && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] max-w-md w-full">
-              <div className="bg-gradient-to-r from-[#3B82F6] to-blue-600 px-6 py-4 flex justify-between items-center">
+              <div className="bg-gradient-to-r from-shnoor-indigo to-shnoor-navy px-6 py-4 flex justify-between items-center">
                 <div>
                   <h3 className="text-xl font-bold text-white">Clone Test</h3>
-                  <p className="text-blue-100 text-sm mt-1">Create a copy of "{testToClone.name}"</p>
+                  <p className="text-shnoor-lavender text-sm mt-1">Create a copy of "{testToClone.name}"</p>
                 </div>
                 <button
                   onClick={() => {
@@ -2931,7 +2931,7 @@ const AdminDashboard = () => {
               <div className="p-6 space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-shnoor-indigo mb-2">
-                    New Test Name <span className="text-red-600">*</span>
+                    New Test Name <span className="text-shnoor-danger">*</span>
                   </label>
                   <input
                     type="text"
@@ -2940,14 +2940,14 @@ const AdminDashboard = () => {
                       setCloneTestName(e.target.value);
                       setCloneError('');
                     }}
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${cloneError ? 'border-red-500' : 'border-shnoor-mist'
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-shnoor-indigo ${cloneError ? 'border-shnoor-danger' : 'border-shnoor-mist'
                       }`}
                     placeholder="Enter new test name"
                     disabled={isCloning}
                     autoFocus
                   />
                   {cloneError && (
-                    <p className="mt-2 text-sm text-red-600 flex items-center">
+                    <p className="mt-2 text-sm text-shnoor-danger flex items-center">
                       <XCircle size={14} className="mr-1" />
                       {cloneError}
                     </p>
@@ -2974,7 +2974,7 @@ const AdminDashboard = () => {
                       setCloneTestName('');
                       setCloneError('');
                     }}
-                    className="flex-1 px-6 py-3 bg-shnoor-light hover:bg-gray-300 text-shnoor-navy rounded-xl font-medium transition-colors"
+                    className="flex-1 px-6 py-3 bg-shnoor-light hover:bg-shnoor-lavender text-shnoor-navy rounded-xl font-medium transition-colors"
                     disabled={isCloning}
                   >
                     Cancel
@@ -3030,10 +3030,10 @@ const AdminDashboard = () => {
         {showJobModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] max-w-3xl w-full max-h-[90vh] overflow-hidden">
-              <div className="bg-gradient-to-r from-[#3B82F6] to-blue-600 px-6 py-4 flex justify-between items-center">
+              <div className="bg-gradient-to-r from-shnoor-indigo to-shnoor-navy px-6 py-4 flex justify-between items-center">
                 <div>
                   <h3 className="text-xl font-bold text-white">{selectedJobTest?.name}</h3>
-                  <p className="text-blue-100 text-sm mt-1">Job Role & Description</p>
+                  <p className="text-shnoor-lavender text-sm mt-1">Job Role & Description</p>
                 </div>
                 <button
                   onClick={() => setShowJobModal(false)}
@@ -3058,7 +3058,7 @@ const AdminDashboard = () => {
                       <select
                         value={selectedJobRoleIndex}
                         onChange={(e) => setSelectedJobRoleIndex(parseInt(e.target.value))}
-                        className="w-full px-4 py-3 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-shnoor-indigo bg-white text-shnoor-navy font-medium"
+                        className="w-full px-4 py-3 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-shnoor-mist focus:border-shnoor-indigo bg-white text-shnoor-navy font-medium"
                       >
                         {jobRoles.map((role, index) => (
                           <option key={index} value={index}>
@@ -3095,7 +3095,7 @@ const AdminDashboard = () => {
                               <button
                                 type="button"
                                 onClick={() => handleRemoveJobRole(index)}
-                                className="text-red-600 hover:text-red-700 p-1"
+                                className="text-shnoor-danger hover:text-shnoor-danger p-1"
                                 title="Remove this role"
                               >
                                 <Trash2 size={16} />
@@ -3108,7 +3108,7 @@ const AdminDashboard = () => {
                               type="text"
                               value={role.jobRole}
                               onChange={(e) => handleJobRoleChange(index, 'jobRole', e.target.value)}
-                              className="w-full px-4 py-3 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-shnoor-indigo bg-white text-shnoor-navy font-medium"
+                              className="w-full px-4 py-3 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-shnoor-mist focus:border-shnoor-indigo bg-white text-shnoor-navy font-medium"
                               placeholder="e.g., Senior Software Engineer"
                             />
                           </div>
@@ -3118,7 +3118,7 @@ const AdminDashboard = () => {
                               value={role.jobDescription}
                               onChange={(e) => handleJobRoleChange(index, 'jobDescription', e.target.value)}
                               rows={4}
-                              className="w-full px-4 py-3 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-shnoor-indigo bg-white text-shnoor-navy resize-none"
+                              className="w-full px-4 py-3 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-shnoor-mist focus:border-shnoor-indigo bg-white text-shnoor-navy resize-none"
                               placeholder="Enter job description, requirements, responsibilities..."
                             />
                           </div>
@@ -3163,7 +3163,7 @@ const AdminDashboard = () => {
                         setIsEditingJob(false);
                         handleViewJob(selectedJobTest); // Reload original data
                       }}
-                      className="px-6 py-3 bg-shnoor-light hover:bg-gray-300 text-shnoor-navy rounded-xl font-medium transition-colors"
+                      className="px-6 py-3 bg-shnoor-light hover:bg-shnoor-lavender text-shnoor-navy rounded-xl font-medium transition-colors"
                       disabled={isSavingJob}
                     >
                       Cancel
@@ -3183,7 +3183,7 @@ const AdminDashboard = () => {
                   <>
                     <button
                       onClick={() => setShowJobModal(false)}
-                      className="px-6 py-3 bg-shnoor-light hover:bg-gray-300 text-shnoor-navy rounded-xl font-medium transition-colors"
+                      className="px-6 py-3 bg-shnoor-light hover:bg-shnoor-lavender text-shnoor-navy rounded-xl font-medium transition-colors"
                     >
                       Close
                     </button>
@@ -3576,10 +3576,10 @@ const AdminDashboard = () => {
         {showPreviewQuestionsModal && previewTest && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] max-w-4xl w-full max-h-[90vh] overflow-hidden">
-              <div className="bg-gradient-to-r from-[#3B82F6] to-blue-600 px-6 py-4 flex justify-between items-center">
+              <div className="bg-gradient-to-r from-shnoor-indigo to-shnoor-navy px-6 py-4 flex justify-between items-center">
                 <div>
                   <h3 className="text-xl font-bold text-white">{previewTest.name}</h3>
-                  <p className="text-blue-100 text-sm mt-1">Preview Questions</p>
+                  <p className="text-shnoor-lavender text-sm mt-1">Preview Questions</p>
                 </div>
                 <button
                   onClick={() => setShowPreviewQuestionsModal(false)}
@@ -3620,14 +3620,14 @@ const AdminDashboard = () => {
                             <div
                               key={option.label}
                               className={`p-3 rounded-lg border ${question.correct_option === option.label
-                                ? 'bg-green-50 border-green-500 text-green-900'
+                                ? 'bg-shnoor-successLight border-shnoor-success text-shnoor-success'
                                 : 'bg-white border-shnoor-light text-shnoor-indigoMedium'
                                 }`}
                             >
                               <span className="font-bold mr-2">{option.label}.</span>
                               {option.value}
                               {question.correct_option === option.label && (
-                                <span className="ml-2 text-xs font-bold text-green-600">(Correct Answer)</span>
+                                <span className="ml-2 text-xs font-bold text-shnoor-success">(Correct Answer)</span>
                               )}
                             </div>
                           ))}
@@ -3644,7 +3644,7 @@ const AdminDashboard = () => {
               <div className="p-6 border-t border-shnoor-light flex justify-end">
                 <button
                   onClick={() => setShowPreviewQuestionsModal(false)}
-                  className="px-6 py-3 bg-shnoor-light hover:bg-gray-300 text-shnoor-navy rounded-xl font-medium transition-colors"
+                  className="px-6 py-3 bg-shnoor-light hover:bg-shnoor-lavender text-shnoor-navy rounded-xl font-medium transition-colors"
                 >
                   Close
                 </button>
@@ -3657,10 +3657,10 @@ const AdminDashboard = () => {
         {showTestHistoryModal && testHistory && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] max-w-2xl w-full">
-              <div className="bg-gradient-to-r from-[#3B82F6] to-blue-600 px-6 py-4 flex justify-between items-center">
+              <div className="bg-gradient-to-r from-shnoor-indigo to-shnoor-navy px-6 py-4 flex justify-between items-center">
                 <div>
                   <h3 className="text-xl font-bold text-white">Test History</h3>
-                  <p className="text-blue-100 text-sm mt-1">{testHistory.testName}</p>
+                  <p className="text-shnoor-lavender text-sm mt-1">{testHistory.testName}</p>
                 </div>
                 <button
                   onClick={() => setShowTestHistoryModal(false)}
@@ -3679,10 +3679,10 @@ const AdminDashboard = () => {
                 ) : (
                   <div className="space-y-6">
                     {/* Created Info */}
-                    <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+                    <div className="p-4 bg-shnoor-successLight rounded-xl border border-shnoor-successLight">
                       <div className="flex items-center space-x-3 mb-3">
-                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                          <Plus className="text-green-600" size={20} />
+                        <div className="w-10 h-10 bg-shnoor-successLight rounded-full flex items-center justify-center">
+                          <Plus className="text-shnoor-success" size={20} />
                         </div>
                         <div>
                           <h4 className="font-bold text-shnoor-navy">Created</h4>
@@ -3750,7 +3750,7 @@ const AdminDashboard = () => {
               <div className="p-6 border-t border-shnoor-light flex justify-end">
                 <button
                   onClick={() => setShowTestHistoryModal(false)}
-                  className="px-6 py-3 bg-shnoor-light hover:bg-gray-300 text-shnoor-navy rounded-xl font-medium transition-colors"
+                  className="px-6 py-3 bg-shnoor-light hover:bg-shnoor-lavender text-shnoor-navy rounded-xl font-medium transition-colors"
                 >
                   Close
                 </button>

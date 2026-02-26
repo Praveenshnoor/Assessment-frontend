@@ -272,8 +272,8 @@ const Dashboard = () => {
                   {selectedTest.jobRoles[selectedJobRoleIndex]?.jobDescription && (
                     <div>
                       <div className="flex items-center mb-3">
-                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                          <BookOpen className="w-5 h-5 text-green-600" />
+                        <div className="w-10 h-10 bg-shnoor-successLight rounded-lg flex items-center justify-center mr-3">
+                          <BookOpen className="w-5 h-5 text-shnoor-success" />
                         </div>
                         <h4 className="text-lg font-bold text-shnoor-navy">Job Description</h4>
                       </div>
@@ -302,8 +302,8 @@ const Dashboard = () => {
                   {selectedTest.description && (
                     <div>
                       <div className="flex items-center mb-3">
-                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                          <BookOpen className="w-5 h-5 text-green-600" />
+                        <div className="w-10 h-10 bg-shnoor-successLight rounded-lg flex items-center justify-center mr-3">
+                          <BookOpen className="w-5 h-5 text-shnoor-success" />
                         </div>
                         <h4 className="text-lg font-bold text-shnoor-navy">Job Description</h4>
                       </div>
@@ -314,14 +314,14 @@ const Dashboard = () => {
                   )}
                 </>
               ) : (
-                <div className="text-center py-8 text-gray-400">
+                <div className="text-center py-8 text-shnoor-navy">
                   <FileText className="mx-auto h-12 w-12 mb-3 opacity-50" />
                   <p>No job description available for this test</p>
                 </div>
               )}
             </div>
 
-            <div className="bg-gray-50 px-6 py-4 flex justify-end border-t border-shnoor-mist">
+            <div className="bg-shnoor-lavender px-6 py-4 flex justify-end border-t border-shnoor-mist">
               <button
                 onClick={() => setShowJobModal(false)}
                 className="px-6 py-2 bg-white border border-shnoor-mist hover:bg-shnoor-mist/30 text-shnoor-navy font-semibold rounded-lg transition-colors shadow-sm"
@@ -349,7 +349,7 @@ const Dashboard = () => {
             <div className="flex items-center space-x-6">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium text-white">Welcome, {studentName}</p>
-                <p className="text-xs text-gray-300">{capitalizeInstitute(institute)} • ID: {studentId}</p>
+                <p className="text-xs text-shnoor-soft">{capitalizeInstitute(institute)} • ID: {studentId}</p>
               </div>
               <button
                 onClick={handleLogout}
@@ -378,7 +378,7 @@ const Dashboard = () => {
         )}
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 shadow-sm">
+          <div className="bg-shnoor-dangerLight border border-shnoor-dangerLight text-shnoor-danger px-4 py-3 rounded-lg mb-6 shadow-sm">
             {error}
           </div>
         )}
@@ -423,15 +423,15 @@ const Dashboard = () => {
                   let cardOpacity = 'opacity-100';
 
                   if (test.isMockTest) {
-                    cardBgColor = 'bg-teal-50';
-                    cardBorderColor = 'border-teal-400';
+                    cardBgColor = 'bg-shnoor-successLight';
+                    cardBorderColor = 'border-shnoor-success';
                   } else if (test.testStatus === 'expired' || test.alreadyTaken) {
-                    cardBgColor = 'bg-gray-100';
-                    cardBorderColor = 'border-gray-300';
+                    cardBgColor = 'bg-shnoor-lavender';
+                    cardBorderColor = 'border-shnoor-mist';
                     cardOpacity = 'opacity-75';
                   } else if (test.testStatus === 'upcoming') {
-                    cardBgColor = 'bg-orange-50';
-                    cardBorderColor = 'border-orange-300';
+                    cardBgColor = 'bg-shnoor-warningLight';
+                    cardBorderColor = 'border-shnoor-warningLight';
                   }
 
                   return (
@@ -444,47 +444,47 @@ const Dashboard = () => {
                           <div className="flex items-center gap-2 mb-2">
                             <span className={`inline-block px-3 py-1 ${
                               test.isMockTest
-                                ? 'bg-teal-100 text-teal-700'
+                                ? 'bg-shnoor-successLight text-shnoor-success'
                                 : test.testStatus === 'expired' || test.alreadyTaken
                                 ? 'bg-shnoor-mist text-shnoor-navy'
                                 : test.testStatus === 'upcoming'
-                                ? 'bg-orange-200 text-orange-800'
+                                ? 'bg-shnoor-warningLight text-shnoor-warning'
                                 : 'bg-shnoor-lavender text-shnoor-indigo'
                             } rounded-full text-xs font-semibold`}>
                               {test.subject}
                             </span>
                             {test.isMockTest && (
-                              <span className="inline-block px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-xs font-bold border border-teal-300">
+                              <span className="inline-block px-3 py-1 bg-shnoor-successLight text-shnoor-success rounded-full text-xs font-bold border border-shnoor-successLight">
                                 🎯 Mock Test
                               </span>
                             )}
                           </div>
                           <h3 className="text-lg font-bold text-shnoor-navy">{test.title}</h3>
                           {test.isMockTest && (
-                            <p className="text-xs text-teal-600 mt-1">Practice test to get familiar with the platform</p>
+                            <p className="text-xs text-shnoor-success mt-1">Practice test to get familiar with the platform</p>
                           )}
                           {test.alreadyTaken && (
-                            <span className="inline-block mt-2 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
+                            <span className="inline-block mt-2 px-3 py-1 bg-shnoor-dangerLight text-shnoor-danger rounded-full text-xs font-semibold">
                               All Attempts Used ({test.attemptsTaken}/{test.maxAttempts})
                             </span>
                           )}
                           {test.testStatus === 'upcoming' && !test.alreadyTaken && (
-                            <span className="inline-block mt-2 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-semibold">
+                            <span className="inline-block mt-2 px-3 py-1 bg-shnoor-warningLight text-shnoor-warning rounded-full text-xs font-semibold">
                               🕐 Upcoming
                             </span>
                           )}
                           {test.testStatus === 'expired' && !test.alreadyTaken && (
-                            <span className="inline-block mt-2 px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-xs font-semibold">
+                            <span className="inline-block mt-2 px-3 py-1 bg-shnoor-lavender text-shnoor-navy rounded-full text-xs font-semibold">
                               ⏰ Deadline Passed
                             </span>
                           )}
                           {test.isAvailable && !test.alreadyTaken && testsWithProgress.has(test.id) && (
-                            <span className="inline-block mt-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                            <span className="inline-block mt-2 px-3 py-1 bg-shnoor-successLight text-shnoor-success rounded-full text-xs font-semibold">
                               ⏸ In Progress
                             </span>
                           )}
                         </div>
-                        <BookOpen className={test.alreadyTaken || !test.isAvailable ? 'text-shnoor-mist' : test.testStatus === 'upcoming' ? 'text-orange-400' : 'text-shnoor-indigo'} size={24} />
+                        <BookOpen className={test.alreadyTaken || !test.isAvailable ? 'text-shnoor-mist' : test.testStatus === 'upcoming' ? 'text-shnoor-warning' : 'text-shnoor-indigo'} size={24} />
                       </div>
 
                       <div className="space-y-2 mb-6">
@@ -530,11 +530,11 @@ const Dashboard = () => {
                             test.alreadyTaken
                               ? 'bg-shnoor-mist/50 text-shnoor-navy cursor-not-allowed border border-shnoor-mist'
                               : test.testStatus === 'upcoming'
-                              ? 'bg-orange-400 text-white cursor-not-allowed'
+                              ? 'bg-shnoor-warning text-white cursor-not-allowed'
                               : test.testStatus === 'expired'
                               ? 'bg-shnoor-mist/50 text-shnoor-navy cursor-not-allowed border border-shnoor-mist'
                               : testsWithProgress.has(test.id)
-                              ? 'bg-green-600 hover:bg-green-700 text-white'
+                              ? 'bg-shnoor-success hover:bg-shnoor-success text-white'
                               : 'bg-shnoor-indigo hover:bg-[#4d4d9c] text-white'
                           }`}
                         >

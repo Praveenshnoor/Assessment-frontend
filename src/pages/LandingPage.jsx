@@ -111,7 +111,7 @@ const LandingPage = () => (
                   <p className="text-sm text-shnoor-soft">3 tests available</p>
                 </div>
               </div>
-              <span className="bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full">Active</span>
+              <span className="bg-shnoor-successLight text-shnoor-success text-xs font-bold px-3 py-1 rounded-full">Active</span>
             </div>
 
             {/* Test 1 */}
@@ -224,13 +224,13 @@ const LandingPage = () => (
           <div className="bg-[#1f2937] border border-[#374151] rounded-2xl p-8">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-bold text-xl text-white">Security Status</h3>
-              <span className="bg-green-500 text-white text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-widest">ACTIVE</span>
+              <span className="bg-shnoor-success text-white text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-widest">ACTIVE</span>
             </div>
             <div className="space-y-0 divide-y divide-[#374151]">
               {[
-                { label: 'Fullscreen Enforcement', val: '✓ Enabled', cls: 'text-green-400' },
-                { label: 'Camera Monitoring', val: '✓ Required', cls: 'text-green-400' },
-                { label: 'Tab Switch Limit', val: '3 Warnings', cls: 'text-yellow-400' },
+                { label: 'Fullscreen Enforcement', val: '✓ Enabled', cls: 'text-shnoor-success' },
+                { label: 'Camera Monitoring', val: '✓ Required', cls: 'text-shnoor-success' },
+                { label: 'Tab Switch Limit', val: '3 Warnings', cls: 'text-shnoor-warning' },
                 { label: 'Auto-Submit', val: 'On Timeout', cls: 'text-[#60a5fa]' },
               ].map(r => (
                 <div key={r.label} className="flex items-center justify-between py-4">
@@ -369,7 +369,7 @@ const LandingPage = () => (
               <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>              <span className="text-white/20">•</span>
               <Link to="/terms-and-conditions" className="hover:text-white transition-colors">Terms &amp; Conditions</Link>            </div>
           </div>
-          <div className="flex items-center gap-2 text-sm text-green-400 font-semibold">
+          <div className="flex items-center gap-2 text-sm text-shnoor-success font-semibold">
             <Icon d={SHIELD} cls="w-4 h-4" />
             Secure Environment
           </div>

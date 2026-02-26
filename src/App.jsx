@@ -4,8 +4,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 // Eagerly load Loading Spinner to show while chunks are fetched
 const LoadingFallback = () => (
-  <div className="flex items-center justify-center min-h-screen bg-gray-50">
-    <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
+  <div className="flex items-center justify-center min-h-screen bg-shnoor-lavender">
+    <div className="animate-spin rounded-full h-12 w-12 border-4 border-shnoor-indigo border-t-transparent"></div>
   </div>
 );
 

@@ -83,7 +83,7 @@ const SystemSettingsTab = () => {
     };
 
     if (isLoading) {
-        return <div className="p-8 text-center text-gray-500">Loading settings...</div>;
+        return <div className="p-8 text-center text-shnoor-navy">Loading settings...</div>;
     }
 
     return (
@@ -104,7 +104,7 @@ const SystemSettingsTab = () => {
             </div>
 
             {message.text && (
-                <div className={`p-4 rounded-lg mb-6 ${message.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                <div className={`p-4 rounded-lg mb-6 ${message.type === 'error' ? 'bg-shnoor-dangerLight text-shnoor-danger border border-shnoor-dangerLight' : 'bg-shnoor-successLight text-shnoor-success border border-shnoor-successLight'}`}>
                     {message.text}
                 </div>
             )}
@@ -122,7 +122,7 @@ const SystemSettingsTab = () => {
 
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-shnoor-navy mb-1">
                                 Auto-Retry Timer (Minutes)
                             </label>
                             <input
@@ -132,9 +132,9 @@ const SystemSettingsTab = () => {
                                 max="60"
                                 value={settings.retry_timer_minutes}
                                 onChange={handleChange}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-shnoor-indigo outline-none transition-all"
+                                className="w-full px-4 py-2 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-shnoor-indigo outline-none transition-all"
                             />
-                            <p className="text-xs text-gray-500 mt-2">
+                            <p className="text-xs text-shnoor-navy mt-2">
                                 When the server goes down, students will see a fallback screen that counts down this many minutes before automatically polling the server again.
                             </p>
                         </div>
@@ -143,7 +143,7 @@ const SystemSettingsTab = () => {
 
                 {/* Maintenance Mode Settings */}
                 <Card className="p-6 border border-shnoor-light shadow-sm">
-                    <div className="flex items-center mb-4 space-x-2 text-amber-500">
+                    <div className="flex items-center mb-4 space-x-2 text-shnoor-warning">
                         <AlertTriangle size={24} />
                         <h3 className="text-lg font-bold">Maintenance Mode</h3>
                     </div>
@@ -161,17 +161,17 @@ const SystemSettingsTab = () => {
                                     onChange={handleChange}
                                     className="sr-only"
                                 />
-                                <div className={`block w-14 h-8 rounded-full transition-colors ${settings.maintenance_mode ? 'bg-amber-500' : 'bg-gray-300'}`}></div>
+                                <div className={`block w-14 h-8 rounded-full transition-colors ${settings.maintenance_mode ? 'bg-shnoor-warning' : 'bg-shnoor-lavender'}`}></div>
                                 <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${settings.maintenance_mode ? 'transform translate-x-6' : ''}`}></div>
                             </div>
-                            <div className="ml-3 font-medium text-gray-700">
+                            <div className="ml-3 font-medium text-shnoor-navy">
                                 Enable Maintenance Mode
                             </div>
                         </label>
 
                         {settings.maintenance_mode && (
                             <div className="animate-fadeIn">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-shnoor-navy mb-1">
                                     Maintenance Message
                                 </label>
                                 <textarea
@@ -179,10 +179,10 @@ const SystemSettingsTab = () => {
                                     value={settings.maintenance_message}
                                     onChange={handleChange}
                                     rows="3"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all resize-none"
+                                    className="w-full px-4 py-2 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-warning focus:border-shnoor-warning outline-none transition-all resize-none"
                                     placeholder="Enter the message students will see..."
                                 ></textarea>
-                                <p className="text-xs text-gray-500 mt-2">
+                                <p className="text-xs text-shnoor-navy mt-2">
                                     This message is displayed prominently on the maintenance screen.
                                 </p>
                             </div>

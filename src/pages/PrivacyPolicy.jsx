@@ -182,7 +182,7 @@ const PrivacyPolicy = () => {
                                 <Link to="/terms-and-conditions" className="hover:text-white transition-colors">Terms &amp; Conditions</Link>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-green-400 font-semibold">
+                        <div className="flex items-center gap-2 text-sm text-shnoor-success font-semibold">
                             <Icon d={SHIELD} cls="w-4 h-4" />
                             Secure Environment
                         </div>

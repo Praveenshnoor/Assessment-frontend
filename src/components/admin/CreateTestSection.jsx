@@ -46,7 +46,8 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
         publicTestCases: [{ input: '', output: '', explanation: '' }],
         hiddenTestCases: [{ input: '', output: '' }],
         timeLimit: 2,
-        memoryLimit: 256
+        memoryLimit: 256,
+        marks: 10
     });
 
     // Load test data when editing
@@ -140,6 +141,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                             description: q.description,
                             timeLimit: q.timeLimit || 2,
                             memoryLimit: q.memoryLimit || 256,
+                            marks: q.marks || 10,
                             publicTestCases: q.publicTestCases || [{ input: '', output: '', explanation: '' }],
                             hiddenTestCases: q.hiddenTestCases || [{ input: '', output: '' }]
                         }));
@@ -421,30 +423,29 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                 data = await response.json();
 
                 if (response.ok && data.success) {
-                    // CODE EXECUTION & CODING PROBLEMS - TEMPORARILY DISABLED
                     // ALWAYS save coding questions (even if empty, to clear old ones)
-                    // console.log('[UPDATE TEST] Saving coding questions:', codingQuestions.length);
-                    // console.log('[UPDATE TEST] Coding questions data:', JSON.stringify(codingQuestions, null, 2));
+                    console.log('[UPDATE TEST] Saving coding questions:', codingQuestions.length);
+                    console.log('[UPDATE TEST] Coding questions data:', JSON.stringify(codingQuestions, null, 2));
                     
-                    // const codingResponse = await apiFetch(`api/coding-questions/test/${uploadedTestId}`, {
-                    //     method: 'POST',
-                    //     headers: {
-                    //         'Authorization': `Bearer ${token}`,
-                    //         'Content-Type': 'application/json'
-                    //     },
-                    //     body: JSON.stringify({
-                    //         codingQuestions: codingQuestions
-                    //     })
-                    // });
+                    const codingResponse = await apiFetch(`api/coding-questions/test/${uploadedTestId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            codingQuestions: codingQuestions
+                        })
+                    });
 
-                    // const codingData = await codingResponse.json();
-                    // if (!codingResponse.ok || !codingData.success) {
-                    //     console.error('[UPDATE TEST] Failed to save coding questions:', codingData);
-                    //     alert('Test updated but failed to save coding questions: ' + codingData.message);
-                    //     setIsUploading(false);
-                    //     return;
-                    // }
-                    // console.log('[UPDATE TEST] Coding questions saved successfully');
+                    const codingData = await codingResponse.json();
+                    if (!codingResponse.ok || !codingData.success) {
+                        console.error('[UPDATE TEST] Failed to save coding questions:', codingData);
+                        alert('Test updated but failed to save coding questions: ' + codingData.message);
+                        setIsUploading(false);
+                        return;
+                    }
+                    console.log('[UPDATE TEST] Coding questions saved successfully');
 
                     alert('Test updated successfully!');
                     // Go back to view mode instead of dashboard
@@ -479,30 +480,29 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                 if (response.ok && data.success) {
                     const testId = data.testId;
                     
-                    // CODE EXECUTION & CODING PROBLEMS - TEMPORARILY DISABLED
                     // ALWAYS save coding questions (even if empty, to ensure consistency)
-                    // console.log('[CREATE TEST] Saving coding questions for new test:', codingQuestions.length);
-                    // console.log('[CREATE TEST] Coding questions data:', JSON.stringify(codingQuestions, null, 2));
+                    console.log('[CREATE TEST] Saving coding questions for new test:', codingQuestions.length);
+                    console.log('[CREATE TEST] Coding questions data:', JSON.stringify(codingQuestions, null, 2));
                     
-                    // const codingResponse = await apiFetch(`api/coding-questions/test/${testId}`, {
-                    //     method: 'POST',
-                    //     headers: {
-                    //         'Authorization': `Bearer ${token}`,
-                    //         'Content-Type': 'application/json'
-                    //     },
-                    //     body: JSON.stringify({
-                    //         codingQuestions: codingQuestions
-                    //     })
-                    // });
+                    const codingResponse = await apiFetch(`api/coding-questions/test/${testId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            codingQuestions: codingQuestions
+                        })
+                    });
 
-                    // const codingData = await codingResponse.json();
-                    // if (!codingResponse.ok || !codingData.success) {
-                    //     console.error('[CREATE TEST] Failed to save coding questions:', codingData);
-                    //     alert('Test created but failed to save coding questions: ' + codingData.message);
-                    //     setIsUploading(false);
-                    //     return;
-                    // }
-                    // console.log('[CREATE TEST] Coding questions saved successfully');
+                    const codingData = await codingResponse.json();
+                    if (!codingResponse.ok || !codingData.success) {
+                        console.error('[CREATE TEST] Failed to save coding questions:', codingData);
+                        alert('Test created but failed to save coding questions: ' + codingData.message);
+                        setIsUploading(false);
+                        return;
+                    }
+                    console.log('[CREATE TEST] Coding questions saved successfully');
 
                     setUploadedTestId(testId);
                     setUploadedTestName(testTitle);
@@ -564,30 +564,29 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    // CODE EXECUTION & CODING PROBLEMS - TEMPORARILY DISABLED
                     // Save coding questions after bulk upload in edit mode
-                    // console.log('[BULK UPLOAD EDIT] Saving coding questions:', codingQuestions.length);
-                    // console.log('[BULK UPLOAD EDIT] Coding questions data:', JSON.stringify(codingQuestions, null, 2));
+                    console.log('[BULK UPLOAD EDIT] Saving coding questions:', codingQuestions.length);
+                    console.log('[BULK UPLOAD EDIT] Coding questions data:', JSON.stringify(codingQuestions, null, 2));
                     
-                    // const codingResponse = await apiFetch(`api/coding-questions/test/${uploadedTestId}`, {
-                    //     method: 'POST',
-                    //     headers: {
-                    //         'Authorization': `Bearer ${token}`,
-                    //         'Content-Type': 'application/json'
-                    //     },
-                    //     body: JSON.stringify({
-                    //         codingQuestions: codingQuestions
-                    //     })
-                    // });
+                    const codingResponse = await apiFetch(`api/coding-questions/test/${uploadedTestId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            codingQuestions: codingQuestions
+                        })
+                    });
 
-                    // const codingData = await codingResponse.json();
-                    // if (!codingResponse.ok || !codingData.success) {
-                    //     console.error('[BULK UPLOAD EDIT] Failed to save coding questions:', codingData);
-                    //     alert('Questions uploaded but failed to save coding questions: ' + codingData.message);
-                    //     setIsUploading(false);
-                    //     return;
-                    // }
-                    // console.log('[BULK UPLOAD EDIT] Coding questions saved successfully');
+                    const codingData = await codingResponse.json();
+                    if (!codingResponse.ok || !codingData.success) {
+                        console.error('[BULK UPLOAD EDIT] Failed to save coding questions:', codingData);
+                        alert('Questions uploaded but failed to save coding questions: ' + codingData.message);
+                        setIsUploading(false);
+                        return;
+                    }
+                    console.log('[BULK UPLOAD EDIT] Coding questions saved successfully');
                     
                     alert(`Questions uploaded successfully! ${data.questionsCount} questions added. Click "Save Changes" to save.`);
                     // Reload test data to show new questions
@@ -638,30 +637,29 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                 if (response.ok && data.success) {
                     const testId = data.testId;
                     
-                    // CODE EXECUTION & CODING PROBLEMS - TEMPORARILY DISABLED
                     // Save coding questions after bulk upload
-                    // console.log('[BULK UPLOAD] Saving coding questions:', codingQuestions.length);
-                    // console.log('[BULK UPLOAD] Coding questions data:', JSON.stringify(codingQuestions, null, 2));
+                    console.log('[BULK UPLOAD] Saving coding questions:', codingQuestions.length);
+                    console.log('[BULK UPLOAD] Coding questions data:', JSON.stringify(codingQuestions, null, 2));
                     
-                    // const codingResponse = await apiFetch(`api/coding-questions/test/${testId}`, {
-                    //     method: 'POST',
-                    //     headers: {
-                    //         'Authorization': `Bearer ${token}`,
-                    //         'Content-Type': 'application/json'
-                    //     },
-                    //     body: JSON.stringify({
-                    //         codingQuestions: codingQuestions
-                    //     })
-                    // });
+                    const codingResponse = await apiFetch(`api/coding-questions/test/${testId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            codingQuestions: codingQuestions
+                        })
+                    });
 
-                    // const codingData = await codingResponse.json();
-                    // if (!codingResponse.ok || !codingData.success) {
-                    //     console.error('[BULK UPLOAD] Failed to save coding questions:', codingData);
-                    //     alert('Test created but failed to save coding questions: ' + codingData.message);
-                    //     setIsUploading(false);
-                    //     return;
-                    // }
-                    // console.log('[BULK UPLOAD] Coding questions saved successfully');
+                    const codingData = await codingResponse.json();
+                    if (!codingResponse.ok || !codingData.success) {
+                        console.error('[BULK UPLOAD] Failed to save coding questions:', codingData);
+                        alert('Test created but failed to save coding questions: ' + codingData.message);
+                        setIsUploading(false);
+                        return;
+                    }
+                    console.log('[BULK UPLOAD] Coding questions saved successfully');
                     
                     setUploadedTestId(testId);
                     setUploadedTestName(testTitle);
@@ -734,7 +732,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         {viewMode && (
                             <button
                                 onClick={() => setViewMode(false)}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
+                                className="px-4 py-2 bg-shnoor-indigo text-white rounded-lg hover:bg-shnoor-indigo transition-colors font-medium flex items-center space-x-2"
                             >
                                 <Pencil size={18} />
                                 <span>Edit</span>
@@ -754,9 +752,9 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                     disabled={viewMode}
                                     className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:border-shnoor-indigo focus:ring-shnoor-indigo/20 transition-all font-medium text-shnoor-navy shadow-sm pr-10 ${viewMode ? 'bg-shnoor-light opacity-50 cursor-not-allowed border-shnoor-light' :
                                             nameAvailability.available === false
-                                                ? 'border-red-500 bg-red-50'
+                                                ? 'border-shnoor-danger bg-shnoor-dangerLight'
                                                 : nameAvailability.available === true
-                                                    ? 'border-green-500 bg-white'
+                                                    ? 'border-shnoor-success bg-white'
                                                     : 'border-shnoor-light bg-white'
                                     }`}
                                     placeholder="e.g., Java Fundamentals - Batch A"
@@ -764,25 +762,25 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                 />
                                 {nameAvailability.checking && (
                                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                        <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                                        <Loader2 className="w-5 h-5 text-shnoor-navy animate-spin" />
                                     </div>
                                 )}
                                 {!nameAvailability.checking && nameAvailability.available === true && (
                                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                        <CheckCircle className="w-5 h-5 text-green-600" />
+                                        <CheckCircle className="w-5 h-5 text-shnoor-success" />
                                     </div>
                                 )}
                                 {!nameAvailability.checking && nameAvailability.available === false && (
                                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                        <AlertCircle className="w-5 h-5 text-red-600" />
+                                        <AlertCircle className="w-5 h-5 text-shnoor-danger" />
                                     </div>
                                 )}
                             </div>
                             {nameAvailability.message && (
                                 <p className={`mt-2 text-sm ${
                                     nameAvailability.available 
-                                        ? 'text-green-600' 
-                                        : 'text-red-600'
+                                        ? 'text-shnoor-success' 
+                                        : 'text-shnoor-danger'
                                 }`}>
                                     {nameAvailability.message}
                                 </p>
@@ -815,7 +813,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                             <button
                                                 type="button"
                                                 onClick={() => handleRemoveJobRole(index)}
-                                                className="text-red-500 hover:text-red-600 p-1"
+                                                className="text-shnoor-danger hover:text-shnoor-danger p-1"
                                                 title="Remove this role"
                                             >
                                                 <Trash2 size={16} />
@@ -841,50 +839,50 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                             onChange={(e) => handleJobRoleChange(index, 'job_description', e.target.value)}
                                             rows={4}
                                             disabled={viewMode}
-                                            className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent resize-y ${viewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                            className={`w-full px-4 py-3 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-navyLight focus:border-transparent resize-y ${viewMode ? 'bg-shnoor-lavender cursor-not-allowed' : ''}`}
                                             placeholder="Enter job description, requirements, responsibilities..."
                                             required
                                         />
                                     </div>
                                 </div>
                             ))}
-                            <p className="text-xs text-gray-500">Students will be able to select a role and view its description before taking the test</p>
+                            <p className="text-xs text-shnoor-navy">Students will be able to select a role and view its description before taking the test</p>
                         </div>
 
                         {/* Duration and Max Attempts */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Duration (minutes) *</label>
+                                <label className="block text-sm font-medium text-shnoor-navy mb-2">Duration (minutes) *</label>
                                 <input
                                     type="number"
                                     value={duration}
                                     onChange={(e) => setDuration(parseInt(e.target.value) || 60)}
                                     min="1"
                                     disabled={viewMode}
-                                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent ${viewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                    className={`w-full px-4 py-3 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-navyLight focus:border-transparent ${viewMode ? 'bg-shnoor-lavender cursor-not-allowed' : ''}`}
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Max Attempts *</label>
+                                <label className="block text-sm font-medium text-shnoor-navy mb-2">Max Attempts *</label>
                                 <input
                                     type="number"
                                     value={maxAttempts}
                                     onChange={(e) => setMaxAttempts(parseInt(e.target.value) || 1)}
                                     min="1"
                                     disabled={viewMode}
-                                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent ${viewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                    className={`w-full px-4 py-3 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-navyLight focus:border-transparent ${viewMode ? 'bg-shnoor-lavender cursor-not-allowed' : ''}`}
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Passing % *</label>
+                                <label className="block text-sm font-medium text-shnoor-navy mb-2">Passing % *</label>
                                 <input
                                     type="number"
                                     value={passingPercentage}
                                     onChange={(e) => setPassingPercentage(parseInt(e.target.value) || 50)}
                                     disabled={viewMode}
-                                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent ${viewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                    className={`w-full px-4 py-3 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-navyLight focus:border-transparent ${viewMode ? 'bg-shnoor-lavender cursor-not-allowed' : ''}`}
                                     min="0"
                                     max="100"
                                     required
@@ -895,30 +893,30 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         {/* Start and End DateTime */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Start Date & Time (Optional)</label>
+                                <label className="block text-sm font-medium text-shnoor-navy mb-2">Start Date & Time (Optional)</label>
                                 <input
                                     type="datetime-local"
                                     value={startDateTime}
                                     onChange={(e) => setStartDateTime(e.target.value)}
                                     disabled={viewMode}
-                                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent ${viewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                    className={`w-full px-4 py-3 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-navyLight focus:border-transparent ${viewMode ? 'bg-shnoor-lavender cursor-not-allowed' : ''}`}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">End Date & Time (Optional)</label>
+                                <label className="block text-sm font-medium text-shnoor-navy mb-2">End Date & Time (Optional)</label>
                                 <input
                                     type="datetime-local"
                                     value={endDateTime}
                                     onChange={(e) => setEndDateTime(e.target.value)}
                                     disabled={viewMode}
-                                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent ${viewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                    className={`w-full px-4 py-3 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-navyLight focus:border-transparent ${viewMode ? 'bg-shnoor-lavender cursor-not-allowed' : ''}`}
                                 />
                             </div>
                         </div>
 
                         {/* Add Coding Question Button */}
                         {!viewMode && !isEditMode && (
-                            <div className="pt-4 border-t border-gray-200">
+                            <div className="pt-4 border-t border-shnoor-mist">
                                 <button
                                     onClick={() => {
                                         setEditingCodingQuestionId(null);
@@ -932,7 +930,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                         });
                                         setShowCodingModal(true);
                                     }}
-                                    className="w-full py-3 bg-white border-2 border-gray-300 hover:border-blue-500 text-gray-700 hover:text-blue-600 font-semibold rounded-lg transition-all flex items-center justify-center space-x-2"
+                                    className="w-full py-3 bg-white border-2 border-shnoor-mist hover:border-shnoor-indigo text-shnoor-navy hover:text-shnoor-indigo font-semibold rounded-lg transition-all flex items-center justify-center space-x-2"
                                 >
                                     <Code size={20} />
                                     <span>Add Coding Question</span>
@@ -944,35 +942,35 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         {!viewMode && !isEditMode && codingQuestions.length > 0 && (
                             <div className="pt-4 space-y-3">
                                 {codingQuestions.map((q, idx) => (
-                                    <div key={q.id} className="bg-white border-2 border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+                                    <div key={q.id} className="bg-white border-2 border-shnoor-mist rounded-lg p-4 hover:border-shnoor-mist transition-colors">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center space-x-3">
-                                                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                                                    <Code className="w-5 h-5 text-gray-600" />
+                                                <div className="w-10 h-10 bg-shnoor-lavender rounded-lg flex items-center justify-center">
+                                                    <Code className="w-5 h-5 text-shnoor-navy" />
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-semibold text-gray-900">Coding Question {idx + 1}</h4>
-                                                    <p className="text-sm text-gray-500">{q.title}</p>
+                                                    <h4 className="font-semibold text-shnoor-navy">Coding Question {idx + 1}</h4>
+                                                    <p className="text-sm text-shnoor-navy">{q.title}</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center space-x-2">
                                                 <button
                                                     onClick={() => handleViewCodingQuestion(q)}
-                                                    className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition-colors"
+                                                    className="p-2 bg-shnoor-lavender hover:bg-shnoor-lavender text-shnoor-navy rounded-lg transition-colors"
                                                     title="View question"
                                                 >
                                                     <Eye size={18} />
                                                 </button>
                                                 <button
                                                     onClick={() => handleEditCodingQuestion(q)}
-                                                    className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors"
+                                                    className="p-2 bg-shnoor-lavender hover:bg-shnoor-lavender text-shnoor-indigo rounded-lg transition-colors"
                                                     title="Edit question"
                                                 >
                                                     <Pencil size={18} />
                                                 </button>
                                                 <button
                                                     onClick={() => handleRemoveCodingQuestion(q.id)}
-                                                    className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+                                                    className="p-2 bg-shnoor-dangerLight hover:bg-shnoor-dangerLight text-shnoor-danger rounded-lg transition-colors"
                                                     title="Delete question"
                                                 >
                                                     <Trash2 size={18} />
@@ -987,18 +985,18 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         {isEditMode ? (
                             /* Edit Mode: Show options to edit manually or upload new file */
                             <div className="pt-6">
-                                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-6">
+                                <div className="bg-shnoor-lavender border-2 border-shnoor-mist rounded-xl p-6 mb-6">
                                     <div className="flex items-center space-x-3 mb-3">
-                                        <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                                        <div className="w-10 h-10 bg-shnoor-indigo rounded-full flex items-center justify-center">
                                             <FileText className="w-5 h-5 text-white" />
                                         </div>
                                         <div>
-                                            <h3 className="font-bold text-gray-900">Current Questions</h3>
-                                            <p className="text-sm text-gray-600">{questions.length} question{questions.length !== 1 ? 's' : ''} loaded</p>
+                                            <h3 className="font-bold text-shnoor-navy">Current Questions</h3>
+                                            <p className="text-sm text-shnoor-navy">{questions.length} question{questions.length !== 1 ? 's' : ''} loaded</p>
                                         </div>
                                     </div>
                                     {!viewMode && (
-                                        <p className="text-sm text-gray-600">
+                                        <p className="text-sm text-shnoor-navy">
                                             Choose how you want to update the questions for this test.
                                         </p>
                                     )}
@@ -1009,14 +1007,14 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                             <button
                                                 onClick={() => handleStart('manual')}
-                                                className="p-6 border-2 border-gray-200 rounded-xl text-left transition-all hover:border-blue-500 hover:shadow-lg group bg-white"
+                                                className="p-6 border-2 border-shnoor-mist rounded-xl text-left transition-all hover:border-shnoor-indigo hover:shadow-lg group bg-white"
                                             >
-                                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
-                                                    <FileText className="w-6 h-6 text-blue-600 group-hover:text-white" />
+                                                <div className="w-12 h-12 bg-shnoor-lavender rounded-full flex items-center justify-center mb-4 group-hover:bg-shnoor-indigo transition-colors">
+                                                    <FileText className="w-6 h-6 text-shnoor-indigo group-hover:text-white" />
                                                 </div>
-                                                <h3 className="font-bold text-gray-900 mb-2">Edit Questions Manually</h3>
-                                                <p className="text-sm text-gray-600 mb-3">Edit existing questions, add new ones, or remove questions individually.</p>
-                                                <div className="flex items-center text-xs text-blue-600 font-medium">
+                                                <h3 className="font-bold text-shnoor-navy mb-2">Edit Questions Manually</h3>
+                                                <p className="text-sm text-shnoor-navy mb-3">Edit existing questions, add new ones, or remove questions individually.</p>
+                                                <div className="flex items-center text-xs text-shnoor-indigo font-medium">
                                                     <span>Edit {questions.length} question{questions.length !== 1 ? 's' : ''}</span>
                                                     <ArrowLeft size={14} className="ml-1 rotate-180" />
                                                 </div>
@@ -1024,23 +1022,23 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
 
                                             <button
                                                 onClick={() => handleStart('bulk')}
-                                                className="p-6 border-2 border-gray-200 rounded-xl text-left transition-all hover:border-red-500 hover:shadow-lg group bg-white"
+                                                className="p-6 border-2 border-shnoor-mist rounded-xl text-left transition-all hover:border-shnoor-danger hover:shadow-lg group bg-white"
                                             >
-                                                <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-red-600 transition-colors">
-                                                    <Upload className="w-6 h-6 text-red-600 group-hover:text-white" />
+                                                <div className="w-12 h-12 bg-shnoor-dangerLight rounded-full flex items-center justify-center mb-4 group-hover:bg-shnoor-danger transition-colors">
+                                                    <Upload className="w-6 h-6 text-shnoor-danger group-hover:text-white" />
                                                 </div>
-                                                <h3 className="font-bold text-gray-900 mb-2">Upload New Questions File</h3>
-                                                <p className="text-sm text-gray-600 mb-3">Replace all existing questions by uploading a new CSV/Excel file.</p>
-                                                <div className="flex items-center text-xs text-red-600 font-medium">
+                                                <h3 className="font-bold text-shnoor-navy mb-2">Upload New Questions File</h3>
+                                                <p className="text-sm text-shnoor-navy mb-3">Replace all existing questions by uploading a new CSV/Excel file.</p>
+                                                <div className="flex items-center text-xs text-shnoor-danger font-medium">
                                                     <AlertCircle size={14} className="mr-1" />
                                                     <span>Will replace {questions.length} question{questions.length !== 1 ? 's' : ''}</span>
                                                 </div>
                                             </button>
                                         </div>
                                         
-                                        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 flex items-start space-x-3 mb-6">
-                                            <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                                            <div className="text-sm text-yellow-800">
+                                        <div className="bg-shnoor-warningLight border-2 border-shnoor-warningLight rounded-xl p-4 flex items-start space-x-3 mb-6">
+                                            <AlertCircle className="w-5 h-5 text-shnoor-warning flex-shrink-0 mt-0.5" />
+                                            <div className="text-sm text-shnoor-warning">
                                                 <p className="font-semibold mb-1">Important:</p>
                                                 <ul className="list-disc list-inside space-y-1">
                                                     <li>Review test details above before proceeding</li>
@@ -1055,7 +1053,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                             <button
                                                 onClick={handleManualSubmit}
                                                 disabled={isUploading}
-                                                className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors shadow-sm flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                className="flex-1 py-4 bg-shnoor-indigo hover:bg-shnoor-indigo text-white font-bold rounded-lg transition-colors shadow-sm flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 {isUploading ? (
                                                     <>
@@ -1072,7 +1070,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                             <button
                                                 onClick={() => setViewMode(true)}
                                                 disabled={isUploading}
-                                                className="px-6 py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                className="px-6 py-4 bg-shnoor-lavender hover:bg-shnoor-lavender text-shnoor-navy font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 Cancel
                                             </button>
@@ -1085,34 +1083,34 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                                 <button
                                     onClick={() => handleStart('manual')}
-                                    className={`p-6 border-2 border-gray-200 rounded-xl text-left transition-all hover:border-blue-500 group bg-white ${
+                                    className={`p-6 border-2 border-shnoor-mist rounded-xl text-left transition-all hover:border-shnoor-indigo group bg-white ${
                                         !testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking
                                             ? 'opacity-50 cursor-not-allowed' 
                                             : 'hover:shadow-md'
                                     }`}
                                     disabled={!testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking}
                                 >
-                                    <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
-                                        <Plus className="w-6 h-6 text-blue-600 group-hover:text-white" />
+                                    <div className="w-12 h-12 bg-shnoor-lavender rounded-full flex items-center justify-center mb-4 group-hover:bg-shnoor-indigo transition-colors">
+                                        <Plus className="w-6 h-6 text-shnoor-indigo group-hover:text-white" />
                                     </div>
-                                    <h3 className="font-bold text-gray-900 mb-1">Manual Entry</h3>
-                                    <p className="text-sm text-gray-600">Add questions one by one with a simple form interface.</p>
+                                    <h3 className="font-bold text-shnoor-navy mb-1">Manual Entry</h3>
+                                    <p className="text-sm text-shnoor-navy">Add questions one by one with a simple form interface.</p>
                                 </button>
 
                                 <button
                                     onClick={() => handleStart('bulk')}
-                                    className={`p-6 border-2 border-gray-200 rounded-xl text-left transition-all hover:border-blue-500 group bg-white ${
+                                    className={`p-6 border-2 border-shnoor-mist rounded-xl text-left transition-all hover:border-shnoor-indigo group bg-white ${
                                         !testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking
                                             ? 'opacity-50 cursor-not-allowed' 
                                             : 'hover:shadow-md'
                                     }`}
                                     disabled={!testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking}
                                 >
-                                    <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
-                                        <Upload className="w-6 h-6 text-blue-600 group-hover:text-white" />
+                                    <div className="w-12 h-12 bg-shnoor-lavender rounded-full flex items-center justify-center mb-4 group-hover:bg-shnoor-indigo transition-colors">
+                                        <Upload className="w-6 h-6 text-shnoor-indigo group-hover:text-white" />
                                     </div>
-                                    <h3 className="font-bold text-gray-900 mb-1">Bulk Upload</h3>
-                                    <p className="text-sm text-gray-600">Upload an Excel or CSV file containing multiple questions.</p>
+                                    <h3 className="font-bold text-shnoor-navy mb-1">Bulk Upload</h3>
+                                    <p className="text-sm text-shnoor-navy">Upload an Excel or CSV file containing multiple questions.</p>
                                 </button>
                             </div>
                         )}
@@ -1122,20 +1120,20 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
 
             {/* Step 2: Manual Entry */}
             {step === 'manual' && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-6 pb-6 border-b border-gray-100">
+                <div className="bg-white rounded-xl shadow-sm border border-shnoor-mist p-6">
+                    <div className="flex items-center justify-between mb-6 pb-6 border-b border-shnoor-mist">
                         <div className="flex items-center space-x-4">
-                            <button onClick={() => setStep('init')} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                                <ArrowLeft size={20} className="text-gray-500" />
+                            <button onClick={() => setStep('init')} className="p-2 hover:bg-shnoor-lavender rounded-full transition-colors">
+                                <ArrowLeft size={20} className="text-shnoor-navy" />
                             </button>
                             <div>
-                                <h2 className="text-xl font-bold text-gray-900">{testTitle}</h2>
-                                <p className="text-sm text-gray-500">Adding questions manually</p>
+                                <h2 className="text-xl font-bold text-shnoor-navy">{testTitle}</h2>
+                                <p className="text-sm text-shnoor-navy">Adding questions manually</p>
                             </div>
                         </div>
-                        <div className="flex items-center space-x-2 bg-blue-50 px-4 py-2 rounded-lg">
-                            <span className="text-blue-700 font-bold">{questions.length}</span>
-                            <span className="text-blue-600 text-sm">Questions Added</span>
+                        <div className="flex items-center space-x-2 bg-shnoor-lavender px-4 py-2 rounded-lg">
+                            <span className="text-shnoor-indigo font-bold">{questions.length}</span>
+                            <span className="text-shnoor-indigo text-sm">Questions Added</span>
                         </div>
                     </div>
 
@@ -1143,21 +1141,21 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         {/* Form Side */}
                         <div className="lg:col-span-2 space-y-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Question Text</label>
+                                <label className="block text-sm font-medium text-shnoor-navy mb-2">Question Text</label>
                                 <textarea
                                     value={currentQuestion.text}
                                     onChange={(e) => setCurrentQuestion({ ...currentQuestion, text: e.target.value })}
                                     rows={3}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                                    className="w-full px-4 py-2 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-navyLight focus:border-transparent"
                                     placeholder="Enter question text here..."
                                 />
                             </div>
 
                             <div className="space-y-3">
-                                <label className="block text-sm font-medium text-gray-700">Options</label>
+                                <label className="block text-sm font-medium text-shnoor-navy">Options</label>
                                 {currentQuestion.options.map((opt, idx) => (
                                     <div key={idx} className="flex items-center space-x-3">
-                                        <span className="w-6 text-sm text-gray-400 font-medium">{String.fromCharCode(65 + idx)}</span>
+                                        <span className="w-6 text-sm text-shnoor-navy font-medium">{String.fromCharCode(65 + idx)}</span>
                                         <input
                                             type="text"
                                             value={opt}
@@ -1166,12 +1164,12 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                                 newOptions[idx] = e.target.value;
                                                 setCurrentQuestion({ ...currentQuestion, options: newOptions });
                                             }}
-                                            className={`flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent ${currentQuestion.correctOption === idx ? 'border-green-500 bg-green-50' : 'border-gray-300'}`}
+                                            className={`flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-shnoor-navyLight focus:border-transparent ${currentQuestion.correctOption === idx ? 'border-shnoor-success bg-shnoor-successLight' : 'border-shnoor-mist'}`}
                                             placeholder={`Option ${idx + 1}`}
                                         />
                                         <button
                                             onClick={() => setCurrentQuestion({ ...currentQuestion, correctOption: idx })}
-                                            className={`p-2 rounded-full transition-colors ${currentQuestion.correctOption === idx ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                            className={`p-2 rounded-full transition-colors ${currentQuestion.correctOption === idx ? 'bg-shnoor-successLight text-shnoor-success' : 'bg-shnoor-lavender text-shnoor-navy hover:bg-shnoor-lavender'}`}
                                             title="Mark as correct answer"
                                         >
                                             <CheckCircle size={20} />
@@ -1182,18 +1180,18 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
 
                             <button
                                 onClick={handleAddQuestion}
-                                className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-lg transition-colors flex items-center justify-center space-x-2"
+                                className="w-full py-3 bg-shnoor-navyLight hover:bg-shnoor-navyLight text-white font-semibold rounded-lg transition-colors flex items-center justify-center space-x-2"
                             >
                                 <Plus size={20} />
                                 <span>Add Question to Test</span>
                             </button>
 
-                            <div className="pt-6 border-t border-gray-200">
+                            <div className="pt-6 border-t border-shnoor-mist">
                                 <div className="flex items-center space-x-3">
                                     <button
                                         onClick={handleManualSubmit}
                                         disabled={questions.length === 0 || isUploading}
-                                        className={`flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors shadow-sm flex items-center justify-center space-x-2 ${questions.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        className={`flex-1 py-4 bg-shnoor-indigo hover:bg-shnoor-indigo text-white font-bold rounded-lg transition-colors shadow-sm flex items-center justify-center space-x-2 ${questions.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     >
                                         {isUploading ? (
                                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -1211,7 +1209,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                                 setViewMode(true);
                                             }}
                                             disabled={isUploading}
-                                            className="px-6 py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="px-6 py-4 bg-shnoor-lavender hover:bg-shnoor-lavender text-shnoor-navy font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             Cancel
                                         </button>
@@ -1221,30 +1219,30 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         </div>
 
                         {/* Preview Side */}
-                        <div className="bg-gray-50 rounded-xl p-4 h-fit max-h-[600px] overflow-y-auto border border-gray-200">
-                            <h3 className="font-bold text-gray-900 mb-4 sticky top-0 bg-gray-50 pb-2">Added Questions</h3>
+                        <div className="bg-shnoor-lavender rounded-xl p-4 h-fit max-h-[600px] overflow-y-auto border border-shnoor-mist">
+                            <h3 className="font-bold text-shnoor-navy mb-4 sticky top-0 bg-shnoor-lavender pb-2">Added Questions</h3>
                             {questions.length === 0 ? (
-                                <div className="text-center py-8 text-gray-400">
+                                <div className="text-center py-8 text-shnoor-navy">
                                     <FileText className="mx-auto h-10 w-10 mb-2 opacity-50" />
                                     <p>No questions added yet</p>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
                                     {questions.map((q, idx) => (
-                                        <div key={q.id} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm group">
+                                        <div key={q.id} className="bg-white p-4 rounded-lg border border-shnoor-mist shadow-sm group">
                                             <div className="flex justify-between items-start mb-2">
-                                                <span className="font-bold text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">Q{idx + 1}</span>
+                                                <span className="font-bold text-xs text-shnoor-navy bg-shnoor-lavender px-2 py-1 rounded">Q{idx + 1}</span>
                                                 <button
                                                     onClick={() => handleRemoveQuestion(q.id)}
-                                                    className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="text-shnoor-danger hover:text-shnoor-danger opacity-0 group-hover:opacity-100 transition-opacity"
                                                 >
                                                     <Trash2 size={16} />
                                                 </button>
                                             </div>
-                                            <p className="text-sm font-medium text-gray-900 mb-2 line-clamp-2">{q.text}</p>
+                                            <p className="text-sm font-medium text-shnoor-navy mb-2 line-clamp-2">{q.text}</p>
                                             <div className="space-y-1">
                                                 {q.options.map((opt, i) => (
-                                                    <div key={i} className={`text-xs px-2 py-1 rounded ${q.correctOption === i ? 'bg-green-100 text-green-700 font-medium' : 'text-gray-600'}`}>
+                                                    <div key={i} className={`text-xs px-2 py-1 rounded ${q.correctOption === i ? 'bg-shnoor-successLight text-shnoor-success font-medium' : 'text-shnoor-navy'}`}>
                                                         {opt}
                                                     </div>
                                                 ))}
@@ -1260,31 +1258,31 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
 
             {/* Step 2: Bulk Upload */}
             {step === 'bulk' && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 max-w-2xl mx-auto">
-                    <div className="flex items-center space-x-4 mb-6 pb-6 border-b border-gray-100">
-                        <button onClick={() => setStep('init')} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                            <ArrowLeft size={20} className="text-gray-500" />
+                <div className="bg-white rounded-xl shadow-sm border border-shnoor-mist p-6 max-w-2xl mx-auto">
+                    <div className="flex items-center space-x-4 mb-6 pb-6 border-b border-shnoor-mist">
+                        <button onClick={() => setStep('init')} className="p-2 hover:bg-shnoor-lavender rounded-full transition-colors">
+                            <ArrowLeft size={20} className="text-shnoor-navy" />
                         </button>
                         <div>
-                            <h2 className="text-xl font-bold text-gray-900">{testTitle}</h2>
-                            <p className="text-sm text-gray-500">Bulk Upload via Excel/CSV</p>
+                            <h2 className="text-xl font-bold text-shnoor-navy">{testTitle}</h2>
+                            <p className="text-sm text-shnoor-navy">Bulk Upload via Excel/CSV</p>
                         </div>
                     </div>
 
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-blue-500 transition-colors relative">
+                    <div className="border-2 border-dashed border-shnoor-mist rounded-lg p-12 text-center hover:border-shnoor-indigo transition-colors relative">
                         {isUploading && (
                             <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-shnoor-indigo"></div>
                             </div>
                         )}
 
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Upload className="w-8 h-8 text-gray-400" />
+                        <div className="w-16 h-16 bg-shnoor-lavender rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Upload className="w-8 h-8 text-shnoor-navy" />
                         </div>
-                        <p className="text-gray-600 mb-2">Drag and drop your Excel/CSV file here</p>
-                        <p className="text-sm text-gray-400 mb-6">Supported formats: .csv, .xlsx, .xls</p>
+                        <p className="text-shnoor-navy mb-2">Drag and drop your Excel/CSV file here</p>
+                        <p className="text-sm text-shnoor-navy mb-6">Supported formats: .csv, .xlsx, .xls</p>
 
-                        <label className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg cursor-pointer transition-colors shadow-sm">
+                        <label className="inline-flex items-center px-6 py-3 bg-shnoor-indigo hover:bg-shnoor-indigo text-white font-semibold rounded-lg cursor-pointer transition-colors shadow-sm">
                             <Upload size={18} className="mr-2" />
                             Select File
                             <input
@@ -1297,11 +1295,11 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         </label>
                     </div>
 
-                    <div className="mt-8 bg-blue-50 p-4 rounded-lg flex items-start space-x-3">
+                    <div className="mt-8 bg-shnoor-lavender p-4 rounded-lg flex items-start space-x-3">
                         <div className="flex-shrink-0">
-                            <FileText className="h-5 w-5 text-blue-600" />
+                            <FileText className="h-5 w-5 text-shnoor-indigo" />
                         </div>
-                        <div className="text-sm text-blue-800">
+                        <div className="text-sm text-shnoor-indigo">
                             <p className="font-bold mb-1">CSV Template Format:</p>
                             <p>Question, Option1, Option2, Option3, Option4, CorrectOption(1-4), Marks, Tags</p>
                         </div>
@@ -1311,24 +1309,24 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
 
             {/* Step 3: Success Screen */}
             {step === 'success' && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-2xl mx-auto">
+                <div className="bg-white rounded-xl shadow-sm border border-shnoor-mist p-8 max-w-2xl mx-auto">
                     <div className="text-center">
                         {/* Success Icon */}
-                        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <CheckCircle className="w-12 h-12 text-green-600" />
+                        <div className="w-20 h-20 bg-shnoor-successLight rounded-full flex items-center justify-center mx-auto mb-6">
+                            <CheckCircle className="w-12 h-12 text-shnoor-success" />
                         </div>
 
                         {/* Success Message */}
-                        <h2 className="text-3xl font-bold text-gray-900 mb-3">Test Saved as Draft!</h2>
-                        <p className="text-lg text-gray-600 mb-2">"{uploadedTestName}"</p>
-                        <p className="text-sm text-gray-500 mb-8">Your test has been saved as a draft. You can publish it now or later from the dashboard.</p>
+                        <h2 className="text-3xl font-bold text-shnoor-navy mb-3">Test Saved as Draft!</h2>
+                        <p className="text-lg text-shnoor-navy mb-2">"{uploadedTestName}"</p>
+                        <p className="text-sm text-shnoor-navy mb-8">Your test has been saved as a draft. You can publish it now or later from the dashboard.</p>
 
                         {/* Action Buttons */}
                         <div className="space-y-3">
                             <button
                                 onClick={handlePublish}
                                 disabled={isPublishing}
-                                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full py-4 bg-shnoor-indigo hover:bg-shnoor-indigo text-white font-bold rounded-lg transition-colors shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isPublishing ? (
                                     <>
@@ -1348,7 +1346,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                     resetForm();
                                     if (onComplete) onComplete();
                                 }}
-                                className="w-full py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors flex items-center justify-center space-x-2"
+                                className="w-full py-4 bg-shnoor-lavender hover:bg-shnoor-lavender text-shnoor-navy font-semibold rounded-lg transition-colors flex items-center justify-center space-x-2"
                             >
                                 <ArrowLeft size={20} />
                                 <span>Save as Draft & Return to Dashboard</span>
@@ -1356,14 +1354,14 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         </div>
 
                         {/* Info Box */}
-                        <div className="mt-8 bg-blue-50 p-4 rounded-lg text-left">
+                        <div className="mt-8 bg-shnoor-lavender p-4 rounded-lg text-left">
                             <div className="flex items-start space-x-3">
                                 <div className="flex-shrink-0 mt-0.5">
-                                    <FileText className="h-5 w-5 text-blue-600" />
+                                    <FileText className="h-5 w-5 text-shnoor-indigo" />
                                 </div>
-                                <div className="text-sm text-blue-800">
+                                <div className="text-sm text-shnoor-indigo">
                                     <p className="font-bold mb-1">What's the difference?</p>
-                                    <ul className="text-blue-700 space-y-1 list-disc list-inside">
+                                    <ul className="text-shnoor-indigo space-y-1 list-disc list-inside">
                                         <li><span className="font-semibold">Draft:</span> Test is saved but not visible to students</li>
                                         <li><span className="font-semibold">Published:</span> Students can immediately see and take the test</li>
                                     </ul>
@@ -1379,16 +1377,16 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
                     <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full my-8 max-h-[90vh] overflow-y-auto">
                         {/* Modal Header */}
-                        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
+                        <div className="sticky top-0 bg-white border-b border-shnoor-mist p-6 flex items-center justify-between">
                             <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                                    <Code className="w-6 h-6 text-gray-700" />
+                                <div className="w-10 h-10 bg-shnoor-lavender rounded-lg flex items-center justify-center">
+                                    <Code className="w-6 h-6 text-shnoor-navy" />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-bold text-gray-900">
+                                    <h2 className="text-2xl font-bold text-shnoor-navy">
                                         {editingCodingQuestionId ? 'Edit Coding Question' : 'Add Coding Question'}
                                     </h2>
-                                    <p className="text-gray-500 text-sm">Create a programming challenge for students</p>
+                                    <p className="text-shnoor-navy text-sm">Create a programming challenge for students</p>
                                 </div>
                             </div>
                             <button
@@ -1396,9 +1394,9 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                     setShowCodingModal(false);
                                     setEditingCodingQuestionId(null);
                                 }}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                className="p-2 hover:bg-shnoor-lavender rounded-lg transition-colors"
                             >
-                                <X className="w-6 h-6 text-gray-500" />
+                                <X className="w-6 h-6 text-shnoor-navy" />
                             </button>
                         </div>
 
@@ -1406,63 +1404,74 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         <div className="p-6 space-y-6">
                             {/* Question Title */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Question Title *</label>
+                                <label className="block text-sm font-medium text-shnoor-navy mb-2">Question Title *</label>
                                 <input
                                     type="text"
                                     value={currentCodingQuestion.title}
                                     onChange={(e) => setCurrentCodingQuestion({ ...currentCodingQuestion, title: e.target.value })}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-transparent"
                                     placeholder="e.g., Two Sum Problem, Reverse a String"
                                 />
                             </div>
 
                             {/* Question Description */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Problem Description *</label>
+                                <label className="block text-sm font-medium text-shnoor-navy mb-2">Problem Description *</label>
                                 <textarea
                                     value={currentCodingQuestion.description}
                                     onChange={(e) => setCurrentCodingQuestion({ ...currentCodingQuestion, description: e.target.value })}
                                     rows={6}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y font-mono text-sm"
+                                    className="w-full px-4 py-3 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-transparent resize-y font-mono text-sm"
                                     placeholder="Describe the problem, constraints, input/output format, etc."
                                 />
                             </div>
 
                             {/* Time and Memory Limits */}
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-3 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Time Limit (seconds)</label>
+                                    <label className="block text-sm font-medium text-shnoor-navy mb-2">Time Limit (seconds)</label>
                                     <input
                                         type="number"
                                         value={currentCodingQuestion.timeLimit}
                                         onChange={(e) => setCurrentCodingQuestion({ ...currentCodingQuestion, timeLimit: parseFloat(e.target.value) || 2 })}
                                         min="0.1"
                                         step="0.1"
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        className="w-full px-4 py-3 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-transparent"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Memory Limit (MB)</label>
+                                    <label className="block text-sm font-medium text-shnoor-navy mb-2">Memory Limit (MB)</label>
                                     <input
                                         type="number"
                                         value={currentCodingQuestion.memoryLimit}
                                         onChange={(e) => setCurrentCodingQuestion({ ...currentCodingQuestion, memoryLimit: parseInt(e.target.value) || 256 })}
                                         min="1"
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        className="w-full px-4 py-3 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-transparent"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-shnoor-navy mb-2">Marks *</label>
+                                    <input
+                                        type="number"
+                                        value={currentCodingQuestion.marks}
+                                        onChange={(e) => setCurrentCodingQuestion({ ...currentCodingQuestion, marks: parseInt(e.target.value) || 10 })}
+                                        min="1"
+                                        className="w-full px-4 py-3 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-transparent"
+                                        placeholder="10"
                                     />
                                 </div>
                             </div>
 
                             {/* Public Test Cases */}
-                            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                            <div className="border border-shnoor-mist rounded-lg p-4 bg-shnoor-lavender">
                                 <div className="flex items-center justify-between mb-4">
                                     <div>
-                                        <h3 className="font-bold text-gray-900">Public Test Cases</h3>
-                                        <p className="text-sm text-gray-600">Students can see these test cases</p>
+                                        <h3 className="font-bold text-shnoor-navy">Public Test Cases</h3>
+                                        <p className="text-sm text-shnoor-navy">Students can see these test cases</p>
                                     </div>
                                     <button
                                         onClick={handleAddPublicTestCase}
-                                        className="flex items-center space-x-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                                        className="flex items-center space-x-1 px-3 py-2 bg-shnoor-indigo text-white rounded-lg hover:bg-shnoor-indigo transition-colors text-sm font-medium"
                                     >
                                         <Plus size={16} />
                                         <span>Add</span>
@@ -1471,13 +1480,13 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
 
                                 <div className="space-y-4">
                                     {currentCodingQuestion.publicTestCases.map((testCase, index) => (
-                                        <div key={index} className="bg-white p-4 rounded-lg border border-gray-200 space-y-3">
+                                        <div key={index} className="bg-white p-4 rounded-lg border border-shnoor-mist space-y-3">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-sm font-semibold text-gray-700">Test Case {index + 1}</span>
+                                                <span className="text-sm font-semibold text-shnoor-navy">Test Case {index + 1}</span>
                                                 {currentCodingQuestion.publicTestCases.length > 1 && (
                                                     <button
                                                         onClick={() => handleRemovePublicTestCase(index)}
-                                                        className="text-red-600 hover:text-red-700 p-1"
+                                                        className="text-shnoor-danger hover:text-shnoor-danger p-1"
                                                     >
                                                         <Trash2 size={16} />
                                                     </button>
@@ -1485,7 +1494,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                             </div>
                                             <div className="grid grid-cols-2 gap-3">
                                                 <div>
-                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Input</label>
+                                                    <label className="block text-xs font-medium text-shnoor-navy mb-1">Input</label>
                                                     <textarea
                                                         value={testCase.input}
                                                         onChange={(e) => {
@@ -1494,12 +1503,12 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                                             setCurrentCodingQuestion({ ...currentCodingQuestion, publicTestCases: newTestCases });
                                                         }}
                                                         rows={3}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm resize-y"
+                                                        className="w-full px-3 py-2 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-transparent font-mono text-sm resize-y"
                                                         placeholder="Input data"
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Expected Output</label>
+                                                    <label className="block text-xs font-medium text-shnoor-navy mb-1">Expected Output</label>
                                                     <textarea
                                                         value={testCase.output}
                                                         onChange={(e) => {
@@ -1508,13 +1517,13 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                                             setCurrentCodingQuestion({ ...currentCodingQuestion, publicTestCases: newTestCases });
                                                         }}
                                                         rows={3}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm resize-y"
+                                                        className="w-full px-3 py-2 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-transparent font-mono text-sm resize-y"
                                                         placeholder="Expected output"
                                                     />
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-medium text-gray-600 mb-1">Explanation (Optional)</label>
+                                                <label className="block text-xs font-medium text-shnoor-navy mb-1">Explanation (Optional)</label>
                                                 <input
                                                     type="text"
                                                     value={testCase.explanation}
@@ -1523,7 +1532,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                                         newTestCases[index].explanation = e.target.value;
                                                         setCurrentCodingQuestion({ ...currentCodingQuestion, publicTestCases: newTestCases });
                                                     }}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                                    className="w-full px-3 py-2 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-transparent text-sm"
                                                     placeholder="Explain why this output is expected"
                                                 />
                                             </div>
@@ -1533,15 +1542,15 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                             </div>
 
                             {/* Hidden Test Cases */}
-                            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                            <div className="border border-shnoor-mist rounded-lg p-4 bg-shnoor-lavender">
                                 <div className="flex items-center justify-between mb-4">
                                     <div>
-                                        <h3 className="font-bold text-gray-900">Hidden Test Cases</h3>
-                                        <p className="text-sm text-gray-600">Used for evaluation only</p>
+                                        <h3 className="font-bold text-shnoor-navy">Hidden Test Cases</h3>
+                                        <p className="text-sm text-shnoor-navy">Used for evaluation only</p>
                                     </div>
                                     <button
                                         onClick={handleAddHiddenTestCase}
-                                        className="flex items-center space-x-1 px-3 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium"
+                                        className="flex items-center space-x-1 px-3 py-2 bg-shnoor-navyLight text-white rounded-lg hover:bg-shnoor-navyLight transition-colors text-sm font-medium"
                                     >
                                         <Plus size={16} />
                                         <span>Add</span>
@@ -1550,13 +1559,13 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
 
                                 <div className="space-y-4">
                                     {currentCodingQuestion.hiddenTestCases.map((testCase, index) => (
-                                        <div key={index} className="bg-white p-4 rounded-lg border border-gray-200 space-y-3">
+                                        <div key={index} className="bg-white p-4 rounded-lg border border-shnoor-mist space-y-3">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-sm font-semibold text-gray-700">Hidden Test Case {index + 1}</span>
+                                                <span className="text-sm font-semibold text-shnoor-navy">Hidden Test Case {index + 1}</span>
                                                 {currentCodingQuestion.hiddenTestCases.length > 1 && (
                                                     <button
                                                         onClick={() => handleRemoveHiddenTestCase(index)}
-                                                        className="text-red-600 hover:text-red-700 p-1"
+                                                        className="text-shnoor-danger hover:text-shnoor-danger p-1"
                                                     >
                                                         <Trash2 size={16} />
                                                     </button>
@@ -1564,7 +1573,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                             </div>
                                             <div className="grid grid-cols-2 gap-3">
                                                 <div>
-                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Input</label>
+                                                    <label className="block text-xs font-medium text-shnoor-navy mb-1">Input</label>
                                                     <textarea
                                                         value={testCase.input}
                                                         onChange={(e) => {
@@ -1573,12 +1582,12 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                                             setCurrentCodingQuestion({ ...currentCodingQuestion, hiddenTestCases: newTestCases });
                                                         }}
                                                         rows={3}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm resize-y"
+                                                        className="w-full px-3 py-2 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-transparent font-mono text-sm resize-y"
                                                         placeholder="Input data"
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Expected Output</label>
+                                                    <label className="block text-xs font-medium text-shnoor-navy mb-1">Expected Output</label>
                                                     <textarea
                                                         value={testCase.output}
                                                         onChange={(e) => {
@@ -1587,7 +1596,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                                             setCurrentCodingQuestion({ ...currentCodingQuestion, hiddenTestCases: newTestCases });
                                                         }}
                                                         rows={3}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm resize-y"
+                                                        className="w-full px-3 py-2 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-transparent font-mono text-sm resize-y"
                                                         placeholder="Expected output"
                                                     />
                                                 </div>
@@ -1598,10 +1607,10 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
+                            <div className="flex items-center space-x-3 pt-4 border-t border-shnoor-mist">
                                 <button
                                     onClick={handleSaveCodingQuestion}
-                                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center space-x-2"
+                                    className="flex-1 py-3 bg-shnoor-indigo hover:bg-shnoor-indigo text-white font-bold rounded-lg transition-colors flex items-center justify-center space-x-2"
                                 >
                                     <Save size={20} />
                                     <span>{editingCodingQuestionId ? 'Update Question' : 'Save Question'}</span>
@@ -1611,7 +1620,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                         setShowCodingModal(false);
                                         setEditingCodingQuestionId(null);
                                     }}
-                                    className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors"
+                                    className="px-6 py-3 bg-shnoor-lavender hover:bg-shnoor-lavender text-shnoor-navy font-semibold rounded-lg transition-colors"
                                 >
                                     Cancel
                                 </button>
@@ -1626,14 +1635,14 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
                     <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full my-8 max-h-[90vh] overflow-y-auto">
                         {/* Modal Header */}
-                        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
+                        <div className="sticky top-0 bg-white border-b border-shnoor-mist p-6 flex items-center justify-between">
                             <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                                    <Code className="w-6 h-6 text-gray-700" />
+                                <div className="w-10 h-10 bg-shnoor-lavender rounded-lg flex items-center justify-center">
+                                    <Code className="w-6 h-6 text-shnoor-navy" />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-bold text-gray-900">{viewingCodingQuestion.title}</h2>
-                                    <p className="text-gray-500 text-sm">Coding Question Preview</p>
+                                    <h2 className="text-2xl font-bold text-shnoor-navy">{viewingCodingQuestion.title}</h2>
+                                    <p className="text-shnoor-navy text-sm">Coding Question Preview</p>
                                 </div>
                             </div>
                             <button
@@ -1641,9 +1650,9 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                     setShowCodingViewModal(false);
                                     setViewingCodingQuestion(null);
                                 }}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                className="p-2 hover:bg-shnoor-lavender rounded-lg transition-colors"
                             >
-                                <X className="w-6 h-6 text-gray-500" />
+                                <X className="w-6 h-6 text-shnoor-navy" />
                             </button>
                         </div>
 
@@ -1651,45 +1660,45 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         <div className="p-6 space-y-6">
                             {/* Description */}
                             <div>
-                                <h3 className="font-bold text-gray-900 mb-2">Problem Description</h3>
-                                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                    <pre className="whitespace-pre-wrap font-mono text-sm text-gray-700">{viewingCodingQuestion.description}</pre>
+                                <h3 className="font-bold text-shnoor-navy mb-2">Problem Description</h3>
+                                <div className="bg-shnoor-lavender p-4 rounded-lg border border-shnoor-mist">
+                                    <pre className="whitespace-pre-wrap font-mono text-sm text-shnoor-navy">{viewingCodingQuestion.description}</pre>
                                 </div>
                             </div>
 
                             {/* Constraints */}
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                    <p className="text-sm font-medium text-gray-600 mb-1">Time Limit</p>
-                                    <p className="text-lg font-bold text-gray-900">{viewingCodingQuestion.timeLimit}s</p>
+                                <div className="bg-shnoor-lavender p-4 rounded-lg border border-shnoor-mist">
+                                    <p className="text-sm font-medium text-shnoor-navy mb-1">Time Limit</p>
+                                    <p className="text-lg font-bold text-shnoor-navy">{viewingCodingQuestion.timeLimit}s</p>
                                 </div>
-                                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                    <p className="text-sm font-medium text-gray-600 mb-1">Memory Limit</p>
-                                    <p className="text-lg font-bold text-gray-900">{viewingCodingQuestion.memoryLimit}MB</p>
+                                <div className="bg-shnoor-lavender p-4 rounded-lg border border-shnoor-mist">
+                                    <p className="text-sm font-medium text-shnoor-navy mb-1">Memory Limit</p>
+                                    <p className="text-lg font-bold text-shnoor-navy">{viewingCodingQuestion.memoryLimit}MB</p>
                                 </div>
                             </div>
 
                             {/* Public Test Cases */}
                             <div>
-                                <h3 className="font-bold text-gray-900 mb-3">Public Test Cases</h3>
+                                <h3 className="font-bold text-shnoor-navy mb-3">Public Test Cases</h3>
                                 <div className="space-y-3">
                                     {viewingCodingQuestion.publicTestCases.map((testCase, index) => (
-                                        <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                            <p className="text-sm font-semibold text-gray-700 mb-3">Test Case {index + 1}</p>
+                                        <div key={index} className="bg-shnoor-lavender p-4 rounded-lg border border-shnoor-mist">
+                                            <p className="text-sm font-semibold text-shnoor-navy mb-3">Test Case {index + 1}</p>
                                             <div className="grid grid-cols-2 gap-3 mb-2">
                                                 <div>
-                                                    <p className="text-xs font-medium text-gray-600 mb-1">Input:</p>
-                                                    <pre className="bg-white p-2 rounded border border-gray-200 font-mono text-sm text-gray-700">{testCase.input}</pre>
+                                                    <p className="text-xs font-medium text-shnoor-navy mb-1">Input:</p>
+                                                    <pre className="bg-white p-2 rounded border border-shnoor-mist font-mono text-sm text-shnoor-navy">{testCase.input}</pre>
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs font-medium text-gray-600 mb-1">Output:</p>
-                                                    <pre className="bg-white p-2 rounded border border-gray-200 font-mono text-sm text-gray-700">{testCase.output}</pre>
+                                                    <p className="text-xs font-medium text-shnoor-navy mb-1">Output:</p>
+                                                    <pre className="bg-white p-2 rounded border border-shnoor-mist font-mono text-sm text-shnoor-navy">{testCase.output}</pre>
                                                 </div>
                                             </div>
                                             {testCase.explanation && (
                                                 <div>
-                                                    <p className="text-xs font-medium text-gray-600 mb-1">Explanation:</p>
-                                                    <p className="text-sm text-gray-700">{testCase.explanation}</p>
+                                                    <p className="text-xs font-medium text-shnoor-navy mb-1">Explanation:</p>
+                                                    <p className="text-sm text-shnoor-navy">{testCase.explanation}</p>
                                                 </div>
                                             )}
                                         </div>
@@ -1699,19 +1708,19 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
 
                             {/* Hidden Test Cases */}
                             <div>
-                                <h3 className="font-bold text-gray-900 mb-3">Hidden Test Cases</h3>
+                                <h3 className="font-bold text-shnoor-navy mb-3">Hidden Test Cases</h3>
                                 <div className="space-y-3">
                                     {viewingCodingQuestion.hiddenTestCases.map((testCase, index) => (
-                                        <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                            <p className="text-sm font-semibold text-gray-700 mb-3">Hidden Test Case {index + 1}</p>
+                                        <div key={index} className="bg-shnoor-lavender p-4 rounded-lg border border-shnoor-mist">
+                                            <p className="text-sm font-semibold text-shnoor-navy mb-3">Hidden Test Case {index + 1}</p>
                                             <div className="grid grid-cols-2 gap-3">
                                                 <div>
-                                                    <p className="text-xs font-medium text-gray-600 mb-1">Input:</p>
-                                                    <pre className="bg-white p-2 rounded border border-gray-200 font-mono text-sm text-gray-700">{testCase.input}</pre>
+                                                    <p className="text-xs font-medium text-shnoor-navy mb-1">Input:</p>
+                                                    <pre className="bg-white p-2 rounded border border-shnoor-mist font-mono text-sm text-shnoor-navy">{testCase.input}</pre>
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs font-medium text-gray-600 mb-1">Output:</p>
-                                                    <pre className="bg-white p-2 rounded border border-gray-200 font-mono text-sm text-gray-700">{testCase.output}</pre>
+                                                    <p className="text-xs font-medium text-shnoor-navy mb-1">Output:</p>
+                                                    <pre className="bg-white p-2 rounded border border-shnoor-mist font-mono text-sm text-shnoor-navy">{testCase.output}</pre>
                                                 </div>
                                             </div>
                                         </div>
@@ -1720,13 +1729,13 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                             </div>
 
                             {/* Close Button */}
-                            <div className="pt-4 border-t border-gray-200">
+                            <div className="pt-4 border-t border-shnoor-mist">
                                 <button
                                     onClick={() => {
                                         setShowCodingViewModal(false);
                                         setViewingCodingQuestion(null);
                                     }}
-                                    className="w-full py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors"
+                                    className="w-full py-3 bg-shnoor-lavender hover:bg-shnoor-lavender text-shnoor-navy font-semibold rounded-lg transition-colors"
                                 >
                                     Close
                                 </button>

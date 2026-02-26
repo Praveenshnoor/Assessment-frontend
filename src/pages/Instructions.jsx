@@ -152,32 +152,32 @@ const Instructions = () => {
 
   const rules = [
     {
-      icon: <Clock className="w-6 h-6 text-blue-600" />,
+      icon: <Clock className="w-6 h-6 text-shnoor-indigo" />,
       title: 'Duration',
       description: `You have ${testDetails?.duration || 60} minutes to complete the examination. The timer cannot be paused once started.`
     },
     {
-      icon: <Monitor className="w-6 h-6 text-green-600" />,
+      icon: <Monitor className="w-6 h-6 text-shnoor-success" />,
       title: 'Fullscreen Mode',
       description: 'Fullscreen mode is mandatory throughout the examination. Exiting fullscreen will trigger a warning.'
     },
     {
-      icon: <Shield className="w-6 h-6 text-red-600" />,
+      icon: <Shield className="w-6 h-6 text-shnoor-danger" />,
       title: 'Camera & Microphone Required',
       description: 'Camera and microphone access are mandatory for proctoring. The exam will not start without both permissions.'
     },
     {
-      icon: <AlertTriangle className="w-6 h-6 text-orange-600" />,
+      icon: <AlertTriangle className="w-6 h-6 text-shnoor-warning" />,
       title: 'Tab Switching Policy',
       description: 'Switching tabs or applications is strictly prohibited. You will receive 3 warnings before automatic submission.'
     },
     {
-      icon: <Shield className="w-6 h-6 text-purple-600" />,
+      icon: <Shield className="w-6 h-6 text-shnoor-indigo" />,
       title: 'Prohibited Actions',
       description: 'Copy-paste, right-click, and keyboard shortcuts (Ctrl+C, Ctrl+V, etc.) are disabled during the test.'
     },
     {
-      icon: <CheckCircle className="w-6 h-6 text-teal-600" />,
+      icon: <CheckCircle className="w-6 h-6 text-shnoor-success" />,
       title: 'Navigation',
       description: 'You can navigate between questions using the sidebar palette. All answers are auto-saved.'
     }
@@ -195,7 +195,7 @@ const Instructions = () => {
               <h1 className="text-3xl font-bold text-shnoor-navy mb-2">Examination Instructions</h1>
               <p className="text-lg text-shnoor-indigoMedium">{testDetails.title}</p>
               {hasProgress && (
-                <div className="mt-3 flex items-center space-x-2 text-green-700 bg-green-50 px-4 py-2 rounded-lg inline-flex">
+                <div className="mt-3 flex items-center space-x-2 text-shnoor-success bg-shnoor-successLight px-4 py-2 rounded-lg inline-flex">
                   <CheckCircle className="w-5 h-5" />
                   <span className="font-semibold">You have saved progress for this test</span>
                 </div>
@@ -236,12 +236,12 @@ const Instructions = () => {
         </div>
 
         {/* Warning Box */}
-        <div className="bg-red-50 border-l-4 border-red-500 rounded-r-xl p-6 mb-8 border border-y-red-100 border-r-red-100 shadow-sm">
+        <div className="bg-shnoor-dangerLight border-l-4 border-shnoor-danger rounded-r-xl p-6 mb-8 border border-y-shnoor-dangerLight border-r-shnoor-dangerLight shadow-sm">
           <div className="flex items-start">
-            <AlertTriangle className="w-6 h-6 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-6 h-6 text-shnoor-danger mr-3 flex-shrink-0 mt-0.5" />
             <div>
-              <h4 className="text-lg font-bold text-red-900 mb-2">Important Warning</h4>
-              <p className="text-red-800 text-sm leading-relaxed">
+              <h4 className="text-lg font-bold text-shnoor-danger mb-2">Important Warning</h4>
+              <p className="text-shnoor-danger text-sm leading-relaxed">
                 Any attempt to cheat, switch tabs, or exit fullscreen mode will be recorded. 
                 After 3 warnings, your test will be automatically submitted with your current progress. 
                 Please ensure you are in a quiet environment with no distractions before starting.
@@ -286,7 +286,7 @@ const Instructions = () => {
                 px-8 py-4 rounded-xl font-bold text-lg transition-all duration-200
                 ${hasRead
                   ? hasProgress
-                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5'
+                    ? 'bg-shnoor-success hover:bg-shnoor-success text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5'
                     : 'bg-shnoor-indigo hover:bg-[#4d4d9c] text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5'
                   : 'bg-shnoor-mist/30 text-shnoor-indigoMedium cursor-not-allowed'}
               `}

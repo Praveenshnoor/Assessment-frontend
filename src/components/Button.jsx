@@ -14,7 +14,7 @@ const Button = ({
   const variants = {
     primary: "bg-shnoor-indigo text-white hover:bg-shnoor-navy shadow-[0_4px_14px_rgba(68,68,142,0.3)]",
     secondary: "bg-shnoor-lavender text-shnoor-navy hover:bg-shnoor-light",
-    danger: "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
+    danger: "bg-shnoor-dangerLight text-shnoor-danger border border-shnoor-dangerLight hover:bg-shnoor-dangerLight"
   };
 
   const disabledStyles = "bg-shnoor-lavender text-shnoor-soft cursor-not-allowed shadow-none";

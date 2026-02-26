@@ -16,10 +16,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { apiFetch } from '../config/api';
-// CODE EXECUTION & CODING PROBLEMS - TEMPORARILY DISABLED
-// import codeExecutionAPI from '../services/codeExecutionAPI';
-// af
-// Questions will be fetched from API
+import codeExecutionAPI from '../services/codeExecutionAPI';
 
 const TestScreen = () => {
   const navigate = useNavigate();
@@ -671,7 +668,7 @@ int main() {
     return (
       <div className="h-screen bg-shnoor-lavender flex items-center justify-center">
         <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-md border border-shnoor-light">
-          <AlertTriangle className="mx-auto h-12 w-12 text-red-500 mb-4" />
+          <AlertTriangle className="mx-auto h-12 w-12 text-shnoor-danger mb-4" />
           <h2 className="text-xl font-bold text-shnoor-navy mb-2">Error</h2>
           <p className="text-shnoor-indigoMedium">{error || 'No questions found for this test.'}</p>
           <button
@@ -700,7 +697,7 @@ int main() {
 
       {/* Tab Switch Warning */}
       {showTabWarning && (
-        <div className="fixed top-4 right-4 z-50 bg-red-600 text-white px-6 py-4 rounded-xl shadow-2xl animate-pulse border border-red-500">
+        <div className="fixed top-4 right-4 z-50 bg-shnoor-danger text-white px-6 py-4 rounded-xl shadow-2xl animate-pulse border border-shnoor-danger">
           <div className="flex items-center space-x-2">
             <AlertTriangle size={20} />
             <span className="font-bold">Warning {warningCount}/3: Tab Switch Detected!</span>
@@ -757,8 +754,8 @@ int main() {
                   {questions.map((_, index) => {
                     const status = getQuestionStatus(index);
                     let bgClass = 'bg-[#F8F8FB] text-shnoor-indigoMedium border border-shnoor-mist/50'; // not-visited
-                    if (status === 'answered') bgClass = 'bg-green-500 text-white border border-green-600';
-                    else if (status === 'review') bgClass = 'bg-yellow-500 text-white border border-yellow-600';
+                    if (status === 'answered') bgClass = 'bg-shnoor-success text-white border border-shnoor-success';
+                    else if (status === 'review') bgClass = 'bg-shnoor-warning text-white border border-shnoor-warning';
                     else if (status === 'visited') bgClass = 'bg-shnoor-mist text-shnoor-navy border border-shnoor-mist shadow-inner';
 
                     return (
@@ -789,8 +786,8 @@ int main() {
                     const actualIndex = questions.length + index;
                     const status = getQuestionStatus(actualIndex);
                     let bgClass = 'bg-[#F8F8FB] text-shnoor-indigoMedium border border-shnoor-mist/50'; // not-visited
-                    if (status === 'answered') bgClass = 'bg-purple-500 text-white border border-purple-600';
-                    else if (status === 'review') bgClass = 'bg-yellow-500 text-white border border-yellow-600';
+                    if (status === 'answered') bgClass = 'bg-shnoor-indigo text-white border border-shnoor-indigo';
+                    else if (status === 'review') bgClass = 'bg-shnoor-warning text-white border border-shnoor-warning';
                     else if (status === 'visited') bgClass = 'bg-shnoor-mist text-shnoor-navy border border-shnoor-mist shadow-inner';
 
                     return (
@@ -800,7 +797,7 @@ int main() {
                         className={`
                           w-10 h-10 rounded-lg font-semibold text-sm transition-all
                           ${bgClass}
-                          ${currentQuestion === actualIndex ? 'ring-2 ring-purple-500 ring-offset-2' : ''}
+                          ${currentQuestion === actualIndex ? 'ring-2 ring-shnoor-indigo ring-offset-2' : ''}
                           hover:opacity-80
                         `}
                       >
@@ -816,11 +813,11 @@ int main() {
           <div className="p-4 space-y-3">
             <div className="text-xs font-bold text-shnoor-indigoMedium uppercase mb-2">Summary</div>
             <div className="flex items-center space-x-2 text-sm font-medium">
-              <div className="w-4 h-4 bg-green-500 rounded border border-green-600"></div>
+              <div className="w-4 h-4 bg-shnoor-success rounded border border-shnoor-success"></div>
               <span className="text-shnoor-navy">Answered ({Object.keys(answers).filter(key => !markedForReview.has(parseInt(key))).length})</span>
             </div>
             <div className="flex items-center space-x-2 text-sm font-medium">
-              <div className="w-4 h-4 bg-yellow-500 rounded border border-yellow-600"></div>
+              <div className="w-4 h-4 bg-shnoor-warning rounded border border-shnoor-warning"></div>
               <span className="text-shnoor-navy">Marked for Review ({markedForReview.size})</span>
             </div>
             <div className="flex items-center space-x-2 text-sm font-medium">
@@ -845,13 +842,13 @@ int main() {
                 <div className="pt-2 border-t border-shnoor-mist/50">
                   <p className="text-xs font-bold text-shnoor-navy mb-1">AI Detections:</p>
                   {violations.multipleFaces > 0 && (
-                    <p className="text-xs text-red-700 font-medium">• Multiple faces: {violations.multipleFaces}</p>
+                    <p className="text-xs text-shnoor-danger font-medium">• Multiple faces: {violations.multipleFaces}</p>
                   )}
                   {violations.noFace > 0 && (
-                    <p className="text-xs text-orange-700 font-medium">• Face absent: {violations.noFace}</p>
+                    <p className="text-xs text-shnoor-warning font-medium">• Face absent: {violations.noFace}</p>
                   )}
                   {violations.phoneDetected > 0 && (
-                    <p className="text-xs text-red-700 font-medium">• Phone detected: {violations.phoneDetected}</p>
+                    <p className="text-xs text-shnoor-danger font-medium">• Phone detected: {violations.phoneDetected}</p>
                   )}
                 </div>
               )}
@@ -872,7 +869,7 @@ int main() {
                     Q{currentQuestion + 1}
                   </span>
                   {markedForReview.has(currentQuestion) && (
-                    <span className="flex items-center space-x-1 text-yellow-700 bg-yellow-50 px-3 py-1 rounded-full text-sm font-medium border border-yellow-200 shadow-sm">
+                    <span className="flex items-center space-x-1 text-shnoor-warning bg-shnoor-warningLight px-3 py-1 rounded-full text-sm font-medium border border-shnoor-warningLight shadow-sm">
                       <Flag size={14} />
                       <span>Marked for Review</span>
                     </span>
@@ -883,7 +880,7 @@ int main() {
                   className={`
                     flex items-center space-x-2 px-4 py-2 rounded-xl font-medium transition-all duration-200 shadow-sm
                     ${markedForReview.has(currentQuestion)
-                      ? 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200'
+                      ? 'bg-shnoor-warningLight text-shnoor-warning hover:bg-shnoor-warningLight border border-shnoor-warningLight'
                       : 'bg-shnoor-lavender text-shnoor-indigo hover:bg-shnoor-mist border border-shnoor-light'}
                   `}
                 >
@@ -994,8 +991,11 @@ int main() {
                 <div className="mb-4">
                   <h3 className="text-xl font-bold text-shnoor-navy mb-2">{currentQ.title}</h3>
                   <div className="flex items-center space-x-2">
-                    <span className="px-3 py-1 bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 text-xs font-semibold rounded-full border border-yellow-300 shadow-sm">
+                    <span className="px-3 py-1 bg-gradient-to-r from-shnoor-warningLight to-shnoor-warningLight text-shnoor-warning text-xs font-semibold rounded-full border border-shnoor-warningLight shadow-sm">
                       MEDIUM
+                    </span>
+                    <span className="px-3 py-1 bg-gradient-to-r from-shnoor-indigo to-shnoor-navy text-white text-xs font-semibold rounded-full shadow-sm">
+                      {currentQ.marks || 10} Marks
                     </span>
                   </div>
                 </div>
@@ -1102,80 +1102,61 @@ int main() {
                           }));
                           
                           try {
-                            // CODE EXECUTION & CODING PROBLEMS - TEMPORARILY DISABLED
                             // Get test cases for this question
-                            // const testCases = currentQ.testCases || currentQ.publicTestCases || [];
+                            const testCases = currentQ.testCases || currentQ.publicTestCases || [];
                             
-                            // if (testCases.length === 0) {
-                            //   // No test cases, just run the code
-                            //   const result = await codeExecutionAPI.executeCode(currentCode, currentLang);
-                            //   
-                            //   setCodingConsoleOutput(prev => ({
-                            //     ...prev,
-                            //     [currentQuestion]: {
-                            //       running: false,
-                            //       results: [{
-                            //         testCase: 1,
-                            //         input: 'No input',
-                            //         expectedOutput: 'N/A',
-                            //         actualOutput: result.output || result.error,
-                            //         passed: result.success,
-                            //         executionTime: result.executionTime + 'ms',
-                            //         error: result.error
-                            //       }],
-                            //       timestamp: new Date().toLocaleTimeString()
-                            //     }
-                            //   }));
-                            // } else {
-                            //   // Run against test cases
-                            //   const evaluation = await codeExecutionAPI.evaluateWithTestCases(
-                            //     currentCode, 
-                            //     currentLang, 
-                            //     testCases.map(tc => ({
-                            //       input: tc.input,
-                            //       expected_output: tc.output || tc.expectedOutput,
-                            //       is_hidden: tc.isHidden || false
-                            //     }))
-                            //   );
-                            //   
-                            //   const results = evaluation.testResults.map((result, idx) => ({
-                            //     testCase: idx + 1,
-                            //     input: result.input,
-                            //     expectedOutput: result.expectedOutput,
-                            //     actualOutput: result.actualOutput,
-                            //     passed: result.passed,
-                            //     executionTime: result.executionTime + 'ms',
-                            //     error: result.error
-                            //   }));
-                            //   
-                            //   setCodingConsoleOutput(prev => ({
-                            //     ...prev,
-                            //     [currentQuestion]: {
-                            //       running: false,
-                            //       results: results,
-                            //       summary: evaluation.summary,
-                            //       timestamp: new Date().toLocaleTimeString()
-                            //     }
-                            //   }));
-                            // }
-                            
-                            // Temporary message while coding feature is disabled
-                            setCodingConsoleOutput(prev => ({
-                              ...prev,
-                              [currentQuestion]: {
-                                running: false,
-                                results: [{
-                                  testCase: 1,
-                                  input: 'N/A',
-                                  expectedOutput: 'N/A',
-                                  actualOutput: 'Code execution feature is temporarily disabled',
-                                  passed: false,
-                                  executionTime: '0ms',
-                                  error: 'Feature disabled'
-                                }],
-                                timestamp: new Date().toLocaleTimeString()
-                              }
-                            }));
+                            if (testCases.length === 0) {
+                              // No test cases, just run the code
+                              const result = await codeExecutionAPI.executeCode(currentCode, currentLang);
+                              
+                              setCodingConsoleOutput(prev => ({
+                                ...prev,
+                                [currentQuestion]: {
+                                  running: false,
+                                  results: [{
+                                    testCase: 1,
+                                    input: 'No input',
+                                    expectedOutput: 'N/A',
+                                    actualOutput: result.output || result.error,
+                                    passed: result.success,
+                                    executionTime: result.executionTime + 'ms',
+                                    error: result.error
+                                  }],
+                                  timestamp: new Date().toLocaleTimeString()
+                                }
+                              }));
+                            } else {
+                              // Run against test cases
+                              const evaluation = await codeExecutionAPI.evaluateWithTestCases(
+                                currentCode, 
+                                currentLang, 
+                                testCases.map(tc => ({
+                                  input: tc.input,
+                                  expected_output: tc.output || tc.expectedOutput,
+                                  is_hidden: tc.isHidden || false
+                                }))
+                              );
+                              
+                              const results = evaluation.testResults.map((result, idx) => ({
+                                testCase: idx + 1,
+                                input: result.input,
+                                expectedOutput: result.expectedOutput,
+                                actualOutput: result.actualOutput,
+                                passed: result.passed,
+                                executionTime: result.executionTime + 'ms',
+                                error: result.error
+                              }));
+                              
+                              setCodingConsoleOutput(prev => ({
+                                ...prev,
+                                [currentQuestion]: {
+                                  running: false,
+                                  results: results,
+                                  summary: evaluation.summary,
+                                  timestamp: new Date().toLocaleTimeString()
+                                }
+                              }));
+                            }
                           } catch (error) {
                             console.error('Code execution error:', error);
                             setCodingConsoleOutput(prev => ({
@@ -1197,7 +1178,7 @@ int main() {
                           }
                         }}
                         disabled={codingConsoleOutput[currentQuestion]?.running}
-                        className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-sm"
+                        className="px-4 py-1.5 bg-shnoor-success hover:bg-shnoor-success text-white text-sm rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-sm"
                       >
                         <span>▶</span>
                         <span>{codingConsoleOutput[currentQuestion]?.running ? 'Running...' : 'Run'}</span>
@@ -1213,25 +1194,164 @@ int main() {
                             return;
                           }
 
-                          // Save the coding answer
-                          setAnswers(prev => ({
+                          // Get student and test IDs
+                          const studentId = localStorage.getItem('studentId');
+                          const testId = localStorage.getItem('selectedTestId');
+                          const codingQuestionId = currentQ.id;
+
+                          // Show loading state
+                          setCodingConsoleOutput(prev => ({
                             ...prev,
                             [currentQuestion]: {
-                              ...currentAnswer,
-                              language: currentLang,
-                              code: currentCode,
-                              codes: {
-                                ...currentAnswer?.codes,
-                                [currentLang]: currentCode
-                              },
-                              submitted: true,
-                              submittedAt: new Date().toISOString()
+                              running: true
                             }
                           }));
 
-                          // Save progress to backend
-                          await saveProgressNow();
-                          alert('Code submitted successfully!');
+                          try {
+                            // Submit code - runs against all test cases and saves to DB
+                            const result = await codeExecutionAPI.submitCodingSolution(
+                              studentId,
+                              codingQuestionId,
+                              testId,
+                              currentCode,
+                              currentLang
+                            );
+
+                            if (result.success) {
+                              const { 
+                                passed, 
+                                testCasesPassed, 
+                                totalTestCases, 
+                                percentage, 
+                                publicTestResults, 
+                                hiddenTestResults,
+                                publicTestCasesPassed,
+                                hiddenTestCasesPassed
+                              } = result.result;
+                              
+                              // Format results for console display
+                              const formattedResults = [];
+                              
+                              // Add public test cases with full details
+                              if (publicTestResults && publicTestResults.length > 0) {
+                                publicTestResults.forEach((tc, idx) => {
+                                  formattedResults.push({
+                                    testCase: idx + 1,
+                                    passed: tc.passed,
+                                    input: tc.input || '(no input)',
+                                    expectedOutput: tc.expectedOutput,
+                                    actualOutput: tc.actual || tc.output || '(no output)',
+                                    error: tc.error || null,
+                                    executionTime: tc.executionTime || 'N/A',
+                                    isHidden: false,
+                                    explanation: tc.explanation || null
+                                  });
+                                });
+                              }
+                              
+                              // Add hidden test cases (only pass/fail)
+                              if (hiddenTestResults && hiddenTestResults.length > 0) {
+                                hiddenTestResults.forEach((tc) => {
+                                  formattedResults.push({
+                                    testCase: publicTestResults.length + tc.testNumber,
+                                    passed: tc.passed,
+                                    isHidden: true,
+                                    input: '🔒 Hidden',
+                                    expectedOutput: '🔒 Hidden',
+                                    actualOutput: '🔒 Hidden',
+                                    error: null,
+                                    executionTime: 'N/A'
+                                  });
+                                });
+                              }
+
+                              setCodingConsoleOutput(prev => ({
+                                ...prev,
+                                [currentQuestion]: {
+                                  results: formattedResults,
+                                  summary: {
+                                    passedTestCases: testCasesPassed,
+                                    failedTestCases: totalTestCases - testCasesPassed,
+                                    totalTestCases: totalTestCases,
+                                    percentage: percentage.toFixed(1)
+                                  },
+                                  timestamp: new Date().toLocaleTimeString(),
+                                  isLoading: false
+                                }
+                              }));
+
+                              // Save the coding answer with submission status
+                              setAnswers(prev => ({
+                                ...prev,
+                                [currentQuestion]: {
+                                  ...currentAnswer,
+                                  language: currentLang,
+                                  code: currentCode,
+                                  codes: {
+                                    ...currentAnswer?.codes,
+                                    [currentLang]: currentCode
+                                  },
+                                  submitted: true,
+                                  submittedAt: new Date().toISOString(),
+                                  testCasesPassed,
+                                  totalTestCases,
+                                  passed
+                                }
+                              }));
+
+                              // Save progress to backend
+                              await saveProgressNow();
+                            } else {
+                              setCodingConsoleOutput(prev => ({
+                                ...prev,
+                                [currentQuestion]: {
+                                  results: [{
+                                    testCase: 1,
+                                    passed: false,
+                                    input: 'N/A',
+                                    expectedOutput: 'N/A',
+                                    actualOutput: 'N/A',
+                                    error: `Submission failed: ${result.message}`,
+                                    executionTime: 'N/A',
+                                    isHidden: false
+                                  }],
+                                  summary: {
+                                    passedTestCases: 0,
+                                    failedTestCases: 1,
+                                    totalTestCases: 1,
+                                    percentage: '0.0'
+                                  },
+                                  timestamp: new Date().toLocaleTimeString(),
+                                  running: false
+                                }
+                              }));
+                            }
+                          } catch (error) {
+                            console.error('Submit error:', error);
+                            setCodingConsoleOutput(prev => ({
+                              ...prev,
+                              [currentQuestion]: {
+                                results: [{
+                                  testCase: 1,
+                                  passed: false,
+                                  input: 'N/A',
+                                  expectedOutput: 'N/A',
+                                  actualOutput: 'N/A',
+                                  error: `Error: ${error.message}`,
+                                  executionTime: 'N/A',
+                                  isHidden: false
+                                }],
+                                summary: {
+                                  passedTestCases: 0,
+                                  failedTestCases: 1,
+                                  totalTestCases: 1,
+                                  percentage: '0.0'
+                                },
+                                timestamp: new Date().toLocaleTimeString(),
+                                running: false
+                              }
+                            }));
+                          }
                         }}
                         className="px-4 py-1.5 bg-gradient-to-r from-shnoor-indigo to-shnoor-navy hover:from-shnoor-navy hover:to-shnoor-indigo text-white text-sm rounded-lg font-medium transition-all duration-200 shadow-sm"
                       >
@@ -1327,8 +1447,8 @@ int main() {
                     
                     <div className="flex-1 overflow-y-auto p-4 bg-shnoor-navy">
                       {codingConsoleOutput[currentQuestion]?.running ? (
-                        <div className="flex items-center space-x-2 text-yellow-400">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
+                        <div className="flex items-center space-x-2 text-shnoor-warning">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-shnoor-warning"></div>
                           <span className="text-sm">Running test cases...</span>
                         </div>
                       ) : codingConsoleOutput[currentQuestion]?.results ? (
@@ -1344,13 +1464,13 @@ int main() {
                               </div>
                               <div className="grid grid-cols-3 gap-4 text-sm">
                                 <div className="text-center">
-                                  <div className="text-lg font-bold text-green-400">
+                                  <div className="text-lg font-bold text-shnoor-success">
                                     {codingConsoleOutput[currentQuestion].summary.passedTestCases}
                                   </div>
                                   <div className="text-shnoor-soft">Passed</div>
                                 </div>
                                 <div className="text-center">
-                                  <div className="text-lg font-bold text-red-400">
+                                  <div className="text-lg font-bold text-shnoor-danger">
                                     {codingConsoleOutput[currentQuestion].summary.failedTestCases}
                                   </div>
                                   <div className="text-shnoor-soft">Failed</div>
@@ -1371,12 +1491,12 @@ int main() {
                               key={idx}
                               className={`p-3 rounded-lg border shadow-sm ${
                                 result.passed
-                                  ? 'bg-green-900/20 border-green-500/50'
-                                  : 'bg-red-900/20 border-red-500/50'
+                                  ? 'bg-shnoor-success/20 border-shnoor-success/50'
+                                  : 'bg-shnoor-danger/20 border-shnoor-danger/50'
                               }`}
                             >
                               <div className="flex items-center justify-between mb-2">
-                                <span className={`text-sm font-semibold ${result.passed ? 'text-green-400' : 'text-red-400'}`}>
+                                <span className={`text-sm font-semibold ${result.passed ? 'text-shnoor-success' : 'text-shnoor-danger'}`}>
                                   TEST CASE {result.testCase}: {result.passed ? '✓ PASSED' : '✗ FAILED'}
                                 </span>
                                 <span className="text-xs text-shnoor-soft">{result.executionTime}</span>
@@ -1392,14 +1512,14 @@ int main() {
                                 </div>
                                 <div>
                                   <span className="text-shnoor-soft">Got: </span>
-                                  <span className={result.passed ? 'text-green-400' : 'text-red-400'}>
+                                  <span className={result.passed ? 'text-shnoor-success' : 'text-shnoor-danger'}>
                                     {result.actualOutput}
                                   </span>
                                 </div>
                                 {result.error && (
                                   <div>
                                     <span className="text-shnoor-soft">Error: </span>
-                                    <span className="text-red-400">{result.error}</span>
+                                    <span className="text-shnoor-danger">{result.error}</span>
                                   </div>
                                 )}
                               </div>
@@ -1457,7 +1577,7 @@ int main() {
             submitTest('manual');
           }
         }}
-        className="fixed bottom-4 right-4 z-40 flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold rounded-xl shadow-2xl transition-all duration-200 hover:scale-105 border-2 border-red-700"
+        className="fixed bottom-4 right-4 z-40 flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-shnoor-danger to-shnoor-danger hover:from-shnoor-danger hover:to-shnoor-danger text-white font-bold rounded-xl shadow-2xl transition-all duration-200 hover:scale-105 border-2 border-shnoor-danger"
       >
         <CheckCircle size={20} />
         <span>Finish Test</span>

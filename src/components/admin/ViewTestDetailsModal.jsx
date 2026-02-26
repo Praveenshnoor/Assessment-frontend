@@ -23,7 +23,7 @@ const ViewTestDetailsModal = ({ test, onClose, onEdit }) => {
         <div className="bg-shnoor-indigo text-white px-6 py-4 flex justify-between items-center">
           <div>
             <h2 className="text-xl font-bold">Test Details</h2>
-            <p className="text-blue-100 text-sm">View test configuration</p>
+            <p className="text-shnoor-indigoMedium text-sm">View test configuration</p>
           </div>
           <Button
             onClick={onClose}
@@ -48,8 +48,8 @@ const ViewTestDetailsModal = ({ test, onClose, onEdit }) => {
                 {test.duration} minutes
               </span>
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${test.status === 'published'
-                  ? 'bg-green-100 text-green-700 border border-green-200'
-                  : 'bg-gray-100 text-gray-700 border border-gray-200'
+                  ? 'bg-shnoor-successLight text-shnoor-success border border-shnoor-successLight'
+                  : 'bg-shnoor-lavender text-shnoor-navy border border-shnoor-mist'
                 }`}>
                 {test.status === 'published' ? 'Published' : 'Draft'}
               </span>
@@ -64,7 +64,7 @@ const ViewTestDetailsModal = ({ test, onClose, onEdit }) => {
                 <h4 className="font-semibold text-shnoor-navy text-sm">Job Role</h4>
               </div>
               <p className="text-shnoor-indigoMedium  text-sm ml-6">
-                {test.jobRole || <span className="text-gray-400 italic">Not specified</span>}
+                {test.jobRole || <span className="text-shnoor-navy italic">Not specified</span>}
               </p>
             </div>
 
@@ -74,7 +74,7 @@ const ViewTestDetailsModal = ({ test, onClose, onEdit }) => {
                 <h4 className="font-semibold text-shnoor-navy text-sm">Description</h4>
               </div>
               <p className="text-shnoor-indigoMedium text-sm ml-6 whitespace-pre-wrap">
-                {test.description || <span className="text-gray-400 italic">No description provided</span>}
+                {test.description || <span className="text-shnoor-navy italic">No description provided</span>}
               </p>
             </div>
           </div>
@@ -83,7 +83,7 @@ const ViewTestDetailsModal = ({ test, onClose, onEdit }) => {
           <div className="grid grid-cols-2 gap-4">
             <div className="border border-shnoor-light rounded-lg p-3 bg-white">
               <div className="flex items-center mb-2">
-                <Calendar size={16} className="text-green-600 mr-2" />
+                <Calendar size={16} className="text-shnoor-success mr-2" />
                 <h4 className="font-semibold text-shnoor-navy text-xs">Start Date & Time</h4>
               </div>
               <p className="text-shnoor-indigoMedium text-sm ml-6">
@@ -93,7 +93,7 @@ const ViewTestDetailsModal = ({ test, onClose, onEdit }) => {
 
             <div className="border border-shnoor-light rounded-lg p-3 bg-white">
               <div className="flex items-center mb-2">
-                <Calendar size={16} className="text-orange-600 mr-2" />
+                <Calendar size={16} className="text-shnoor-warning mr-2" />
                 <h4 className="font-semibold text-shnoor-navy text-xs">End Date & Time</h4>
               </div>
               <p className="text-shnoor-indigoMedium text-sm ml-6">
@@ -112,9 +112,9 @@ const ViewTestDetailsModal = ({ test, onClose, onEdit }) => {
             </div>
 
             <div className="border border-shnoor-light rounded-lg p-3 text-center bg-white">
-              <Award size={20} className="text-green-600 mx-auto mb-1" />
+              <Award size={20} className="text-shnoor-success mx-auto mb-1" />
               <h4 className="font-semibold text-shnoor-navy text-xs mb-1">Passing %</h4>
-              <p className="text-xl font-bold text-green-600">{test.passingPercentage || 50}%</p>
+              <p className="text-xl font-bold text-shnoor-success">{test.passingPercentage || 50}%</p>
               <p className="text-xs text-shnoor-soft">minimum</p>
             </div>
 

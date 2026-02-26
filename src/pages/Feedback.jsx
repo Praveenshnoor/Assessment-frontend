@@ -27,8 +27,8 @@ const Feedback = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F8F8FB]">
         <div className="text-center bg-white p-10 rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.08)] border border-shnoor-mist">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Send className="w-10 h-10 text-green-600" />
+          <div className="w-20 h-20 bg-shnoor-successLight rounded-full flex items-center justify-center mx-auto mb-4">
+            <Send className="w-10 h-10 text-shnoor-success" />
           </div>
           <h2 className="text-2xl font-bold text-shnoor-navy mb-2">Thank You!</h2>
           <p className="text-shnoor-indigoMedium font-medium">Your feedback has been recorded.</p>
@@ -60,7 +60,7 @@ const Feedback = () => {
                 key={star}
                 onClick={() => setRating(star)}
                 className={`p-2 rounded-xl transition-all hover:scale-110 hover:-translate-y-1 ${rating >= star
-                    ? 'bg-yellow-100 text-yellow-500 shadow-sm'
+                    ? 'bg-shnoor-warningLight text-shnoor-warning shadow-sm'
                     : 'bg-[#F8F8FB] text-shnoor-mist border border-shnoor-mist/50'
                   }`}
               >
