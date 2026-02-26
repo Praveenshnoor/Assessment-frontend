@@ -169,7 +169,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex font-['Plus_Jakarta_Sans',sans-serif]">
+    <main className="min-h-screen w-full flex font-['Plus_Jakarta_Sans',sans-serif]">
       {/* ── LEFT PANEL (dark) ─────────────────────────────── */}
       <div className="hidden lg:flex lg:w-[45%] flex-col justify-between bg-shnoor-navy px-14 py-12 relative overflow-hidden">
         {/* Decorative gradient orbs */}
@@ -211,7 +211,7 @@ const Login = () => {
 
         {/* Bottom quote */}
         <div className="relative z-10 border-t border-white/10 pt-6">
-          <p className="text-xs text-[#6868AC] italic leading-relaxed">
+          <p className="text-xs text-[#B7B7D9] italic leading-relaxed">
             "These measures ensure a fair and secure assessment process for all candidates."
           </p>
         </div>
@@ -222,17 +222,17 @@ const Login = () => {
         <div className="w-full max-w-[440px]">
           {/* Mobile brand header */}
           <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <img src={shnoorLogo} alt="Shnoor" className="h-9 w-9 object-contain" />
+            <img src={shnoorLogo} alt="Shnoor" loading="lazy" className="h-9 w-9 object-contain " />
             <div>
               <p className="font-extrabold text-shnoor-navy text-base">SHNOOR Assessments</p>
-              <p className="text-[10px] text-shnoor-soft uppercase tracking-widest">Secure Examination Portal</p>
+              <p className="text-[10px] text-shnoor-indigoMedium uppercase tracking-widest">Secure Examination Portal</p>
             </div>
           </div>
 
           {/* Heading */}
           <div className="mb-8">
             <h1 className="text-2xl font-extrabold text-shnoor-navy mb-1">Sign In</h1>
-            <p className="text-sm text-shnoor-soft">Enter your credentials to access the examination</p>
+            <p className="text-sm text-shnoor-indigoMedium">Enter your credentials to access the examination</p>
           </div>
 
           {/* Alerts */}
@@ -294,7 +294,7 @@ const Login = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-[37px] text-shnoor-soft hover:text-shnoor-navy transition-colors p-1"
+                className="absolute right-3 top-[37px] text-shnoor-indigoMedium hover:text-shnoor-navy transition-colors p-1"
                 tabIndex={-1}
                 disabled={isLoading}
               >
@@ -316,13 +316,13 @@ const Login = () => {
 
           {/* Footer links */}
           <div className="mt-8 pt-6 border-t border-shnoor-lavender">
-            <p className="text-center text-sm text-shnoor-soft">
+            <p className="text-center text-sm text-shnoor-indigoMedium">
               New candidate?{' '}
               <Link to="/register" className="text-shnoor-indigo font-semibold hover:text-shnoor-navy transition-colors">
                 Register for examination
               </Link>
             </p>
-            <p className="text-center text-xs text-[#8F8FC4] mt-4 flex items-center justify-center gap-1.5">
+            <p className="text-center text-xs text-shnoor-indigoMedium mt-4 flex items-center justify-center gap-1.5">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
               </svg>
@@ -331,7 +331,7 @@ const Login = () => {
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 
