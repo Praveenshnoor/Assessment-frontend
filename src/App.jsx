@@ -24,6 +24,8 @@ const LiveProctoring = React.lazy(() => import('./pages/admin/LiveProctoring'));
 const AdminSettings = React.lazy(() => import('./pages/admin/AdminSettings'));
 const ServerDown = React.lazy(() => import('./pages/ServerDown'));
 const Maintenance = React.lazy(() => import('./pages/Maintenance'));
+const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
+const TermsAndConditions = React.lazy(() => import('./pages/TermsAndConditions'));
 
 // Protected Route wrappers
 const StudentRoute = ({ children }) => {
@@ -52,6 +54,8 @@ function App() {
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/admin/login" element={<Navigate to="/login" replace />} />

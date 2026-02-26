@@ -107,7 +107,8 @@ Robert Johnson,robert.johnson@example.com,5551234567,Harvard University`;
             <div className="mb-6">
                 <Button
                     onClick={downloadSampleCSV}
-                    className="text-shnoor-indigo hover:text-shnoor-navy underline text-sm font-medium transition-colors"                >
+                    className="text-shnoor-indigo hover:text-shnoor-navy underline text-sm font-medium"
+                >
                     📥 Download Sample CSV Template
                 </Button>
             </div>

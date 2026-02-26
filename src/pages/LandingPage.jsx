@@ -316,7 +316,7 @@ const LandingPage = () => (
         </p>
         <div className="flex flex-wrap justify-center gap-4 mb-6">
           <Link to="/register">
-            <Button className="h-[50px] px-8 rounded-lg font-bold text-shnoor-indigo bg-white hover:bg-shnoor-lavender transition-all shadow-lg">
+            <Button className="h-[50px] px-8 rounded-lg font-bold text-white border-2 border-white hover:bg-white/10 transition-all">
               Register Now
             </Button>
           </Link>
@@ -366,10 +366,8 @@ const LandingPage = () => (
             <p>© Copyrights 2025. All Rights Reserved. SHNOOR INTERNATIONAL LLC</p>
             <div className="hidden sm:flex items-center gap-2">
               <span className="text-white/20">•</span>
-              <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-              <span className="text-white/20">•</span>
-              <a href="#" className="hover:text-white transition-colors">Terms &amp; Conditions</a>
-            </div>
+              <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>              <span className="text-white/20">•</span>
+              <Link to="/terms-and-conditions" className="hover:text-white transition-colors">Terms &amp; Conditions</Link>            </div>
           </div>
           <div className="flex items-center gap-2 text-sm text-green-400 font-semibold">
             <Icon d={SHIELD} cls="w-4 h-4" />
