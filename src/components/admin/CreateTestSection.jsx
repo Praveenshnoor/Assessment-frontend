@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { Upload, FileText, Plus, Save, Trash2, ArrowLeft, CheckCircle, AlertCircle, Loader2, Pencil, Code, X, Eye } from 'lucide-react';
 import { apiFetch } from '../../config/api';
 
+// Feature flag for code execution - set to false to disable
+const ENABLE_CODE_EXECUTION = false;
+
 const CreateTestSection = ({ onComplete, editingTest }) => {
     const [step, setStep] = useState('init'); // init, manual, bulk, success, coding
     const [testTitle, setTestTitle] = useState('');
@@ -423,29 +426,32 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                 data = await response.json();
 
                 if (response.ok && data.success) {
-                    // ALWAYS save coding questions (even if empty, to clear old ones)
-                    console.log('[UPDATE TEST] Saving coding questions:', codingQuestions.length);
-                    console.log('[UPDATE TEST] Coding questions data:', JSON.stringify(codingQuestions, null, 2));
-                    
-                    const codingResponse = await apiFetch(`api/coding-questions/test/${uploadedTestId}`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            codingQuestions: codingQuestions
-                        })
-                    });
+                    // CODE EXECUTION FEATURE - TEMPORARILY DISABLED
+                    if (ENABLE_CODE_EXECUTION) {
+                        // ALWAYS save coding questions (even if empty, to clear old ones)
+                        console.log('[UPDATE TEST] Saving coding questions:', codingQuestions.length);
+                        console.log('[UPDATE TEST] Coding questions data:', JSON.stringify(codingQuestions, null, 2));
+                        
+                        const codingResponse = await apiFetch(`api/coding-questions/test/${uploadedTestId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                codingQuestions: codingQuestions
+                            })
+                        });
 
-                    const codingData = await codingResponse.json();
-                    if (!codingResponse.ok || !codingData.success) {
-                        console.error('[UPDATE TEST] Failed to save coding questions:', codingData);
-                        alert('Test updated but failed to save coding questions: ' + codingData.message);
-                        setIsUploading(false);
-                        return;
+                        const codingData = await codingResponse.json();
+                        if (!codingResponse.ok || !codingData.success) {
+                            console.error('[UPDATE TEST] Failed to save coding questions:', codingData);
+                            alert('Test updated but failed to save coding questions: ' + codingData.message);
+                            setIsUploading(false);
+                            return;
+                        }
+                        console.log('[UPDATE TEST] Coding questions saved successfully');
                     }
-                    console.log('[UPDATE TEST] Coding questions saved successfully');
 
                     alert('Test updated successfully!');
                     // Go back to view mode instead of dashboard
@@ -480,29 +486,32 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                 if (response.ok && data.success) {
                     const testId = data.testId;
                     
-                    // ALWAYS save coding questions (even if empty, to ensure consistency)
-                    console.log('[CREATE TEST] Saving coding questions for new test:', codingQuestions.length);
-                    console.log('[CREATE TEST] Coding questions data:', JSON.stringify(codingQuestions, null, 2));
-                    
-                    const codingResponse = await apiFetch(`api/coding-questions/test/${testId}`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            codingQuestions: codingQuestions
-                        })
-                    });
+                    // CODE EXECUTION FEATURE - TEMPORARILY DISABLED
+                    if (ENABLE_CODE_EXECUTION) {
+                        // ALWAYS save coding questions (even if empty, to ensure consistency)
+                        console.log('[CREATE TEST] Saving coding questions for new test:', codingQuestions.length);
+                        console.log('[CREATE TEST] Coding questions data:', JSON.stringify(codingQuestions, null, 2));
+                        
+                        const codingResponse = await apiFetch(`api/coding-questions/test/${testId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                codingQuestions: codingQuestions
+                            })
+                        });
 
-                    const codingData = await codingResponse.json();
-                    if (!codingResponse.ok || !codingData.success) {
-                        console.error('[CREATE TEST] Failed to save coding questions:', codingData);
-                        alert('Test created but failed to save coding questions: ' + codingData.message);
-                        setIsUploading(false);
-                        return;
+                        const codingData = await codingResponse.json();
+                        if (!codingResponse.ok || !codingData.success) {
+                            console.error('[CREATE TEST] Failed to save coding questions:', codingData);
+                            alert('Test created but failed to save coding questions: ' + codingData.message);
+                            setIsUploading(false);
+                            return;
+                        }
+                        console.log('[CREATE TEST] Coding questions saved successfully');
                     }
-                    console.log('[CREATE TEST] Coding questions saved successfully');
 
                     setUploadedTestId(testId);
                     setUploadedTestName(testTitle);
@@ -564,29 +573,32 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    // Save coding questions after bulk upload in edit mode
-                    console.log('[BULK UPLOAD EDIT] Saving coding questions:', codingQuestions.length);
-                    console.log('[BULK UPLOAD EDIT] Coding questions data:', JSON.stringify(codingQuestions, null, 2));
-                    
-                    const codingResponse = await apiFetch(`api/coding-questions/test/${uploadedTestId}`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            codingQuestions: codingQuestions
-                        })
-                    });
+                    // CODE EXECUTION FEATURE - TEMPORARILY DISABLED
+                    if (ENABLE_CODE_EXECUTION) {
+                        // Save coding questions after bulk upload in edit mode
+                        console.log('[BULK UPLOAD EDIT] Saving coding questions:', codingQuestions.length);
+                        console.log('[BULK UPLOAD EDIT] Coding questions data:', JSON.stringify(codingQuestions, null, 2));
+                        
+                        const codingResponse = await apiFetch(`api/coding-questions/test/${uploadedTestId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                codingQuestions: codingQuestions
+                            })
+                        });
 
-                    const codingData = await codingResponse.json();
-                    if (!codingResponse.ok || !codingData.success) {
-                        console.error('[BULK UPLOAD EDIT] Failed to save coding questions:', codingData);
-                        alert('Questions uploaded but failed to save coding questions: ' + codingData.message);
-                        setIsUploading(false);
-                        return;
+                        const codingData = await codingResponse.json();
+                        if (!codingResponse.ok || !codingData.success) {
+                            console.error('[BULK UPLOAD EDIT] Failed to save coding questions:', codingData);
+                            alert('Questions uploaded but failed to save coding questions: ' + codingData.message);
+                            setIsUploading(false);
+                            return;
+                        }
+                        console.log('[BULK UPLOAD EDIT] Coding questions saved successfully');
                     }
-                    console.log('[BULK UPLOAD EDIT] Coding questions saved successfully');
                     
                     alert(`Questions uploaded successfully! ${data.questionsCount} questions added. Click "Save Changes" to save.`);
                     // Reload test data to show new questions
@@ -637,29 +649,32 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                 if (response.ok && data.success) {
                     const testId = data.testId;
                     
-                    // Save coding questions after bulk upload
-                    console.log('[BULK UPLOAD] Saving coding questions:', codingQuestions.length);
-                    console.log('[BULK UPLOAD] Coding questions data:', JSON.stringify(codingQuestions, null, 2));
-                    
-                    const codingResponse = await apiFetch(`api/coding-questions/test/${testId}`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            codingQuestions: codingQuestions
-                        })
-                    });
+                    // CODE EXECUTION FEATURE - TEMPORARILY DISABLED
+                    if (ENABLE_CODE_EXECUTION) {
+                        // Save coding questions after bulk upload
+                        console.log('[BULK UPLOAD] Saving coding questions:', codingQuestions.length);
+                        console.log('[BULK UPLOAD] Coding questions data:', JSON.stringify(codingQuestions, null, 2));
+                        
+                        const codingResponse = await apiFetch(`api/coding-questions/test/${testId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                codingQuestions: codingQuestions
+                            })
+                        });
 
-                    const codingData = await codingResponse.json();
-                    if (!codingResponse.ok || !codingData.success) {
-                        console.error('[BULK UPLOAD] Failed to save coding questions:', codingData);
-                        alert('Test created but failed to save coding questions: ' + codingData.message);
-                        setIsUploading(false);
-                        return;
+                        const codingData = await codingResponse.json();
+                        if (!codingResponse.ok || !codingData.success) {
+                            console.error('[BULK UPLOAD] Failed to save coding questions:', codingData);
+                            alert('Test created but failed to save coding questions: ' + codingData.message);
+                            setIsUploading(false);
+                            return;
+                        }
+                        console.log('[BULK UPLOAD] Coding questions saved successfully');
                     }
-                    console.log('[BULK UPLOAD] Coding questions saved successfully');
                     
                     setUploadedTestId(testId);
                     setUploadedTestName(testTitle);
