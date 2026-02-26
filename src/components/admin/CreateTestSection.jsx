@@ -15,7 +15,9 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
     const [startDateTime, setStartDateTime] = useState('');
     const [endDateTime, setEndDateTime] = useState('');
     const [questions, setQuestions] = useState([]);
-    const [codingQuestions, setCodingQuestions] = useState([]);
+    // CODE EXECUTION FEATURE - TEMPORARILY DISABLED
+    // const [codingQuestions, setCodingQuestions] = useState([]);
+    const codingQuestions = []; // Dummy variable to prevent errors
     const [isUploading, setIsUploading] = useState(false);
     const [uploadedTestId, setUploadedTestId] = useState(null);
     const [uploadedTestName, setUploadedTestName] = useState('');
@@ -38,20 +40,21 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
         correctOption: null // 0, 1, 2, 3
     });
 
+    // CODE EXECUTION FEATURE - TEMPORARILY DISABLED
     // Coding Question Logic
-    const [showCodingModal, setShowCodingModal] = useState(false);
-    const [showCodingViewModal, setShowCodingViewModal] = useState(false);
-    const [viewingCodingQuestion, setViewingCodingQuestion] = useState(null);
-    const [editingCodingQuestionId, setEditingCodingQuestionId] = useState(null);
-    const [currentCodingQuestion, setCurrentCodingQuestion] = useState({
-        title: '',
-        description: '',
-        publicTestCases: [{ input: '', output: '', explanation: '' }],
-        hiddenTestCases: [{ input: '', output: '' }],
-        timeLimit: 2,
-        memoryLimit: 256,
-        marks: 10
-    });
+    // const [showCodingModal, setShowCodingModal] = useState(false);
+    // const [showCodingViewModal, setShowCodingViewModal] = useState(false);
+    // const [viewingCodingQuestion, setViewingCodingQuestion] = useState(null);
+    // const [editingCodingQuestionId, setEditingCodingQuestionId] = useState(null);
+    // const [currentCodingQuestion, setCurrentCodingQuestion] = useState({
+    //     title: '',
+    //     description: '',
+    //     publicTestCases: [{ input: '', output: '', explanation: '' }],
+    //     hiddenTestCases: [{ input: '', output: '' }],
+    //     timeLimit: 2,
+    //     memoryLimit: 256,
+    //     marks: 10
+    // });
 
     // Load test data when editing
     useEffect(() => {
@@ -136,20 +139,21 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         setQuestions(loadedQuestions);
                     }
 
+                    // CODE EXECUTION FEATURE - TEMPORARILY DISABLED
                     // Load coding questions
-                    if (test.codingQuestions && test.codingQuestions.length > 0) {
-                        const loadedCodingQuestions = test.codingQuestions.map((q, idx) => ({
-                            id: q.id || Date.now() + idx,
-                            title: q.title,
-                            description: q.description,
-                            timeLimit: q.timeLimit || 2,
-                            memoryLimit: q.memoryLimit || 256,
-                            marks: q.marks || 10,
-                            publicTestCases: q.publicTestCases || [{ input: '', output: '', explanation: '' }],
-                            hiddenTestCases: q.hiddenTestCases || [{ input: '', output: '' }]
-                        }));
-                        setCodingQuestions(loadedCodingQuestions);
-                    }
+                    // if (test.codingQuestions && test.codingQuestions.length > 0) {
+                    //     const loadedCodingQuestions = test.codingQuestions.map((q, idx) => ({
+                    //         id: q.id || Date.now() + idx,
+                    //         title: q.title,
+                    //         description: q.description,
+                    //         timeLimit: q.timeLimit || 2,
+                    //         memoryLimit: q.memoryLimit || 256,
+                    //         marks: q.marks || 10,
+                    //         publicTestCases: q.publicTestCases || [{ input: '', output: '', explanation: '' }],
+                    //         hiddenTestCases: q.hiddenTestCases || [{ input: '', output: '' }]
+                    //     }));
+                    //     setCodingQuestions(loadedCodingQuestions);
+                    // }
 
                     setUploadedTestId(test.id);
                     setNameAvailability({ checking: false, available: true, message: 'Current test name' });
@@ -272,7 +276,9 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
         setQuestions(questions.filter(q => q.id !== id));
     };
 
+    // CODE EXECUTION FEATURE - TEMPORARILY DISABLED
     // Coding Question Handlers
+    /*
     const handleAddPublicTestCase = () => {
         setCurrentCodingQuestion({
             ...currentCodingQuestion,
@@ -360,6 +366,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
         setEditingCodingQuestionId(question.id);
         setShowCodingModal(true);
     };
+    */
 
     const convertISTToUTC = (dateTimeString) => {
         if (!dateTimeString) return null;
@@ -376,7 +383,9 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
     };
 
     const handleManualSubmit = async () => {
-        if (questions.length === 0 && codingQuestions.length === 0) {
+        // CODE EXECUTION FEATURE - TEMPORARILY DISABLED
+        // if (questions.length === 0 && codingQuestions.length === 0) {
+        if (questions.length === 0) {
             alert('Please add at least one question (MCQ or Coding)');
             return;
         }
@@ -732,7 +741,8 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
         setStartDateTime('');
         setEndDateTime('');
         setQuestions([]);
-        setCodingQuestions([]);
+        // CODE EXECUTION FEATURE - TEMPORARILY DISABLED
+        // setCodingQuestions([]);
         setUploadedTestId(null);
         setUploadedTestName('');
     };
@@ -929,8 +939,9 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                             </div>
                         </div>
 
+                        {/* CODE EXECUTION FEATURE - TEMPORARILY DISABLED */}
                         {/* Add Coding Question Button */}
-                        {!viewMode && !isEditMode && (
+                        {/* {!viewMode && !isEditMode && (
                             <div className="pt-4 border-t border-shnoor-mist">
                                 <button
                                     onClick={() => {
@@ -951,10 +962,11 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                     <span>Add Coding Question</span>
                                 </button>
                             </div>
-                        )}
+                        )} */}
 
+                        {/* CODE EXECUTION FEATURE - TEMPORARILY DISABLED */}
                         {/* Coding Questions List */}
-                        {!viewMode && !isEditMode && codingQuestions.length > 0 && (
+                        {/* {!viewMode && !isEditMode && codingQuestions.length > 0 && (
                             <div className="pt-4 space-y-3">
                                 {codingQuestions.map((q, idx) => (
                                     <div key={q.id} className="bg-white border-2 border-shnoor-mist rounded-lg p-4 hover:border-shnoor-mist transition-colors">
@@ -995,7 +1007,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                     </div>
                                 ))}
                             </div>
-                        )}
+                        )} */}
 
                         {isEditMode ? (
                             /* Edit Mode: Show options to edit manually or upload new file */
@@ -1387,8 +1399,9 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                 </div>
             )}
 
-            {/* Coding Question Modal */}
-            {showCodingModal && (
+            {/* CODE EXECUTION FEATURE - TEMPORARILY DISABLED */}
+            {/* Coding Question Modal - DISABLED */}
+            {false && showCodingModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
                     <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full my-8 max-h-[90vh] overflow-y-auto">
                         {/* Modal Header */}
@@ -1645,8 +1658,9 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                 </div>
             )}
 
-            {/* Coding Question View Modal */}
-            {showCodingViewModal && viewingCodingQuestion && (
+            {/* CODE EXECUTION FEATURE - TEMPORARILY DISABLED */}
+            {/* Coding Question View Modal - DISABLED */}
+            {false && showCodingViewModal && viewingCodingQuestion && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
                     <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full my-8 max-h-[90vh] overflow-y-auto">
                         {/* Modal Header */}
