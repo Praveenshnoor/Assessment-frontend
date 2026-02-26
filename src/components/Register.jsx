@@ -558,7 +558,7 @@ const Register = () => {
             <p className="text-center text-sm text-shnoor-soft">
               Already registered?{' '}
               <Link to="/login" className="text-shnoor-indigo font-semibold hover:text-shnoor-navy transition-colors">
-                Sign in to examination
+                Sign in
               </Link>
             </p>
             <p className="text-center text-xs text-[#8F8FC4] mt-3 flex items-center justify-center gap-1.5">
