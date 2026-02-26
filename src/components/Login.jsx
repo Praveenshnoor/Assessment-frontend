@@ -232,7 +232,7 @@ const Login = () => {
           {/* Heading */}
           <div className="mb-8">
             <h1 className="text-2xl font-extrabold text-shnoor-navy mb-1">Sign In</h1>
-            <p className="text-sm text-shnoor-indigoMedium">Enter your credentials to access the examination</p>
+            <p className="text-sm text-shnoor-indigoMedium">Enter your credentials </p>
           </div>
 
           {/* Alerts */}
@@ -310,7 +310,7 @@ const Login = () => {
               disabled={isLoading}
             >
               {isLoading && <div className="w-5 h-5 border-[3px] border-white border-t-transparent rounded-full animate-spin" />}
-              {isLoading ? 'Signing In...' : 'Sign In to Examination'}
+              {isLoading ? 'Signing In...' : 'Sign In '}
             </Button>
           </form>
 

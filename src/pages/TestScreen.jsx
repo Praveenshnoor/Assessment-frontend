@@ -6,6 +6,10 @@ import { useTabSwitch } from '../hooks/useTabSwitch';
 import { useProctoringWithAI } from '../hooks/useProctoringWithAI';
 import FullscreenWarning from '../components/FullscreenWarning';
 import AIViolationAlert from '../components/AIViolationAlert';
+
+import StudentMessageAlert from '../components/student/StudentMessageAlert';
+import StudentWarningsSidebar from '../components/student/StudentWarningsSidebar';
+
 import Editor from '@monaco-editor/react';
 import {
   Clock,
@@ -16,7 +20,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { apiFetch } from '../config/api';
-// import codeExecutionAPI from '../services/codeExecutionAPI';
+import codeExecutionAPI from '../services/codeExecutionAPI';
 
 const TestScreen = () => {
   const navigate = useNavigate();
@@ -29,6 +33,10 @@ const TestScreen = () => {
   const [codingConsoleOutput, setCodingConsoleOutput] = useState({}); // Store console output per question
   const [markedForReview, setMarkedForReview] = useState(new Set());
   
+ // Warnings sidebar state
+  const [warningsSidebarCollapsed, setWarningsSidebarCollapsed] = useState(true);
+
+
   // Resizable panel states
   const [leftPanelWidth, setLeftPanelWidth] = useState(33); // percentage
   const [consolePanelHeight, setConsolePanelHeight] = useState(256); // pixels
@@ -138,7 +146,13 @@ int main() {
     isModelLoaded,
     detectionActive,
     violations,
-    microphonePermissionGranted
+    microphonePermissionGranted,
+    // Messaging functionality
+    messages: proctoringMessages,
+    currentMessage,
+    dismissCurrentMessage,
+    markAllAsRead,
+    unreadCount
   } = useProctoringWithAI(handleCameraLost, handleAIViolation);
 
   // Submit test function - defined early so it can be used by other callbacks
@@ -710,6 +724,16 @@ int main() {
         <AIViolationAlert 
           violation={currentAIViolation}
           onDismiss={() => setCurrentAIViolation(null)}
+        />
+      )}
+
+      {/* Proctor Message Alert */}
+      {currentMessage && (
+        <StudentMessageAlert
+          message={currentMessage}
+          isVisible={!!currentMessage}
+          onDismiss={dismissCurrentMessage}
+          autoHideDelay={10000}
         />
       )}
 
@@ -1568,6 +1592,13 @@ int main() {
                 </div>
               </main>
             )}
+
+        {/* Warnings Sidebar */}
+        <StudentWarningsSidebar
+          messages={proctoringMessages}
+          isCollapsed={warningsSidebarCollapsed}
+          onToggleCollapse={() => setWarningsSidebarCollapsed(prev => !prev)}
+        />
       </div>
 
       {/* Floating Finish Test Button - Bottom Right */}

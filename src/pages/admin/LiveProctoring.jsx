@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { ArrowLeft, Users, Wifi, WifiOff, Camera, Clock } from 'lucide-react';
+import { ArrowLeft, Users, Wifi, WifiOff, Camera, Clock, MessageCircle } from 'lucide-react';
+import AdminChatModal from '../../components/admin/AdminChatModal';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -10,7 +11,10 @@ const LiveProctoring = () => {
   const [activeSessions, setActiveSessions] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [frameData, setFrameData] = useState(new Map()); // studentId -> frame base64
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const socketRef = useRef(null);
+  
 
   useEffect(() => {
     // Check admin authentication
@@ -137,6 +141,21 @@ const LiveProctoring = () => {
     return `${diff} min`;
   };
 
+  const handleOpenChat = (student) => {
+    setSelectedStudent(student);
+    setIsChatModalOpen(true);
+  };
+
+  const handleCloseChat = () => {
+    setIsChatModalOpen(false);
+    setSelectedStudent(null);
+  };
+
+  const handleMessageSent = () => {
+    // Optional: Add any additional handling when a message is sent
+    console.log('[Admin] Message sent to student');
+  };
+
   return (
     <div className="min-h-screen bg-[#E0E0EF]">
       {/* Header */}
@@ -248,6 +267,18 @@ const LiveProctoring = () => {
                         </span>
                       </div>
                     </div>
+                                        
+                    {/* Chat Button */}
+                    <div className="mt-4 pt-3 border-t border-shnoor-light">
+                      <button
+                        onClick={() => handleOpenChat(session)}
+                        className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-shnoor-navy text-white rounded-lg hover:bg-opacity-90 transition-colors"
+                      >
+                        <MessageCircle size={16} />
+                        <span className="text-sm font-medium">Send Message</span>
+                      </button>
+                    </div>
+
                   </div>
                 </div>
               );
@@ -255,6 +286,18 @@ const LiveProctoring = () => {
           </div>
         )}
       </main>
+
+      {/* Chat Modal */}
+      {selectedStudent && (
+        <AdminChatModal
+          isOpen={isChatModalOpen}
+          onClose={handleCloseChat}
+          student={selectedStudent}
+          socket={socketRef.current}
+          onMessageSent={handleMessageSent}
+        />
+      )}
+      
     </div>
   );
 };

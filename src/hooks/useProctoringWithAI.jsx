@@ -6,7 +6,7 @@ const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const FRAME_RATE = 5; // 5 frames per second
 const FRAME_INTERVAL = 1000 / FRAME_RATE; // 200ms
 
-export const useProctoringWithAI = (onCameraLost, onAIViolation) => {
+export const useProctoringWithAI = (onCameraLost, onAIViolation, onMessageReceived) => {
   const [stream, setStream] = useState(null);
   const [audioStream, setAudioStream] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -14,6 +14,10 @@ export const useProctoringWithAI = (onCameraLost, onAIViolation) => {
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [microphonePermissionGranted, setMicrophonePermissionGranted] = useState(false);
   const [aiViolations, setAiViolations] = useState([]);
+  
+ const [messages, setMessages] = useState([]);
+  const [currentMessage, setCurrentMessage] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   
   const socketRef = useRef(null);
   const videoRef = useRef(null);
@@ -60,6 +64,49 @@ export const useProctoringWithAI = (onCameraLost, onAIViolation) => {
       console.warn('[Proctoring] ⚠️ Cannot send violation - socket not connected');
     }
   }, [onAIViolation]);
+
+  // Message handling functions
+  const handleMessageReceived = useCallback((messageData) => {
+    console.log('[Messaging] 📩 Received message from proctor:', messageData);
+    
+    // Add to messages list
+    setMessages(prev => [...prev, messageData]);
+    
+    // Set as current message for alert display
+    setCurrentMessage(messageData);
+    
+    // Increment unread count
+    setUnreadCount(prev => prev + 1);
+    
+    // Call parent handler if provided
+    if (onMessageReceived) {
+      onMessageReceived(messageData);
+    }
+
+    // Auto-acknowledge message after 3 seconds
+    setTimeout(() => {
+      acknowledgeMessage(messageData.id);
+    }, 3000);
+  }, [onMessageReceived]);
+
+  const acknowledgeMessage = useCallback((messageId) => {
+    if (socketRef.current && socketRef.current.connected && studentDataRef.current) {
+      console.log('[Messaging] ✅ Acknowledging message:', messageId);
+      
+      socketRef.current.emit('student:message-read', {
+        messageId: messageId,
+        studentId: studentDataRef.current.studentId
+      });
+    }
+  }, []);
+
+  const dismissCurrentMessage = useCallback(() => {
+    setCurrentMessage(null);
+  }, []);
+
+  const markAllAsRead = useCallback(() => {
+    setUnreadCount(0);
+  }, []);
 
   // AI Detection hook
   const {
@@ -311,7 +358,8 @@ export const useProctoringWithAI = (onCameraLost, onAIViolation) => {
       setError(null);
       socket.emit('student:join-proctoring', studentData);
     });
-
+    // Handle incoming messages from proctor
+    socket.on('proctoring:message-received', handleMessageReceived);
     socketRef.current = socket;
     return socket;
   };
@@ -559,5 +607,12 @@ export const useProctoringWithAI = (onCameraLost, onAIViolation) => {
     aiViolations,
     startProctoring,
     stopProctoring,
+    // Messaging functionality
+    messages,
+    currentMessage,
+    unreadCount,
+    dismissCurrentMessage,
+    markAllAsRead,
+    acknowledgeMessage,
   };
 };
