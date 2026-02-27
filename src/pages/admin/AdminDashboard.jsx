@@ -58,6 +58,11 @@ const AdminDashboard = () => {
   const [showRegistrationControlModal, setShowRegistrationControlModal] = useState(false);
   const [selectedInstituteForRegistration, setSelectedInstituteForRegistration] = useState(null);
 
+  // Multi-Institute Selection States (for bulk test assignment)
+  const [selectedInstitutes, setSelectedInstitutes] = useState([]);
+  const [selectedTestForMultipleInstitutes, setSelectedTestForMultipleInstitutes] = useState('');
+  const [isAssigningTestToMultipleInstitutes, setIsAssigningTestToMultipleInstitutes] = useState(false);
+
   // Assigned Tests Modal States
   const [showAssignedTestsModal, setShowAssignedTestsModal] = useState(false);
   const [selectedInstituteForTests, setSelectedInstituteForTests] = useState(null);
@@ -239,9 +244,6 @@ const AdminDashboard = () => {
     if (!token) navigate('/admin/login');
     else {
       fetchTests();
-      if (activeTab === 'assign') {
-        fetchInstitutes();
-      }
       if (activeTab === 'institutes') {
         fetchAllInstitutes();
       }
@@ -1105,6 +1107,125 @@ const AdminDashboard = () => {
     }
   };
 
+  // Multi-Institute Selection Handlers
+  const toggleInstituteSelection = (instituteId) => {
+    setSelectedInstitutes(prev => {
+      if (prev.includes(instituteId)) {
+        return prev.filter(id => id !== instituteId);
+      } else {
+        return [...prev, instituteId];
+      }
+    });
+  };
+
+  const toggleAllInstitutes = () => {
+    if (selectedInstitutes.length === allInstitutes.length) {
+      // Deselect all
+      setSelectedInstitutes([]);
+    } else {
+      // Select all
+      setSelectedInstitutes(allInstitutes.map(inst => inst.id));
+    }
+  };
+
+  const handleAssignTestToMultipleInstitutes = async () => {
+    if (selectedInstitutes.length === 0) {
+      alert('Please select at least one institute');
+      return;
+    }
+
+    if (!selectedTestForMultipleInstitutes) {
+      alert('Please select a test to assign');
+      return;
+    }
+
+    const selectedTest = tests.find(t => t.id === parseInt(selectedTestForMultipleInstitutes));
+    if (!selectedTest) {
+      alert('Invalid test selected');
+      return;
+    }
+
+    const confirmMessage = `Assign "${selectedTest.name}" to ${selectedInstitutes.length} institute(s)?`;
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      setIsAssigningTestToMultipleInstitutes(true);
+      const token = localStorage.getItem('adminToken');
+     
+      let successCount = 0;
+      let failCount = 0;
+      let alreadyAssignedCount = 0;
+      const errors = [];
+
+      for (const instituteId of selectedInstitutes) {
+        try {
+          const response = await apiFetch(`api/institutes/${instituteId}/assign-test`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              test_id: selectedTestForMultipleInstitutes
+            })
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            successCount++;
+          } else if (data.message && data.message.includes('already assigned')) {
+            alreadyAssignedCount++;
+          } else {
+            failCount++;
+            const institute = allInstitutes.find(i => i.id === instituteId);
+            errors.push(`${institute?.display_name || `Institute ${instituteId}`}: ${data.message}`);
+          }
+        } catch (error) {
+          failCount++;
+          const institute = allInstitutes.find(i => i.id === instituteId);
+          errors.push(`${institute?.display_name || `Institute ${instituteId}`}: ${error.message}`);
+        }
+
+        // Small delay to avoid overwhelming the server
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      // Show summary
+      let summaryMessage = '';
+      if (successCount > 0) {
+        summaryMessage += `✓ Successfully assigned to ${successCount} institute(s)\n`;
+      }
+      if (alreadyAssignedCount > 0) {
+        summaryMessage += `ℹ Already assigned to ${alreadyAssignedCount} institute(s)\n`;
+      }
+      if (failCount > 0) {
+        summaryMessage += `✗ Failed for ${failCount} institute(s)\n`;
+        if (errors.length > 0) {
+          summaryMessage += `\nErrors:\n${errors.slice(0, 3).join('\n')}`;
+          if (errors.length > 3) {
+            summaryMessage += `\n... and ${errors.length - 3} more`;
+          }
+        }
+      }
+
+      alert(summaryMessage || 'Test assignment completed');
+
+      // Clear selections and refresh
+      setSelectedInstitutes([]);
+      setSelectedTestForMultipleInstitutes('');
+      fetchAllInstitutes();
+     
+    } catch (error) {
+      console.error('Error assigning test to institutes:', error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsAssigningTestToMultipleInstitutes(false);
+    }
+  };
+
   const handleViewAssignedTests = async (institute) => {
     setSelectedInstituteForTests(institute);
     setShowAssignedTestsModal(true);
@@ -1591,7 +1712,6 @@ const AdminDashboard = () => {
             <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-mist p-2 inline-flex space-x-2">
               {[
                 { id: 'exams', label: 'Manage Exams', icon: FileSpreadsheet },
-                { id: 'assign', label: 'Assign Tests', icon: UserCheck },
                 { id: 'institutes', label: 'Manage Institutes', icon: Building2 },
                 { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
                 { id: 'bulk-upload', label: 'Bulk Upload', icon: Users },
@@ -2307,220 +2427,6 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            {activeTab === 'assign' && (
-              <div className="space-y-6">
-                <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light p-8">
-                  <div className="mb-8">
-                    <h2 className="text-3xl font-bold text-shnoor-navy mb-2 flex items-center">
-                      <UserCheck className="mr-3 text-shnoor-indigo" size={32} />
-                      Assign Tests to Students
-                    </h2>
-                    <p className="text-shnoor-indigoMedium ml-11">Select a test and choose students to assign it to</p>
-                  </div>
-
-                  {/* Test Selection */}
-                  <div className="mb-8 p-6 bg-white rounded-2xl border border-shnoor-light shadow-[0_8px_30px_rgba(14,14,39,0.06)]">
-                    <label className="block text-sm font-bold text-shnoor-navy mb-3 flex items-center">
-                      <FileSpreadsheet size={18} className="mr-2 text-shnoor-indigo" />
-                      Select Test to Assign
-                    </label>
-                    <select
-                      value={selectedTest}
-                      onChange={(e) => setSelectedTest(e.target.value)}
-                      className="w-full px-5 py-4 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-shnoor-mist focus:border-shnoor-indigo bg-white text-shnoor-navy font-medium shadow-[0_8px_30px_rgba(14,14,39,0.06)] hover:border-shnoor-indigo transition-all cursor-pointer"
-                    >
-                      <option value="">-- Choose a test --</option>
-                      {tests.filter(test => test.status === 'published').map((test) => (
-                        <option key={test.id} value={test.id}>
-                          {test.name} ({test.questions} questions • {test.duration} mins)
-                        </option>
-                      ))}
-                    </select>
-                    {tests.filter(test => test.status === 'published').length === 0 && (
-                      <p className="mt-2 text-sm text-shnoor-warning flex items-center">
-                        <AlertCircle size={16} className="mr-1" />
-                        No published tests available. Please publish a test first.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Selected Students Counter */}
-                  {selectedStudents.length > 0 && (
-                    <div className="mb-6 p-5 bg-white rounded-2xl border border-shnoor-light shadow-[0_8px_30px_rgba(14,14,39,0.06)] transform hover:scale-[1.02] transition-transform">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-shnoor-indigo rounded-xl flex items-center justify-center shadow-[0_8px_30px_rgba(14,14,39,0.06)]">
-                            <Users size={24} className="text-white" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-shnoor-navy">
-                              {selectedStudents.length} student{selectedStudents.length !== 1 ? 's' : ''} selected
-                            </p>
-                            <p className="text-xs text-shnoor-indigoMedium">Ready to assign test</p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => setSelectedStudents([])}
-                          className="px-4 py-2 bg-white hover:bg-shnoor-lavender text-shnoor-indigo rounded-lg text-sm font-medium transition-colors shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light"
-                        >
-                          Clear Selection
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Institutes and Students */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-bold text-shnoor-navy flex items-center">
-                        <Users size={22} className="mr-2 text-shnoor-indigo" />
-                        Select Students by Institute
-                      </h3>
-                      {institutes.length > 0 && (
-                        <span className="text-sm text-shnoor-indigoMedium bg-shnoor-lavender px-3 py-1 rounded-full border border-shnoor-light">
-                          {institutes.length} institute{institutes.length !== 1 ? 's' : ''}
-                        </span>
-                      )}
-                    </div>
-
-                    {isLoadingInstitutes ? (
-                      <div className="flex items-center justify-center py-12 bg-white rounded-2xl border border-shnoor-light">
-                        <div className="animate-spin rounded-full h-10 w-10 border-b-3 border-shnoor-indigo"></div>
-                        <span className="ml-3 text-shnoor-indigoMedium font-medium">Loading institutes...</span>
-                      </div>
-                    ) : institutes.length === 0 ? (
-                      <div className="text-center py-16 bg-white rounded-2xl border border-shnoor-light">
-                        <Users className="mx-auto mb-4 text-shnoor-mist" size={64} />
-                        <p className="text-shnoor-navy font-medium text-lg">No students registered yet</p>
-                        <p className="text-shnoor-indigoMedium text-sm mt-2">Students will appear here once they register</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {institutes.map((institute) => {
-                          const isExpanded = expandedInstitutes[institute.institute];
-                          const students = instituteStudents[institute.institute] || [];
-                          const allSelected = students.length > 0 && students.every(s => selectedStudents.includes(s.id));
-                          const someSelected = students.some(s => selectedStudents.includes(s.id));
-
-                          return (
-                            <div
-                              key={institute.institute}
-                              className="border border-shnoor-light rounded-2xl overflow-hidden shadow-[0_8px_30px_rgba(14,14,39,0.06)] hover:shadow-[0_8px_30px_rgba(14,14,39,0.06)] transition-all bg-white"
-                            >
-                              {/* Institute Header */}
-                              <div className={`bg-white p-5 flex items-center justify-between transition-colors ${isExpanded ? 'border-b-2 border-shnoor-light' : ''}`}>
-                                <div className="flex items-center space-x-4 flex-1">
-                                  <button
-                                    onClick={() => toggleInstitute(institute.institute)}
-                                    className="w-10 h-10 flex items-center justify-center bg-white hover:bg-shnoor-lavender text-shnoor-indigoMedium hover:text-shnoor-indigo rounded-xl transition-all shadow-[0_8px_30px_rgba(14,14,39,0.06)] hover:shadow-md transform hover:scale-105 border border-shnoor-light"
-                                  >
-                                    {isExpanded ? <ChevronDown size={22} /> : <ChevronRight size={22} />}
-                                  </button>
-                                  <div className="flex-1">
-                                    <h4 className="font-bold text-lg text-shnoor-navy">
-                                      {capitalizeInstitute(institute.institute)}
-                                    </h4>
-                                    <p className="text-sm text-shnoor-indigoMedium flex items-center mt-1">
-                                      <Users size={14} className="mr-1" />
-                                      {institute.student_count} student{institute.student_count !== 1 ? 's' : ''}
-                                    </p>
-                                  </div>
-                                  {students.length > 0 && (
-                                    <label className="flex items-center space-x-3 cursor-pointer px-4 py-2 bg-white hover:bg-shnoor-lavender rounded-xl transition-colors shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light hover:border-shnoor-indigo">
-                                      <input
-                                        type="checkbox"
-                                        checked={allSelected}
-                                        ref={(el) => {
-                                          if (el) el.indeterminate = someSelected && !allSelected;
-                                        }}
-                                        onChange={() => toggleAllStudents(institute.institute, students)}
-                                        className="w-5 h-5 text-shnoor-indigo border-shnoor-light rounded-md focus:ring-2 focus:ring-shnoor-indigo"
-                                      />
-                                      <span className="text-sm font-bold text-shnoor-navy">Select All</span>
-                                    </label>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Students List */}
-                              {isExpanded && (
-                                <div className="p-5 bg-white">
-                                  {students.length === 0 ? (
-                                    <div className="flex items-center justify-center py-8">
-                                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-shnoor-indigo mr-3"></div>
-                                      <p className="text-sm text-shnoor-indigoMedium font-medium">Loading students...</p>
-                                    </div>
-                                  ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                      {students.map((student) => {
-                                        const isSelected = selectedStudents.includes(student.id);
-                                        return (
-                                          <label
-                                            key={student.id}
-                                            className={`flex items-center space-x-3 p-4 rounded-xl cursor-pointer transition-all border ${isSelected
-                                              ? 'bg-shnoor-lavender border-shnoor-indigo shadow-md'
-                                              : 'bg-white hover:bg-shnoor-lavender border-shnoor-light hover:border-shnoor-indigo/50 shadow-[0_8px_30px_rgba(14,14,39,0.06)] hover:shadow-md'
-                                              }`}
-                                          >
-                                            <input
-                                              type="checkbox"
-                                              checked={isSelected}
-                                              onChange={() => toggleStudent(student.id)}
-                                              className="w-5 h-5 text-shnoor-indigo border-shnoor-light rounded-md focus:ring-2 focus:ring-shnoor-indigo"
-                                            />
-                                            <div className="flex-1 min-w-0">
-                                              <p className={`font-bold truncate ${isSelected ? 'text-shnoor-indigo' : 'text-shnoor-navy'}`}>
-                                                {student.full_name}
-                                              </p>
-                                              <p className={`text-xs truncate ${isSelected ? 'text-shnoor-indigo' : 'text-shnoor-indigoMedium'}`}>
-                                                {student.roll_number} • {student.email}
-                                              </p>
-                                            </div>
-                                            {isSelected && (
-                                              <CheckCircle size={20} className="text-shnoor-indigo flex-shrink-0" />
-                                            )}
-                                          </label>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Assign Button */}
-                  <div className="mt-8 flex justify-end">
-                    <button
-                      onClick={handleAssignTest}
-                      disabled={!selectedTest || selectedStudents.length === 0 || isAssigning}
-                      className={`px-8 py-4 rounded-xl font-bold transition-all flex items-center space-x-3 text-lg shadow-[0_8px_30px_rgba(14,14,39,0.06)] ${selectedTest && selectedStudents.length > 0 && !isAssigning
-                        ? 'bg-shnoor-indigo hover:bg-shnoor-navy text-white hover:shadow-[0_8px_30px_rgba(14,14,39,0.06)] transform hover:-translate-y-1'
-                        : 'bg-shnoor-light text-shnoor-soft cursor-not-allowed border border-shnoor-light'
-                        }`}
-                    >
-                      {isAssigning && (
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      )}
-                      <UserCheck size={22} />
-                      <span>
-                        {isAssigning
-                          ? 'Assigning Test...'
-                          : selectedStudents.length > 0
-                            ? `Assign Test to ${selectedStudents.length} Student${selectedStudents.length !== 1 ? 's' : ''}`
-                            : 'Assign Test'
-                        }
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {activeTab === 'institutes' && (
               <div className="space-y-6">
                 <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light p-8">
@@ -2570,11 +2476,100 @@ const AdminDashboard = () => {
 
                   {/* Institutes List */}
                   <div className="space-y-4">
+                    {/* Bulk Test Assignment Section - shown when institutes are selected */}
+                    {selectedInstitutes.length > 0 && (
+                      <div className="mb-6 p-6 bg-shnoor-lavender rounded-2xl border-2 border-shnoor-indigo">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-bold text-shnoor-navy flex items-center">
+                            <FileSpreadsheet className="mr-2 text-shnoor-indigo" size={22} />
+                            Assign Test to Selected Institutes
+                          </h3>
+                          <button
+                            onClick={() => setSelectedInstitutes([])}
+                            className="text-sm text-shnoor-indigoMedium hover:text-shnoor-navy font-medium"
+                          >
+                            Clear Selection
+                          </button>
+                        </div>
+                       
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-sm text-shnoor-navy mb-2">
+                              <span className="font-bold">{selectedInstitutes.length}</span> institute{selectedInstitutes.length !== 1 ? 's' : ''} selected
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {selectedInstitutes.map(instId => {
+                                const inst = allInstitutes.find(i => i.id === instId);
+                                return inst ? (
+                                  <span key={instId} className="px-3 py-1 bg-white rounded-lg text-xs font-medium text-shnoor-navy border border-shnoor-light">
+                                    {inst.display_name}
+                                  </span>
+                                ) : null;
+                              })}
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-bold text-shnoor-navy mb-2">
+                              Select Test to Assign
+                            </label>
+                            <select
+                              value={selectedTestForMultipleInstitutes}
+                              onChange={(e) => setSelectedTestForMultipleInstitutes(e.target.value)}
+                              className="w-full px-4 py-3 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-shnoor-mist focus:border-shnoor-indigo bg-white text-shnoor-navy font-medium"
+                            >
+                              <option value="">-- Select a test --</option>
+                              {tests.map((test) => (
+                                <option key={test.id} value={test.id}>
+                                  {test.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <button
+                            onClick={handleAssignTestToMultipleInstitutes}
+                            disabled={!selectedTestForMultipleInstitutes || isAssigningTestToMultipleInstitutes}
+                            className={`w-full px-6 py-4 rounded-xl font-bold transition-all flex items-center justify-center space-x-2 ${
+                              selectedTestForMultipleInstitutes && !isAssigningTestToMultipleInstitutes
+                                ? 'bg-shnoor-indigo hover:bg-shnoor-navy text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                                : 'bg-shnoor-light text-shnoor-soft cursor-not-allowed'
+                            }`}
+                          >
+                            {isAssigningTestToMultipleInstitutes && (
+                              <Loader2 className="animate-spin mr-2" size={20} />
+                            )}
+                            <UserCheck size={22} />
+                            <span>
+                              {isAssigningTestToMultipleInstitutes
+                                ? 'Assigning...'
+                                : `Assign to ${selectedInstitutes.length} Institute${selectedInstitutes.length !== 1 ? 's' : ''}`
+                              }
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-bold text-shnoor-navy flex items-center">
-                        <Building2 size={22} className="mr-2 text-shnoor-indigo" />
-                        All Institutes
-                      </h3>
+                      <div className="flex items-center space-x-4">
+                        <h3 className="text-xl font-bold text-shnoor-navy flex items-center">
+                          <Building2 size={22} className="mr-2 text-shnoor-indigo" />
+                          All Institutes
+                        </h3>
+                        {allInstitutes.length > 0 && (
+                          <label className="flex items-center space-x-2 cursor-pointer px-3 py-1.5 bg-shnoor-lavender hover:bg-shnoor-light rounded-lg transition-colors border border-shnoor-light">
+                            <input
+                              type="checkbox"
+                              checked={selectedInstitutes.length === allInstitutes.length && allInstitutes.length > 0}
+                              ref={(el) => { if (el) el.indeterminate = selectedInstitutes.length > 0 && selectedInstitutes.length < allInstitutes.length; }}
+                              onChange={toggleAllInstitutes}
+                              className="w-4 h-4 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-indigo"
+                            />
+                            <span className="text-sm font-bold text-shnoor-navy whitespace-nowrap">Select All</span>
+                          </label>
+                        )}
+                      </div>
                       {allInstitutes.length > 0 && (
                         <span className="text-sm text-shnoor-indigoMedium bg-shnoor-lavender px-3 py-1 rounded-full border border-shnoor-light">
                           {allInstitutes.length} institute{allInstitutes.length !== 1 ? 's' : ''}
@@ -2622,12 +2617,26 @@ const AdminDashboard = () => {
                             statusBadgeColor = 'bg-shnoor-dangerLight text-shnoor-danger';
                           }
 
+                          const isInstituteSelected = selectedInstitutes.includes(institute.id);
+
                           return (
                             <div
                               key={institute.id}
-                              className="border border-shnoor-light rounded-2xl p-6 bg-white hover:shadow-[0_8px_30px_rgba(14,14,39,0.06)] transition-all"
+                              className={`border rounded-2xl p-6 bg-white hover:shadow-[0_8px_30px_rgba(14,14,39,0.06)] transition-all ${
+                                isInstituteSelected ? 'border-shnoor-indigo border-2 bg-shnoor-indigo/5' : 'border-shnoor-light'
+                              }`}
                             >
-                              <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-start space-x-3 mb-4">
+                                {/* Checkbox for multi-select */}
+                                <label className="flex items-center cursor-pointer mt-1">
+                                  <input
+                                    type="checkbox"
+                                    checked={isInstituteSelected}
+                                    onChange={() => toggleInstituteSelection(institute.id)}
+                                    className="w-5 h-5 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-indigo"
+                                  />
+                                </label>
+
                                 <div className="flex-1">
                                   <div className="flex items-center justify-between mb-2">
                                     <h4 className="font-bold text-lg text-shnoor-navy">
@@ -2660,42 +2669,42 @@ const AdminDashboard = () => {
                                       </p>
                                     )}
                                   </div>
-                                </div>
-                              </div>
 
-                              <div className="grid grid-cols-2 gap-2">
-                                <button
-                                  onClick={() => handleViewAssignedTests(institute)}
-                                  className="py-2 px-3 bg-shnoor-lavender text-shnoor-indigo hover:bg-shnoor-indigo hover:text-white rounded-lg text-sm font-medium transition-colors"
-                                >
-                                  <FileSpreadsheet size={16} className="inline mr-1" />
-                                  Tests
-                                </button>
-                                <button
-                                  onClick={() => handleManageStudents(institute)}
-                                  className="py-2 px-3 bg-shnoor-successLight text-shnoor-success hover:bg-shnoor-success hover:text-white rounded-lg text-sm font-medium transition-colors"
-                                >
-                                  <Users size={16} className="inline mr-1" />
-                                  Students
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setSelectedInstituteForRegistration(institute);
-                                    setShowRegistrationControlModal(true);
-                                  }}
-                                  className="py-2 px-3 bg-shnoor-lavender text-shnoor-indigo hover:bg-shnoor-indigo hover:text-white rounded-lg text-sm font-medium transition-colors"
-                                >
-                                  <Calendar size={16} className="inline mr-1" />
-                                  Registration
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteInstitute(institute.id, institute.display_name)}
-                                  className="py-2 px-3 text-shnoor-danger hover:bg-shnoor-dangerLight rounded-lg transition-colors text-sm font-medium"
-                                  title="Delete Institute"
-                                >
-                                  <Trash2 size={16} className="inline mr-1" />
-                                  Delete
-                                </button>
+                                  <div className="grid grid-cols-2 gap-2 mt-4">
+                                    <button
+                                      onClick={() => handleViewAssignedTests(institute)}
+                                      className="py-2 px-3 bg-shnoor-lavender text-shnoor-indigo hover:bg-shnoor-indigo hover:text-white rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                      <FileSpreadsheet size={16} className="inline mr-1" />
+                                      Tests
+                                    </button>
+                                    <button
+                                      onClick={() => handleManageStudents(institute)}
+                                      className="py-2 px-3 bg-shnoor-successLight text-shnoor-success hover:bg-shnoor-success hover:text-white rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                      <Users size={16} className="inline mr-1" />
+                                      Students
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setSelectedInstituteForRegistration(institute);
+                                        setShowRegistrationControlModal(true);
+                                      }}
+                                      className="py-2 px-3 bg-shnoor-lavender text-shnoor-indigo hover:bg-shnoor-indigo hover:text-white rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                      <Calendar size={16} className="inline mr-1" />
+                                      Registration
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteInstitute(institute.id, institute.display_name)}
+                                      className="py-2 px-3 text-shnoor-danger hover:bg-shnoor-dangerLight rounded-lg transition-colors text-sm font-medium"
+                                      title="Delete Institute"
+                                    >
+                                      <Trash2 size={16} className="inline mr-1" />
+                                      Delete
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           );
