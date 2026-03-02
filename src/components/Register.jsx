@@ -118,12 +118,12 @@ const Register = () => {
   const [showInstituteDropdown, setShowInstituteDropdown] = useState(false);
   const dropdownRef = useRef(null);
 
-  // OTP-related states
-  const [isOtpSent, setIsOtpSent] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [otpError, setOtpError] = useState('');
-  const [resendTimer, setResendTimer] = useState(0);
-  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  // OTP-related states - COMMENTED OUT FOR NOW
+  // const [isOtpSent, setIsOtpSent] = useState(false);
+  // const [otp, setOtp] = useState('');
+  // const [otpError, setOtpError] = useState('');
+  // const [resendTimer, setResendTimer] = useState(0);
+  // const [isSendingOtp, setIsSendingOtp] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -150,118 +150,118 @@ const Register = () => {
     if (errors[name]) setErrors(p => ({ ...p, [name]: '' }));
     setApiError('');
     
-    // Reset OTP state if email is changed after OTP was sent
-    if (name === 'email' && isOtpSent) {
-      setIsOtpSent(false);
-      setOtp('');
-      setOtpError('');
-      setResendTimer(0);
-    }
+    // Reset OTP state if email is changed after OTP was sent - COMMENTED OUT
+    // if (name === 'email' && isOtpSent) {
+    //   setIsOtpSent(false);
+    //   setOtp('');
+    //   setOtpError('');
+    //   setResendTimer(0);
+    // }
   };
 
-  // Start resend timer
-  const startResendTimer = () => {
-    setResendTimer(60); // 60 seconds
-    const interval = setInterval(() => {
-      setResendTimer((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
+  // COMMENTED OUT - Start resend timer
+  // const startResendTimer = () => {
+  //   setResendTimer(60); // 60 seconds
+  //   const interval = setInterval(() => {
+  //     setResendTimer((prev) => {
+  //       if (prev <= 1) {
+  //         clearInterval(interval);
+  //         return 0;
+  //       }
+  //       return prev - 1;
+  //     });
+  //   }, 1000);
+  // };
 
-  // Send OTP to email
-  const handleSendOtp = async (e) => {
-    e.preventDefault();
-    setApiError('');
-    setOtpError('');
+  // COMMENTED OUT - Send OTP to email
+  // const handleSendOtp = async (e) => {
+  //   e.preventDefault();
+  //   setApiError('');
+  //   setOtpError('');
 
-    // Validate email and full name before sending OTP
-    if (!formData.email.trim()) {
-      setErrors(p => ({ ...p, email: 'Email is required' }));
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      setErrors(p => ({ ...p, email: 'Enter a valid email' }));
-      return;
-    }
-    if (!formData.fullName.trim()) {
-      setErrors(p => ({ ...p, fullName: 'Full name is required' }));
-      setStep(0); // Jump to personal info step
-      return;
-    }
+  //   // Validate email and full name before sending OTP
+  //   if (!formData.email.trim()) {
+  //     setErrors(p => ({ ...p, email: 'Email is required' }));
+  //     return;
+  //   }
+  //   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+  //     setErrors(p => ({ ...p, email: 'Enter a valid email' }));
+  //     return;
+  //   }
+  //   if (!formData.fullName.trim()) {
+  //     setErrors(p => ({ ...p, fullName: 'Full name is required' }));
+  //     setStep(0); // Jump to personal info step
+  //     return;
+  //   }
 
-    setIsSendingOtp(true);
+  //   setIsSendingOtp(true);
 
-    try {
-      const response = await apiFetch('api/send-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email.trim(),
-          fullName: formData.fullName.trim(),
-        }),
-      });
+  //   try {
+  //     const response = await apiFetch('api/send-otp', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({
+  //         email: formData.email.trim(),
+  //         fullName: formData.fullName.trim(),
+  //       }),
+  //     });
 
-      const data = await response.json();
+  //     const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to send OTP');
-      }
+  //     if (!response.ok) {
+  //       throw new Error(data.message || 'Failed to send OTP');
+  //     }
 
-      // Success
-      setIsOtpSent(true);
-      setApiError(''); // Clear any previous errors
-      startResendTimer();
+  //     // Success
+  //     setIsOtpSent(true);
+  //     setApiError(''); // Clear any previous errors
+  //     startResendTimer();
       
-    } catch (error) {
-      console.error('Send OTP error:', error);
-      setApiError(error.message || 'Failed to send verification code. Please try again.');
-    } finally {
-      setIsSendingOtp(false);
-    }
-  };
+  //   } catch (error) {
+  //     console.error('Send OTP error:', error);
+  //     setApiError(error.message || 'Failed to send verification code. Please try again.');
+  //   } finally {
+  //     setIsSendingOtp(false);
+  //   }
+  // };
 
-  // Resend OTP
-  const handleResendOtp = async () => {
-    if (resendTimer > 0) return;
+  // COMMENTED OUT - Resend OTP
+  // const handleResendOtp = async () => {
+  //   if (resendTimer > 0) return;
 
-    setOtpError('');
-    setIsSendingOtp(true);
+  //   setOtpError('');
+  //   setIsSendingOtp(true);
 
-    try {
-      const response = await apiFetch('api/send-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email.trim(),
-          fullName: formData.fullName.trim(),
-        }),
-      });
+  //   try {
+  //     const response = await apiFetch('api/send-otp', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({
+  //         email: formData.email.trim(),
+  //         fullName: formData.fullName.trim(),
+  //       }),
+  //     });
 
-      const data = await response.json();
+  //     const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to resend OTP');
-      }
+  //     if (!response.ok) {
+  //       throw new Error(data.message || 'Failed to resend OTP');
+  //     }
 
-      startResendTimer();
-      setOtp(''); // Clear OTP input
+  //     startResendTimer();
+  //     setOtp(''); // Clear OTP input
       
-    } catch (error) {
-      console.error('Resend OTP error:', error);
-      setOtpError(error.message || 'Failed to resend verification code.');
-    } finally {
-      setIsSendingOtp(false);
-    }
-  };
+  //   } catch (error) {
+  //     console.error('Resend OTP error:', error);
+  //     setOtpError(error.message || 'Failed to resend verification code.');
+  //   } finally {
+  //     setIsSendingOtp(false);
+  //   }
+  // };
   /* ── Per-step validation ─────────────────────────────────────────────── */
   const validateStep = (s) => {
     const e = {};
@@ -309,43 +309,43 @@ const Register = () => {
 
   const handleSubmit = async () => {
     setApiError('');
-    setOtpError('');
+    // setOtpError(''); // COMMENTED OUT
 
-    // Verify OTP is entered
-    if (!otp || otp.trim().length !== 6) {
-      setOtpError('Please enter the 6-digit verification code');
-      return;
-    }
+    // COMMENTED OUT - Verify OTP is entered
+    // if (!otp || otp.trim().length !== 6) {
+    //   setOtpError('Please enter the 6-digit verification code');
+    //   return;
+    // }
 
     setIsLoading(true);
     let firebaseUser = null;
     
     try {
-      // Step 1: Verify OTP
-      const otpResponse = await apiFetch('api/verify-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email.trim(),
-          otp: otp.trim(),
-        }),
-      });
+      // COMMENTED OUT - Step 1: Verify OTP
+      // const otpResponse = await apiFetch('api/verify-otp', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify({
+      //     email: formData.email.trim(),
+      //     otp: otp.trim(),
+      //   }),
+      // });
 
-      const otpData = await otpResponse.json();
+      // const otpData = await otpResponse.json();
 
-      if (!otpResponse.ok) {
-        throw new Error(otpData.message || 'OTP verification failed');
-      }
+      // if (!otpResponse.ok) {
+      //   throw new Error(otpData.message || 'OTP verification failed');
+      // }
 
-      // Step 2: Register user in Firebase
+      // Step 2: Register user in Firebase (was Step 2, now Step 1)
       const { createUserWithEmailAndPassword, auth } = await import('../config/firebase');
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       firebaseUser = userCredential.user;
       const idToken = await userCredential.user.getIdToken();
 
-      // Step 3: Send user data to backend with Firebase token
+      // Step 3: Send user data to backend with Firebase token (was Step 3, now Step 2)
       const response = await apiFetch('api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
@@ -506,8 +506,8 @@ const Register = () => {
             value={formData.email} onChange={handleChange} disabled={isLoading} autoComplete="email" />
           <FieldError msg={errors.email} />
           
-          {/* Verify Email Button - Show only if OTP not sent */}
-          {!isOtpSent && (
+          {/* COMMENTED OUT - Verify Email Button - Show only if OTP not sent */}
+          {/* {!isOtpSent && (
             <button
               type="button"
               onClick={handleSendOtp}
@@ -519,21 +519,21 @@ const Register = () => {
               )}
               {isSendingOtp ? 'Sending Code...' : '📧 Verify Email Address'}
             </button>
-          )}
+          )} */}
 
-          {/* OTP Sent Success Message */}
-          {isOtpSent && (
+          {/* COMMENTED OUT - OTP Sent Success Message */}
+          {/* {isOtpSent && (
             <div className="bg-shnoor-successLight border-l-4 border-shnoor-success text-shnoor-success p-3 rounded-r-md text-xs font-medium flex items-center gap-2.5 mt-3">
               <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
                 <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.97 4.97a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
               </svg>
               <span>Verification code sent to {formData.email}</span>
             </div>
-          )}
+          )} */}
         </div>
 
-        {/* OTP Input Field - Show only after OTP is sent */}
-        {isOtpSent && (
+        {/* COMMENTED OUT - OTP Input Field - Show only after OTP is sent */}
+        {/* {isOtpSent && (
           <div className="flex flex-col gap-2 bg-shnoor-lavender p-5 rounded-lg border-2 border-shnoor-indigo/20">
             <label className="text-[11px] font-semibold text-shnoor-navy mb-1.5 uppercase tracking-wide flex items-center gap-1">
               Verification Code <span className="text-shnoor-danger">*</span>
@@ -590,7 +590,7 @@ const Register = () => {
               <span>Check your email inbox (and spam folder) for the 6-digit code. Code expires in 5 minutes.</span>
             </div>
           </div>
-        )}
+        )} */}
 
         <div className="relative">
           <InputField label="Password" type={showPassword ? 'text' : 'password'} name="password" placeholder="Minimum 8 characters" required
