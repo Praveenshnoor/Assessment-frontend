@@ -201,26 +201,41 @@ int main() {
     stopProctoring();
 
     const testId = localStorage.getItem('selectedTestId');
+    const studentId = localStorage.getItem('studentId'); // Get student ID from localStorage
     
-    // ✅ CRITICAL FIX: Refresh token before submission to prevent expiry errors
-    const token = await getValidToken();
+    // ✅ CRITICAL FIX: Try to get token, but don't fail if it expires
+    let token = null;
+    try {
+      token = await getValidToken();
+    } catch (error) {
+      console.warn('[Submit] Could not get token, will try without it:', error);
+    }
 
     console.log('=== SUBMITTING TEST ===');
     console.log('Test ID:', testId);
+    console.log('Student ID:', studentId);
+    console.log('Has Token:', !!token);
     console.log('Answers:', answers);
     console.log('Reason:', reason);
     console.log('Proctoring stopped');
 
     try {
-      // Submit to backend
+      // Build headers
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      // Submit to backend - include studentId so backend can skip token validation
       const response = await apiFetch('api/student/submit-exam', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: headers,
         body: JSON.stringify({
           testId: testId,
+          studentId: studentId, // Send student ID for progress-based auth
           answers: answers,
           submissionReason: reason,
           warningCount: warningCount,
@@ -235,9 +250,6 @@ int main() {
       if (data.success) {
         // Store testId for feedback submission
         localStorage.setItem('lastTestId', testId);
-        
-        // Get studentId for feedback
-        const studentId = localStorage.getItem('studentId');
         
         // Clear test-specific data
         localStorage.removeItem('selectedTestId');
@@ -254,54 +266,7 @@ int main() {
           }
         });
       } else {
-        // Handle token expiry specifically with retry logic
-        const isTokenExpired = response.status === 401 || 
-                               data.code === 'TOKEN_EXPIRED' || 
-                               data.requiresRefresh ||
-                               (data.message && data.message.toLowerCase().includes('token expired'));
-        
-        if (isTokenExpired) {
-          console.warn('[Submit] Token expired, retrying with fresh token...');
-          alert('Your session expired. Refreshing and retrying submission...');
-          
-          // Retry once with fresh token
-          const retryToken = await getValidToken();
-          const retryResponse = await apiFetch('api/student/submit-exam', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${retryToken}`
-            },
-            body: JSON.stringify({
-              testId: testId,
-              answers: answers,
-              submissionReason: reason,
-              warningCount: warningCount,
-              timeRemaining: timeLeft
-            })
-          });
-          
-          const retryData = await retryResponse.json();
-          if (retryData.success) {
-            localStorage.setItem('lastTestId', testId);
-            const studentId = localStorage.getItem('studentId');
-            localStorage.removeItem('selectedTestId');
-            navigate('/result', {
-              state: {
-                result: { 
-                  ...retryData.result, 
-                  testId: parseInt(testId), 
-                  studentId: studentId 
-                },
-                submissionReason: reason
-              }
-            });
-          } else {
-            alert('Failed to submit exam: ' + retryData.message);
-          }
-        } else {
-          alert('Failed to submit exam: ' + data.message);
-        }
+        alert('Failed to submit exam: ' + data.message);
       }
     } catch (error) {
       console.error('Error submitting exam:', error);
@@ -350,10 +315,9 @@ int main() {
   const handleStartExam = async () => {
     console.log('[Start Exam] User clicked start button');
     
-    // Initialize proctoring with proper error handling
+    const testId = localStorage.getItem('selectedTestId');
     const studentId = localStorage.getItem('studentId') || 'unknown';
     const studentName = localStorage.getItem('studentName') || 'Student';
-    const testId = localStorage.getItem('selectedTestId');
 
     console.log('[Proctoring] Student ID:', studentId);
     console.log('[Proctoring] Student Name:', studentName);
