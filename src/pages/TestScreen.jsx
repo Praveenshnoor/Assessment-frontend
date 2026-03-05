@@ -81,6 +81,21 @@ int main() {
   // Calculate total questions (MCQ + Coding)
   const totalQuestions = questions.length + codingQuestions.length;
 
+  // Helper function to format errors for display
+  const formatErrorForDisplay = (error) => {
+    if (!error) return '';
+    
+    // Clean up Docker noise for display only
+    return error
+      .replace(/docker run --rm --memory=256m.*$/gm, '')
+      .replace(/Command failed with exit code \d+:\s*/g, '')
+      .replace(/Error: Command failed:\s*/g, '')
+      .replace(/^.*alpine.*$/gm, '')
+      .replace(/\/app\//g, '')
+      .replace(/^\s*[\r\n]/gm, '')
+      .trim() || error;
+  };
+
   const {
     isFullscreen,
     showWarning,
@@ -155,6 +170,29 @@ int main() {
     unreadCount
   } = useProctoringWithAI(handleCameraLost, handleAIViolation);
 
+  // Helper function to get a valid (refreshed) Firebase token
+  const getValidToken = useCallback(async () => {
+    try {
+      const { auth } = await import('../config/firebase');
+      const currentUser = auth.currentUser;
+      
+      if (!currentUser) {
+        console.warn('[Token] No authenticated user found');
+        return localStorage.getItem('studentAuthToken');
+      }
+      
+      // Force token refresh to get a new valid token
+      const freshToken = await currentUser.getIdToken(true);
+      localStorage.setItem('studentAuthToken', freshToken);
+      console.log('✅ [Token] Refreshed successfully at:', new Date().toISOString());
+      return freshToken;
+    } catch (error) {
+      console.error('❌ [Token] Refresh failed:', error);
+      // Fallback to stored token
+      return localStorage.getItem('studentAuthToken');
+    }
+  }, []);
+
   // Submit test function - defined early so it can be used by other callbacks
   const submitTest = useCallback(async (reason = 'manual') => {
     stopTimer();
@@ -163,7 +201,9 @@ int main() {
     stopProctoring();
 
     const testId = localStorage.getItem('selectedTestId');
-    const token = localStorage.getItem('studentAuthToken');
+    
+    // ✅ CRITICAL FIX: Refresh token before submission to prevent expiry errors
+    const token = await getValidToken();
 
     console.log('=== SUBMITTING TEST ===');
     console.log('Test ID:', testId);
@@ -214,13 +254,55 @@ int main() {
           }
         });
       } else {
-        alert('Failed to submit exam: ' + data.message);
+        // Handle token expiry specifically with retry logic
+        if (data.code === 'TOKEN_EXPIRED' || data.requiresRefresh) {
+          console.warn('[Submit] Token expired, retrying with fresh token...');
+          alert('Your session expired. Refreshing and retrying submission...');
+          
+          // Retry once with fresh token
+          const retryToken = await getValidToken();
+          const retryResponse = await apiFetch('api/student/submit-exam', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${retryToken}`
+            },
+            body: JSON.stringify({
+              testId: testId,
+              answers: answers,
+              submissionReason: reason,
+              warningCount: warningCount,
+              timeRemaining: timeLeft
+            })
+          });
+          
+          const retryData = await retryResponse.json();
+          if (retryData.success) {
+            localStorage.setItem('lastTestId', testId);
+            const studentId = localStorage.getItem('studentId');
+            localStorage.removeItem('selectedTestId');
+            navigate('/result', {
+              state: {
+                result: { 
+                  ...retryData.result, 
+                  testId: parseInt(testId), 
+                  studentId: studentId 
+                },
+                submissionReason: reason
+              }
+            });
+          } else {
+            alert('Failed to submit exam: ' + retryData.message);
+          }
+        } else {
+          alert('Failed to submit exam: ' + data.message);
+        }
       }
     } catch (error) {
       console.error('Error submitting exam:', error);
       alert('Error submitting exam. Please try again.');
     }
-  }, [answers, warningCount, timeLeft, stopTimer, navigate, stopProctoring]);
+  }, [answers, warningCount, timeLeft, stopTimer, navigate, stopProctoring, getValidToken]);
 
   // Update handleTimeUp to use submitTest
   useEffect(() => {
@@ -309,7 +391,8 @@ int main() {
 
   // Manual save function - only called when user clicks Save & Next or Skip
   const saveProgressNow = useCallback(async () => {
-    const token = localStorage.getItem('studentAuthToken');
+    // ✅ CRITICAL FIX: Refresh token before saving to prevent expiry errors
+    const token = await getValidToken();
     const testId = localStorage.getItem('selectedTestId');
 
     if (!token || !testId || questions.length === 0) return;
@@ -345,14 +428,34 @@ int main() {
         return false;
       }
     } catch (error) {
-      console.error('Error saving progress:', error);
       return false;
     }
-  }, [answers, currentQuestion, markedForReview, visited, timeLeft, warningCount, questions.length]);
+  }, [answers, currentQuestion, markedForReview, visited, timeLeft, warningCount, questions.length, getValidToken]);
 
-  // NO AUTO-SAVE - Removed debounced auto-save
   // Progress only saves when user clicks Save & Next or Skip buttons
 
+  // ✅ CRITICAL FIX: Auto-refresh token every 50 minutes to prevent expiry during long exams
+  useEffect(() => {
+    if (!hasStarted) return;
+
+    console.log('🔄 [Token] Auto-refresh enabled - will refresh every 50 minutes');
+    
+    const tokenRefreshInterval = setInterval(async () => {
+      try {
+        await getValidToken();
+        console.log('✅ [Token] Auto-refreshed during exam at:', new Date().toISOString());
+      } catch (error) {
+        console.error('❌ [Token] Auto-refresh failed:', error);
+      }
+    }, 50 * 60 * 1000); // 50 minutes (before 1-hour Firebase token expiry)
+
+    return () => {
+      console.log('🛑 [Token] Auto-refresh disabled');
+      clearInterval(tokenRefreshInterval);
+    };
+  }, [hasStarted, getValidToken]);
+
+  // Security: Prevent copy-paste and right click
   // Security: Prevent copy-paste and right click
   useEffect(() => {
     const preventAction = (e) => {
@@ -1536,14 +1639,26 @@ int main() {
                                 </div>
                                 <div>
                                   <span className="text-shnoor-soft">Got: </span>
-                                  <span className={result.passed ? 'text-shnoor-success' : 'text-shnoor-danger'}>
-                                    {result.actualOutput}
-                                  </span>
+                                  <div className={`mt-1 ${result.passed ? 'text-shnoor-success' : 'text-shnoor-danger'}`}>
+                                    {result.actualOutput && (result.actualOutput.includes('🐍') || result.actualOutput.includes('☕') || result.actualOutput.includes('🔧') || result.actualOutput.includes('🟨') || result.actualOutput.includes('Error:')) ? (
+                                      <pre className="text-sm font-mono whitespace-pre-wrap leading-relaxed bg-gray-900/30 p-2 rounded border border-gray-600/30">
+                                        {formatErrorForDisplay(result.actualOutput)}
+                                      </pre>
+                                    ) : (
+                                      <span className="font-mono text-sm">
+                                        {result.actualOutput}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                                 {result.error && (
-                                  <div>
-                                    <span className="text-shnoor-soft">Error: </span>
-                                    <span className="text-shnoor-danger">{result.error}</span>
+                                  <div className="mt-2">
+                                    <span className="text-shnoor-soft text-xs uppercase tracking-wide">Error Details:</span>
+                                    <div className="mt-1 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+                                      <pre className="text-shnoor-danger text-sm font-mono whitespace-pre-wrap leading-relaxed">
+                                        {formatErrorForDisplay(result.error)}
+                                      </pre>
+                                    </div>
                                   </div>
                                 )}
                               </div>
