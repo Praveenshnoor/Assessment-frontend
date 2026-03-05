@@ -255,7 +255,12 @@ int main() {
         });
       } else {
         // Handle token expiry specifically with retry logic
-        if (data.code === 'TOKEN_EXPIRED' || data.requiresRefresh) {
+        const isTokenExpired = response.status === 401 || 
+                               data.code === 'TOKEN_EXPIRED' || 
+                               data.requiresRefresh ||
+                               (data.message && data.message.toLowerCase().includes('token expired'));
+        
+        if (isTokenExpired) {
           console.warn('[Submit] Token expired, retrying with fresh token...');
           alert('Your session expired. Refreshing and retrying submission...');
           
@@ -434,11 +439,11 @@ int main() {
 
   // Progress only saves when user clicks Save & Next or Skip buttons
 
-  // ✅ CRITICAL FIX: Auto-refresh token every 50 minutes to prevent expiry during long exams
+  // ✅ CRITICAL FIX: Auto-refresh token every 3 hours to prevent expiry during long exams
   useEffect(() => {
     if (!hasStarted) return;
 
-    console.log('🔄 [Token] Auto-refresh enabled - will refresh every 50 minutes');
+    console.log('🔄 [Token] Auto-refresh enabled - will refresh every 3 hours');
     
     const tokenRefreshInterval = setInterval(async () => {
       try {
@@ -447,7 +452,7 @@ int main() {
       } catch (error) {
         console.error('❌ [Token] Auto-refresh failed:', error);
       }
-    }, 50 * 60 * 1000); // 50 minutes (before 1-hour Firebase token expiry)
+    }, 180 * 60 * 1000); // 3 hours (180 minutes)
 
     return () => {
       console.log('🛑 [Token] Auto-refresh disabled');
