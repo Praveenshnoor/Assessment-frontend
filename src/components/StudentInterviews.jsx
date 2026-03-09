@@ -1,0 +1,338 @@
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Video, Calendar, Clock, AlertCircle } from 'lucide-react';
+import { io } from 'socket.io-client';
+import { apiFetch } from '../config/api';
+
+const StudentInterviews = () => {
+  const navigate = useNavigate();
+  const [interviews, setInterviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [incomingBanner, setIncomingBanner] = useState(null); // { id, test_title, institute_name }
+  const socketRef = useRef(null);
+  const studentIdRef = useRef(null);
+
+  useEffect(() => {
+    fetchInterviews();
+    initializeSocket();
+    
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, []);
+
+  const initializeSocket = () => {
+    const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const socket = io(socketUrl, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      withCredentials: false
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('Student dashboard socket connected');
+      
+      // Join student-specific room if we have student ID
+      if (studentIdRef.current) {
+        socket.emit('student:join-dashboard', { studentId: studentIdRef.current });
+      }
+    });
+
+    // Listen for incoming call notifications
+    socket.on('interview:incoming-call', (data) => {
+      console.log('Incoming call notification:', data);
+      const { interviewId, testTitle, instituteName } = data;
+      
+      setIncomingBanner({ 
+        id: interviewId, 
+        test_title: testTitle,
+        institute_name: instituteName
+      });
+      
+      // Play notification sound
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = 880;
+          gain.gain.value = 0.1;
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          setTimeout(() => {
+            osc.stop();
+            ctx.close();
+          }, 1000);
+        }
+      } catch (e) {
+        console.error('Audio error:', e);
+      }
+      
+      // Refresh interviews list
+      fetchInterviews();
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Student dashboard socket disconnected');
+    });
+  };
+
+  const fetchInterviews = async () => {
+    try {
+      const response = await apiFetch('api/interviews/my-interviews', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('studentAuthToken')}`
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setInterviews(data.interviews);
+        
+        // Store student ID for socket room joining
+        if (data.student_id && !studentIdRef.current) {
+          studentIdRef.current = data.student_id;
+          
+          // Join student room if socket is already connected
+          if (socketRef.current && socketRef.current.connected) {
+            socketRef.current.emit('student:join-dashboard', { 
+              studentId: studentIdRef.current 
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Fetch interviews error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const joinInterview = (interviewId) => {
+    navigate(`/interview-room/${interviewId}`);
+  };
+
+  const formatDateTime = (datetime) => {
+    const date = new Date(datetime);
+    return {
+      date: date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      }),
+      time: date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    };
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      scheduled: 'bg-blue-100 text-blue-800',
+      in_progress: 'bg-green-100 text-green-800',
+      completed: 'bg-gray-100 text-gray-800',
+      cancelled: 'bg-red-100 text-red-800'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const canJoinInterview = (interview) => {
+    if (!interview) return false;
+    if (interview.status === 'in_progress') return true;
+    if (interview.status !== 'scheduled') return false;
+    const t = new Date(interview.scheduled_time).getTime();
+    if (Number.isNaN(t)) return false;
+    return Date.now() >= t;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-shnoor-indigo border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  if (interviews.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light p-12 text-center">
+        <Calendar className="mx-auto h-16 w-16 text-shnoor-mist mb-4" />
+        <h3 className="text-xl font-bold text-shnoor-navy mb-2">No Interviews Scheduled</h3>
+        <p className="text-shnoor-indigoMedium">You don't have any upcoming interviews at the moment.</p>
+      </div>
+    );
+  }
+
+  const upcomingInterviews = interviews.filter(i => i.status === 'scheduled' || i.status === 'in_progress');
+  const pastInterviews = interviews.filter(i => i.status === 'completed');
+
+  return (
+    <div className="space-y-6">
+      {incomingBanner && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between animate-pulse">
+          <div className="flex-1">
+            <p className="text-sm font-bold text-emerald-800">📞 Incoming Interview Call</p>
+            <p className="text-xs text-emerald-700/80 mt-1">
+              {incomingBanner.test_title || 'Interview'} 
+              {incomingBanner.institute_name && ` • ${incomingBanner.institute_name}`}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                joinInterview(incomingBanner.id);
+                setIncomingBanner(null);
+              }}
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold flex items-center gap-2"
+            >
+              <Video size={16} />
+              Answer
+            </button>
+            <button
+              onClick={() => setIncomingBanner(null)}
+              className="px-3 py-2 rounded-xl bg-white border border-emerald-200 text-emerald-800 text-sm font-semibold hover:bg-emerald-100"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Upcoming Interviews */}
+      {upcomingInterviews.length > 0 && (
+        <div>
+          <h2 className="text-2xl font-bold text-shnoor-navy mb-4">Upcoming Interviews</h2>
+          <div className="grid gap-4">
+            {upcomingInterviews.map((interview) => {
+              const { date, time } = formatDateTime(interview.scheduled_time);
+              const canJoin = canJoinInterview(interview);
+
+              return (
+                <div
+                  key={interview.id}
+                  className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light p-6 hover:shadow-[0_8px_30px_rgba(14,14,39,0.12)] transition-shadow"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <h3 className="text-lg font-bold text-shnoor-navy">
+                          {interview.test_title}
+                        </h3>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(interview.status)}`}>
+                          {interview.status.replace('_', ' ').toUpperCase()}
+                        </span>
+                        {interview.status === 'in_progress' && (
+                          <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200">
+                            LIVE CALL
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2 text-sm text-shnoor-indigoMedium">
+                        <p className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-2 text-shnoor-indigo" />
+                          <span className="font-medium">{date}</span>
+                        </p>
+                        <p className="flex items-center">
+                          <Clock className="w-4 h-4 mr-2 text-shnoor-indigo" />
+                          <span className="font-medium">{time}</span>
+                          <span className="ml-2 text-shnoor-soft">({interview.duration} minutes)</span>
+                        </p>
+                        {interview.institute_name && (
+                          <p className="text-shnoor-soft">
+                            Institute: {interview.institute_name}
+                          </p>
+                        )}
+                      </div>
+
+                      {canJoin && (
+                        <div className="mt-3 flex items-center text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg">
+                          <AlertCircle size={16} className="mr-2" />
+                          <span className="font-medium">You can join now!</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="ml-4">
+                      <button
+                        onClick={() => canJoin && joinInterview(interview.id)}
+                        disabled={!canJoin}
+                        className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-colors shadow-[0_8px_30px_rgba(14,14,39,0.06)] ${
+                          canJoin
+                            ? 'bg-shnoor-indigo hover:bg-shnoor-navy text-white hover:shadow-[0_8px_30px_rgba(14,14,39,0.12)]'
+                            : 'bg-shnoor-mist/40 text-shnoor-indigoMedium cursor-not-allowed'
+                        }`}
+                      >
+                        <Video size={20} />
+                        <span>
+                          {interview.status === 'in_progress'
+                            ? 'Answer Live Call'
+                            : canJoin
+                              ? 'Join Call'
+                              : 'Not started'}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Past Interviews */}
+      {pastInterviews.length > 0 && (
+        <div>
+          <h2 className="text-2xl font-bold text-shnoor-navy mb-4">Past Interviews</h2>
+          <div className="grid gap-4">
+            {pastInterviews.map((interview) => {
+              const { date, time } = formatDateTime(interview.scheduled_time);
+
+              return (
+                <div
+                  key={interview.id}
+                  className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light p-6 opacity-75"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <h3 className="text-lg font-bold text-shnoor-navy">
+                          {interview.test_title}
+                        </h3>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(interview.status)}`}>
+                          COMPLETED
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-2 text-sm text-shnoor-indigoMedium">
+                        <p className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-2 text-shnoor-indigo" />
+                          <span className="font-medium">{date}</span>
+                        </p>
+                        <p className="flex items-center">
+                          <Clock className="w-4 h-4 mr-2 text-shnoor-indigo" />
+                          <span className="font-medium">{time}</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default StudentInterviews;

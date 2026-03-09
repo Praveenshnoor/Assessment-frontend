@@ -1,0 +1,258 @@
+import { useState } from 'react';
+import Button from '../Button';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+function BulkStudentUpload() {
+    const [file, setFile] = useState(null);
+    const [uploading, setUploading] = useState(false);
+    const [result, setResult] = useState(null);
+    const [showResults, setShowResults] = useState(false);
+
+    const handleFileChange = (e) => {
+        const selectedFile = e.target.files[0];
+        if (selectedFile) {
+            // Validate file type
+            const validTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+            const isValid = validTypes.includes(selectedFile.type) || 
+                           selectedFile.name.endsWith('.csv') || 
+                           selectedFile.name.endsWith('.xlsx');
+            
+            if (!isValid) {
+                alert('Please select a valid CSV or Excel file');
+                return;
+            }
+            
+            setFile(selectedFile);
+            setResult(null);
+        }
+    };
+
+    const handleUpload = async () => {
+        if (!file) {
+            alert('Please select a file first');
+            return;
+        }
+
+        setUploading(true);
+        setResult(null);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const token = localStorage.getItem('adminToken');
+            
+            const response = await fetch(`${API_URL}/api/upload/students`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Upload failed');
+            }
+
+            setResult(data);
+            setShowResults(true);
+            
+            // Clear file input
+            setFile(null);
+            document.getElementById('fileInput').value = '';
+            
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert(error.message || 'Failed to upload students. Please try again.');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const downloadSampleCSV = () => {
+        const csvContent = `fullname,email,contact,institute
+John Doe,john.doe@example.com,1234567890,MIT University
+Jane Smith,jane.smith@example.com,9876543210,Stanford University
+Robert Johnson,robert.johnson@example.com,5551234567,Harvard University`;
+        
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'sample-students-template.csv';
+        a.click();
+        window.URL.revokeObjectURL(url);
+    };
+
+    return (
+        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] p-8 border border-shnoor-light">
+            <h2 className="text-2xl font-bold mb-4 text-shnoor-navy">Bulk Student Upload</h2>
+
+            {/* Instructions */}
+            <div className="bg-shnoor-lavender border-l-4 border-shnoor-indigo p-4 mb-6 rounded-r-lg">
+                <h3 className="font-semibold text-shnoor-navy mb-2">Instructions:</h3>
+                <ul className="text-sm text-shnoor-indigoMedium space-y-1 list-disc list-inside">
+                    <li>Upload a CSV or Excel file with student details</li>
+                    <li>Required columns: <strong>fullname, email, institute</strong></li>
+                    <li>Optional column: <strong>contact</strong></li>
+                    <li>Password format: <strong>firstname@2026</strong> (automatically generated)</li>
+                    <li>Students will receive an email with their credentials</li>
+                </ul>
+            </div>
+
+            {/* Sample CSV Download */}
+            <div className="mb-6">
+                <Button
+                    onClick={downloadSampleCSV}
+                    className="text-white hover:bg-shnoor-navy underline text-sm font-medium"
+                >
+                    📥 Download Sample CSV Template
+                </Button>
+            </div>
+
+            {/* File Upload Section */}
+            <div className="mb-8 p-6 bg-white border border-shnoor-light rounded-xl shadow-sm">
+                <label className="block text-sm font-bold text-shnoor-navy mb-3">
+                    Select CSV or Excel File
+                </label>
+                <div className="flex items-center space-x-4">
+                    <input
+                        id="fileInput"
+                        type="file"
+                        accept=".csv,.xlsx,.xls"
+                        onChange={handleFileChange}
+                        className="block w-full text-sm text-shnoor-navy font-medium
+                            file:mr-4 file:py-2.5 file:px-5
+                            file:rounded-xl file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-shnoor-lavender file:text-shnoor-indigo
+                            hover:file:bg-[#e0e0ef] file:cursor-pointer file:transition-colors
+                            cursor-pointer"
+                    />
+                </div>
+                {file && (
+                    <p className="mt-3 text-sm text-shnoor-success font-medium">
+                        ✓ Selected: {file.name}
+                    </p>
+                )}
+            </div>
+
+            {/* Upload Button */}
+            <div className="mb-6">
+                <Button
+                    variant="primary"
+                    onClick={handleUpload}
+                    disabled={!file || uploading}
+                    className={`text-lg px-8 py-4 ${!file || uploading ? 'opacity-50 cursor-not-allowed bg-shnoor-light' : 'bg-shnoor-indigo shadow-lg hover:-translate-y-1 transition-transform'}`}
+                >
+                    {uploading ? (
+                        <span className="flex items-center">
+                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Uploading...
+                        </span>
+                    ) : (
+                        '📤 Upload Students'
+                    )}
+                </Button>
+            </div>
+
+            {/* Results Section */}
+            {result && showResults && (
+                <div className="border-t border-shnoor-light pt-6">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-xl font-bold text-shnoor-navy">Upload Results</h3>
+                        <Button
+                            onClick={() => setShowResults(false)}
+                            className="text-shnoor-soft hover:opacity-100 transition-opacity"
+                        >
+                            ✕ Close
+                        </Button>
+                    </div>
+                    
+                    {/* Summary */}
+                    <div className="grid grid-cols-3 gap-4 mb-6">
+                        <div className="bg-white border border-shnoor-light p-4 rounded-xl text-center">
+                            <p className="text-3xl font-bold text-shnoor-navy">{result.results.total}</p>
+                            <p className="text-sm text-shnoor-indigoMedium font-medium mt-1">Total Rows</p>
+                        </div>
+                        <div className="bg-shnoor-successLight p-4 rounded-lg text-center">
+                            <p className="text-3xl font-bold text-shnoor-success">{result.results.success.length}</p>
+                            <p className="text-sm text-shnoor-success">Success</p>
+                        </div>
+                        <div className="bg-shnoor-dangerLight p-4 rounded-lg text-center">
+                            <p className="text-3xl font-bold text-shnoor-danger">{result.results.errors.length}</p>
+                            <p className="text-sm text-shnoor-danger">Errors</p>
+                        </div>
+                    </div>
+
+                    {/* Success List */}
+                    {result.results.success.length > 0 && (
+                        <div className="mb-6">
+                            <h4 className="font-semibold text-shnoor-success mb-3">
+                                ✓ Successfully Created ({result.results.success.length})
+                            </h4>
+                            <div className="bg-shnoor-successLight rounded-lg p-4 max-h-60 overflow-y-auto">
+                                <table className="min-w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-shnoor-successLight">
+                                            <th className="text-left py-2 px-2">Name</th>
+                                            <th className="text-left py-2 px-2">Email</th>
+                                            <th className="text-left py-2 px-2">Institute</th>
+                                            <th className="text-left py-2 px-2">Password</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {result.results.success.map((student, idx) => (
+                                            <tr key={idx} className="border-b border-shnoor-successLight">
+                                                <td className="py-2 px-2">{student.fullname}</td>
+                                                <td className="py-2 px-2">{student.email}</td>
+                                                <td className="py-2 px-2">{student.institute}</td>
+                                                <td className="py-2 px-2 font-mono text-xs">{student.password}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Error List */}
+                    {result.results.errors.length > 0 && (
+                        <div>
+                            <h4 className="font-semibold text-shnoor-danger mb-3">
+                                ✕ Errors ({result.results.errors.length})
+                            </h4>
+                            <div className="bg-shnoor-dangerLight rounded-lg p-4 max-h-60 overflow-y-auto">
+                                <ul className="space-y-2">
+                                    {result.results.errors.map((error, idx) => (
+                                        <li key={idx} className="text-sm text-shnoor-danger border-b border-shnoor-dangerLight pb-2">
+                                            <strong>Row {error.row}:</strong> {error.email} - {error.error}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Note about emails */}
+                    {result.results.success.length > 0 && (
+                        <div className="mt-6 bg-shnoor-warningLight border-l-4 border-shnoor-warning p-4">
+                            <p className="text-sm text-shnoor-warning">
+                                📧 <strong>Note:</strong> Credential emails are being sent to all successfully created students. 
+                                Please check your email service configuration if students don't receive their credentials.
+                            </p>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default BulkStudentUpload;

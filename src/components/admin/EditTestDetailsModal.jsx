@@ -1,0 +1,360 @@
+import { useState, useEffect } from 'react';
+import { X, Save, AlertCircle } from 'lucide-react';
+import { apiFetch } from '../../config/api';
+import Button from '../Button';
+
+const EditTestDetailsModal = ({ test, onClose, onSave }) => {
+  const [formData, setFormData] = useState({
+    jobRole: '',
+    description: '',
+    startDateTime: '',
+    endDateTime: '',
+    duration: 60,
+    passingPercentage: 50,
+    maxAttempts: 1
+  });
+  const [errors, setErrors] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  useEffect(() => {
+    if (test) {
+      setFormData({
+        jobRole: test.jobRole || '',
+        description: test.description || '',
+        startDateTime: test.startDateTime ? formatDateTimeForInput(test.startDateTime) : '',
+        endDateTime: test.endDateTime ? formatDateTimeForInput(test.endDateTime) : '',
+        duration: test.duration || 60,
+        passingPercentage: test.passingPercentage || 50,
+        maxAttempts: test.maxAttempts || 1
+      });
+    }
+  }, [test]);
+
+  const formatDateTimeForInput = (dateTimeString) => {
+    if (!dateTimeString) return '';
+    // Parse the datetime from backend and convert to Asia/Kolkata timezone
+    const date = new Date(dateTimeString);
+    
+    // Convert to Asia/Kolkata timezone (IST)
+    const istDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    
+    // Format for datetime-local input (YYYY-MM-DDTHH:MM)
+    const year = istDate.getFullYear();
+    const month = String(istDate.getMonth() + 1).padStart(2, '0');
+    const day = String(istDate.getDate()).padStart(2, '0');
+    const hours = String(istDate.getHours()).padStart(2, '0');
+    const minutes = String(istDate.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.jobRole.trim()) {
+      newErrors.jobRole = 'Job role is required';
+    }
+
+    if (formData.duration < 1 || formData.duration > 300) {
+      newErrors.duration = 'Duration must be between 1 and 300 minutes';
+    }
+
+    if (formData.passingPercentage < 0 || formData.passingPercentage > 100) {
+      newErrors.passingPercentage = 'Passing percentage must be between 0 and 100';
+    }
+
+    if (formData.maxAttempts < 1 || formData.maxAttempts > 10) {
+      newErrors.maxAttempts = 'Max attempts must be between 1 and 10';
+    }
+
+    if (formData.startDateTime && formData.endDateTime) {
+      const start = new Date(formData.startDateTime);
+      const end = new Date(formData.endDateTime);
+      if (end <= start) {
+        newErrors.endDateTime = 'End date must be after start date';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+    setSaveError('');
+  };
+
+  const convertISTToUTC = (dateTimeString) => {
+    if (!dateTimeString) return null;
+    // Parse the datetime-local value as IST and convert to UTC
+    const [datePart, timePart] = dateTimeString.split('T');
+    const [year, month, day] = datePart.split('-');
+    const [hours, minutes] = timePart.split(':');
+    
+    // Create date string in IST format
+    const istDateString = `${year}-${month}-${day}T${hours}:${minutes}:00+05:30`;
+    const date = new Date(istDateString);
+    
+    return date.toISOString();
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError('');
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await apiFetch(`api/tests/${test.id}/details`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          job_role: formData.jobRole.trim(),
+          description: formData.description.trim(),
+          start_datetime: convertISTToUTC(formData.startDateTime),
+          end_datetime: convertISTToUTC(formData.endDateTime),
+          duration: parseInt(formData.duration),
+          passing_percentage: parseInt(formData.passingPercentage),
+          max_attempts: parseInt(formData.maxAttempts)
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        onSave();
+        onClose();
+      } else {
+        setSaveError(data.message || 'Failed to update test details');
+      }
+    } catch (error) {
+      console.error('Error updating test details:', error);
+      setSaveError(error.message || 'Failed to update test details');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (!test) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="bg-shnoor-indigo text-white px-6 py-4 flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-bold">Edit Test Details</h2>
+            <p className="text-shnoor-indigoMedium text-sm">{test.name}</p>
+          </div>
+          <Button
+            onClick={onClose}
+            className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+            disabled={isSaving}
+          >
+            <X size={20} />
+          </Button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+          {/* Error Message */}
+          {saveError && (
+            <div className="bg-shnoor-dangerLight border-l-4 border-shnoor-danger text-shnoor-danger p-3 rounded-r-lg flex items-start text-sm">
+              <AlertCircle size={18} className="mr-2 flex-shrink-0 mt-0.5" />
+              <span>{saveError}</span>
+            </div>
+          )}
+
+          {/* Job Role */}
+          <div>
+            <label className="block text-sm font-semibold text-shnoor-navy mb-2">
+              Job Role <span className="text-shnoor-danger">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.jobRole}
+              onChange={(e) => handleChange('jobRole', e.target.value)}
+              className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.jobRole ? 'border-shnoor-danger bg-shnoor-dangerLight focus:ring-shnoor-dangerLight' : 'border-shnoor-light focus:ring-shnoor-mist'
+                }`}
+              placeholder="e.g., Software Developer"
+              disabled={isSaving}
+            />
+            {errors.jobRole && (
+              <p className="text-shnoor-danger text-xs mt-1.5 flex items-center">
+                <AlertCircle size={12} className="mr-1" />
+                {errors.jobRole}
+              </p>
+            )}
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-semibold text-shnoor-navy mb-2">
+              Job Description
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => handleChange('description', e.target.value)}
+              rows={3}
+              className="w-full px-4 py-2.5 border-2 border-shnoor-light rounded-lg focus:ring-4 focus:ring-shnoor-mist focus:border-shnoor-indigo transition-all resize-none text-sm text-shnoor-navy font-medium bg-white shadow-sm"
+              placeholder="Describe the job role..."
+              disabled={isSaving}
+            />
+          </div>
+
+          {/* Date & Time */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-shnoor-navy mb-2">
+                Start Date & Time
+              </label>
+              <input
+                type="datetime-local"
+                value={formData.startDateTime}
+                onChange={(e) => handleChange('startDateTime', e.target.value)}
+                className="w-full px-4 py-2.5 border-2 border-shnoor-light rounded-lg focus:ring-4 focus:ring-shnoor-mist focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm"
+                disabled={isSaving}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-shnoor-navy mb-2">
+                End Date & Time
+              </label>
+              <input
+                type="datetime-local"
+                value={formData.endDateTime}
+                onChange={(e) => handleChange('endDateTime', e.target.value)}
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.endDateTime ? 'border-shnoor-danger bg-shnoor-dangerLight focus:ring-shnoor-dangerLight' : 'border-shnoor-light focus:ring-shnoor-mist'
+                  }`}
+                disabled={isSaving}
+              />
+              {errors.endDateTime && (
+                <p className="text-shnoor-danger text-xs mt-1.5 flex items-center">
+                  <AlertCircle size={12} className="mr-1" />
+                  {errors.endDateTime}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Test Settings */}
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-shnoor-navy mb-2">
+                Duration (min) <span className="text-shnoor-danger">*</span>
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="300"
+                value={formData.duration}
+                onChange={(e) => handleChange('duration', e.target.value)}
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.duration ? 'border-shnoor-danger bg-shnoor-dangerLight focus:ring-shnoor-dangerLight' : 'border-shnoor-light focus:ring-shnoor-mist'
+                  }`}
+                disabled={isSaving}
+              />
+              {errors.duration && (
+                <p className="text-shnoor-danger text-xs mt-1">{errors.duration}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-shnoor-navy mb-2">
+                Passing % <span className="text-shnoor-danger">*</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={formData.passingPercentage}
+                onChange={(e) => handleChange('passingPercentage', e.target.value)}
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.passingPercentage ? 'border-shnoor-danger bg-shnoor-dangerLight focus:ring-shnoor-dangerLight' : 'border-shnoor-light focus:ring-shnoor-mist'
+                  }`}
+                disabled={isSaving}
+              />
+              {errors.passingPercentage && (
+                <p className="text-shnoor-danger text-xs mt-1">{errors.passingPercentage}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-shnoor-navy mb-2">
+                Max Attempts <span className="text-shnoor-danger">*</span>
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={formData.maxAttempts}
+                onChange={(e) => handleChange('maxAttempts', e.target.value)}
+                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-4 focus:border-shnoor-indigo transition-all text-sm text-shnoor-navy font-medium bg-white shadow-sm ${errors.maxAttempts ? 'border-shnoor-danger bg-shnoor-dangerLight focus:ring-shnoor-dangerLight' : 'border-shnoor-light focus:ring-shnoor-mist'
+                  }`}
+                disabled={isSaving}
+              />
+              {errors.maxAttempts && (
+                <p className="text-shnoor-danger text-xs mt-1">{errors.maxAttempts}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Info Box */}
+          {test.status === 'published' && (
+            <div className="bg-shnoor-lavender border-l-4 border-shnoor-indigo p-3 rounded-r-lg">
+              <div className="flex items-start">
+                <AlertCircle size={16} className="text-shnoor-indigo mr-2 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-shnoor-indigoMedium">
+                  <span className="font-semibold text-shnoor-indigo">Note:</span> Changes will be reflected immediately. Questions cannot be modified for published tests.
+                </p>
+              </div>
+            </div>
+          )}
+        </form>
+
+        {/* Footer */}
+        <div className="bg-white border-t border-shnoor-light px-6 py-4 flex justify-end space-x-3">
+          <Button
+            type="Button"
+            variant="secondary"
+            onClick={onClose}
+            className="text-sm px-5 py-2 !font-bold"
+            disabled={isSaving}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            onClick={handleSubmit}
+            disabled={isSaving}
+            className="text-sm px-5 py-2 !font-bold bg-shnoor-indigo hover:bg-shnoor-navy flex items-center disabled:opacity-50 disabled:cursor-not-allowed"          >
+            {isSaving ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save size={16} className="mr-2" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default EditTestDetailsModal;

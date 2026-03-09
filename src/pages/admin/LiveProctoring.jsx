@@ -1,0 +1,305 @@
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
+import { ArrowLeft, Users, Wifi, WifiOff, Camera, Clock, MessageCircle } from 'lucide-react';
+import AdminChatModal from '../../components/admin/AdminChatModal';
+
+const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const LiveProctoring = () => {
+  const navigate = useNavigate();
+  const [activeSessions, setActiveSessions] = useState([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const [frameData, setFrameData] = useState(new Map()); // studentId -> frame base64
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const socketRef = useRef(null);
+  
+
+  useEffect(() => {
+    // Check admin authentication
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      navigate('/admin/login');
+      return;
+    }
+
+    console.log('[Admin] Initializing Socket.IO connection to:', SOCKET_URL);
+
+    // Initialize Socket.io with polling only (WebSocket upgrade causes issues)
+    const socket = io(SOCKET_URL, {
+      transports: ['polling'], // Use polling only
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5,
+      timeout: 30000,
+      forceNew: true,
+      upgrade: false, // Disable upgrade
+      autoConnect: true
+    });
+
+    // Connection event handlers
+    socket.on('connect', () => {
+      console.log('[Admin] Connected to proctoring server');
+      console.log('[Admin] Socket ID:', socket.id);
+      console.log('[Admin] Transport:', socket.io.engine.transport.name);
+      setIsConnected(true);
+      
+      // Join monitoring room
+      socket.emit('admin:join-monitoring');
+      console.log('[Admin] Sent admin:join-monitoring event');
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('[Admin] Connection error:', error);
+      console.error('[Admin] Error message:', error.message);
+      console.error('[Admin] Error type:', error.type);
+      console.error('[Admin] Error description:', error.description);
+      setIsConnected(false);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('[Admin] Disconnected from proctoring server. Reason:', reason);
+      setIsConnected(false);
+    });
+
+    socket.on('reconnect', (attemptNumber) => {
+      console.log('[Admin] Reconnected after', attemptNumber, 'attempts');
+      setIsConnected(true);
+    });
+
+    socket.on('reconnect_error', (error) => {
+      console.error('[Admin] Reconnection error:', error);
+    });
+
+    socket.on('reconnect_failed', () => {
+      console.error('[Admin] Reconnection failed after all attempts');
+      setIsConnected(false);
+    });
+
+    // Receive active sessions list
+    socket.on('active-sessions', (sessions) => {
+      console.log('[Admin] Active sessions:', sessions);
+      // Ensure all studentIds are strings for consistent key matching
+      const normalizedSessions = sessions.map(s => ({
+        ...s,
+        studentId: String(s.studentId)
+      }));
+      setActiveSessions(normalizedSessions);
+    });
+
+    // New student joined
+    socket.on('student:joined', (studentData) => {
+      console.log('[Admin] Student joined:', studentData);
+      // Ensure studentId is a string for consistent key matching
+      const normalizedData = {
+        ...studentData,
+        studentId: String(studentData.studentId)
+      };
+      setActiveSessions(prev => [...prev, normalizedData]);
+    });
+
+    // Student left
+    socket.on('student:left', (data) => {
+      console.log('[Admin] Student left:', data);
+      const leftStudentId = String(data.studentId);
+      setActiveSessions(prev => prev.filter(s => String(s.studentId) !== leftStudentId));
+      
+      // Remove frame data
+      setFrameData(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(leftStudentId);
+        return newMap;
+      });
+    });
+
+    // Receive video frames from students
+    socket.on('proctoring:frame', (data) => {
+      const { studentId, frame } = data;
+      
+      // Update frame data for this student
+      setFrameData(prev => {
+        const newMap = new Map(prev);
+        // Ensure studentId is a string for consistent key matching
+        newMap.set(String(studentId), frame);
+        return newMap;
+      });
+    });
+
+    socketRef.current = socket;
+
+    // Cleanup
+    return () => {
+      socket.disconnect();
+    };
+  }, [navigate]);
+
+  const formatDuration = (startTime) => {
+    const now = new Date();
+    const start = new Date(startTime);
+    const diff = Math.floor((now - start) / 1000 / 60); // minutes
+    return `${diff} min`;
+  };
+
+  const handleOpenChat = (student) => {
+    setSelectedStudent(student);
+    setIsChatModalOpen(true);
+  };
+
+  const handleCloseChat = () => {
+    setIsChatModalOpen(false);
+    setSelectedStudent(null);
+  };
+
+  const handleMessageSent = () => {
+    // Optional: Add any additional handling when a message is sent
+    console.log('[Admin] Message sent to student');
+  };
+
+  return (
+    <div className="min-h-screen bg-[#E0E0EF]">
+      {/* Header */}
+      <header className="bg-shnoor-navy text-white shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigate('/admin/dashboard')}
+                className="flex items-center text-shnoor-soft hover:text-white transition-colors"
+              >
+                <ArrowLeft size={20} className="mr-2" />
+                Back
+              </button>
+              <div className="h-8 w-px bg-white/20"></div>
+              <div>
+                <h1 className="font-bold text-lg text-white">Live Proctoring</h1>
+                <p className="text-xs text-shnoor-light opacity-80">Monitor students in real-time</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg ${isConnected ? 'bg-shnoor-success' : 'bg-shnoor-danger'
+                }`}>
+                {isConnected ? <Wifi size={16} /> : <WifiOff size={16} />}
+                <span className="text-sm font-medium">
+                  {isConnected ? 'Connected' : 'Disconnected'}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2 px-3 py-1.5 bg-white/10 rounded-lg">
+                <Users size={16} />
+                <span className="text-sm font-medium">{activeSessions.length} Active</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {activeSessions.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light p-12 text-center">
+            <Camera size={64} className="mx-auto text-shnoor-light mb-4" />
+            <h2 className="text-xl font-bold text-shnoor-navy mb-2">No Active Sessions</h2>
+            <p className="text-shnoor-indigoMedium">
+              Students taking exams with proctoring enabled will appear here
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {activeSessions.map((session) => {
+              // Ensure consistent string key for lookup
+              const sessionKey = String(session.studentId);
+              const currentFrame = frameData.get(sessionKey);
+              
+              return (
+                <div
+                  key={sessionKey}
+                  className="bg-white rounded-xl shadow-sm border border-shnoor-light overflow-hidden hover:shadow-md transition-shadow"
+                >
+                  {/* Video Feed */}
+                  <div className="relative bg-shnoor-navyLight aspect-video">
+                    {currentFrame ? (
+                      <img
+                        src={currentFrame}
+                        alt={`${session.studentName} proctoring feed`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-shnoor-lavender">
+                        <div className="text-center">
+                          <Camera size={48} className="mx-auto text-shnoor-light mb-2" />
+                          <p className="text-shnoor-soft text-sm">Waiting for video...</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Live Indicator */}
+                    <div className="absolute top-3 left-3 flex items-center space-x-1 bg-shnoor-danger text-white px-2 py-1 rounded-full text-xs font-medium">
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                      <span>LIVE</span>
+                    </div>
+
+                    {/* Duration */}
+                    <div className="absolute top-3 right-3 flex items-center space-x-1 bg-black/60 text-white px-2 py-1 rounded-full text-xs font-medium">
+                      <Clock size={12} />
+                      <span>{formatDuration(session.startTime)}</span>
+                    </div>
+                  </div>
+
+                  {/* Student Info */}
+                  <div className="p-5">
+                    <h3 className="font-bold text-shnoor-navy text-lg mb-1">
+                      {session.studentName}
+                    </h3>
+                    <p className="text-sm text-shnoor-indigoMedium mb-3">
+                      ID: {session.studentId}
+                    </p>
+                    <div className="flex items-center justify-between pt-3 border-t border-shnoor-light">
+                      <div>
+                        <p className="text-xs text-shnoor-soft">Test</p>
+                        <p className="text-sm font-semibold text-shnoor-navy">
+                          {session.testTitle}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-1 text-shnoor-success">
+                        <Wifi size={16} />
+                        <span className="text-xs font-medium">
+                          {currentFrame ? 'Streaming' : 'Connected'}
+                        </span>
+                      </div>
+                    </div>
+                                        
+                    {/* Chat Button */}
+                    <div className="mt-4 pt-3 border-t border-shnoor-light">
+                      <button
+                        onClick={() => handleOpenChat(session)}
+                        className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-shnoor-navy text-white rounded-lg hover:bg-opacity-90 transition-colors"
+                      >
+                        <MessageCircle size={16} />
+                        <span className="text-sm font-medium">Send Message</span>
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </main>
+
+      {/* Chat Modal */}
+      {selectedStudent && (
+        <AdminChatModal
+          isOpen={isChatModalOpen}
+          onClose={handleCloseChat}
+          student={selectedStudent}
+          socket={socketRef.current}
+          onMessageSent={handleMessageSent}
+        />
+      )}
+      
+    </div>
+  );
+};
+
+export default LiveProctoring;
