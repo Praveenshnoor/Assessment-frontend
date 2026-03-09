@@ -2311,6 +2311,7 @@ const handleDownloadShortlistedPDF = async () => {
                         <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Date Attempted</th>
                         <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Score</th>
                         <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Shortlisted</th>
                         <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">No Face</th>
                         <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Multi Faces</th>
                         <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Phone</th>
@@ -2318,7 +2319,7 @@ const handleDownloadShortlistedPDF = async () => {
                         <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Voice</th>
                         <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Total</th>
                         <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Flagged</th>
-                        {/* <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Actions</th> */}
+                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-[#E5E7EB]">
@@ -2441,7 +2442,7 @@ const handleDownloadShortlistedPDF = async () => {
                           })
                         ) : (
                           <tr>
-                            <td colSpan="15" className="px-6 py-12 text-center text-shnoor-indigoMedium">
+                            <td colSpan="16" className="px-6 py-12 text-center text-shnoor-indigoMedium">
                               {statusFilter !== 'all' 
                                 ? `No ${statusFilter === 'pass' ? 'passed' : 'failed'} students found.`
                                 : 'No students have attempted this exam yet.'
