@@ -79,6 +79,7 @@ const AdminDashboard = () => {
   const [isLoadingAssignedTests, setIsLoadingAssignedTests] = useState(false);
   const [selectedTestsForInstitute, setSelectedTestsForInstitute] = useState([]);
   const [isAssigningTestToInstitute, setIsAssigningTestToInstitute] = useState(false);
+  const [isInstituteTestDropdownOpen, setIsInstituteTestDropdownOpen] = useState(false);
 
   // Student Management States
   const [showStudentManagementModal, setShowStudentManagementModal] = useState(false);
@@ -88,6 +89,7 @@ const AdminDashboard = () => {
   const [showAddStudentForm, setShowAddStudentForm] = useState(false);
   const [selectedTestsForStudentModal, setSelectedTestsForStudentModal] = useState([]);
   const [isAssigningTestInModal, setIsAssigningTestInModal] = useState(false);
+  const [isStudentTestDropdownOpen, setIsStudentTestDropdownOpen] = useState(false);
   const [newStudentData, setNewStudentData] = useState({
     full_name: '',
     email: '',
@@ -276,10 +278,18 @@ const AdminDashboard = () => {
       if (isTestDropdownOpen && !event.target.closest('.relative')) {
         setIsTestDropdownOpen(false);
       }
+      // Close institute test dropdown when clicking outside
+      if (isInstituteTestDropdownOpen && !event.target.closest('.relative')) {
+        setIsInstituteTestDropdownOpen(false);
+      }
+      // Close student test dropdown when clicking outside
+      if (isStudentTestDropdownOpen && !event.target.closest('.relative')) {
+        setIsStudentTestDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [openMenuId, isTestDropdownOpen]);
+  }, [openMenuId, isTestDropdownOpen, isInstituteTestDropdownOpen, isStudentTestDropdownOpen]);
 
   const fetchTests = async () => {
     try {
@@ -3860,46 +3870,72 @@ const handleDownloadShortlistedPDF = async () => {
                   <label className="block text-sm font-bold text-shnoor-navy mb-3">
                     Assign New Test to Institute
                   </label>
-                  <div className="space-y-3">
-                    {/* Checkbox list for test selection */}
-                    <div className="max-h-48 overflow-y-auto bg-white rounded-xl border border-shnoor-light p-3 space-y-2">
-                      {tests.filter(test => test.status === 'published').length === 0 ? (
-                        <p className="text-sm text-shnoor-indigoMedium flex items-center justify-center py-4">
-                          <AlertCircle size={16} className="mr-1" />
-                          No published tests available. Please publish a test first.
-                        </p>
-                      ) : (
-                        tests.filter(test => test.status === 'published').map((test) => (
-                          <label
-                            key={test.id}
-                            className="flex items-center space-x-3 p-2 hover:bg-shnoor-lavender rounded-lg cursor-pointer transition-colors"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedTestsForInstitute.includes(test.id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedTestsForInstitute([...selectedTestsForInstitute, test.id]);
-                                } else {
-                                  setSelectedTestsForInstitute(selectedTestsForInstitute.filter(id => id !== test.id));
-                                }
-                              }}
-                              className="w-4 h-4 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-lavender"
-                            />
-                            <span className="text-sm text-shnoor-navy font-medium flex-1">
-                              {test.name} <span className="text-shnoor-indigoMedium">({test.questions} questions)</span>
-                            </span>
-                          </label>
-                        ))
-                      )}
-                    </div>
+                  <div className="relative space-y-3">
+                    {/* Custom Dropdown Button */}
+                    <button
+                      type="button"
+                      onClick={() => setIsInstituteTestDropdownOpen(!isInstituteTestDropdownOpen)}
+                      className="w-full px-4 py-3 border border-shnoor-light rounded-xl bg-white text-shnoor-navy font-medium transition-all flex items-center justify-between hover:border-shnoor-indigo focus:ring-4 focus:ring-shnoor-lavender focus:border-shnoor-indigo"
+                    >
+                      <span className={selectedTestsForInstitute.length === 0 ? 'text-shnoor-indigoMedium' : 'text-shnoor-navy'}>
+                        {selectedTestsForInstitute.length === 0 
+                          ? '-- Select a test --' 
+                          : `${selectedTestsForInstitute.length} test${selectedTestsForInstitute.length !== 1 ? 's' : ''} selected`
+                        }
+                      </span>
+                      <ChevronDown size={20} className={`transition-transform ${isInstituteTestDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* Dropdown Menu with Checkboxes */}
+                    {isInstituteTestDropdownOpen && (
+                      <div className="absolute z-50 w-full mt-2 bg-white border border-shnoor-light rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                        {tests.filter(test => test.status === 'published').length === 0 ? (
+                          <div className="p-4 text-center text-shnoor-indigoMedium text-sm flex items-center justify-center">
+                            <AlertCircle size={16} className="mr-1" />
+                            No published tests available. Please publish a test first.
+                          </div>
+                        ) : (
+                          <div className="py-2">
+                            {tests.filter(test => test.status === 'published').map((test) => (
+                              <label
+                                key={test.id}
+                                className="flex items-center space-x-3 px-4 py-3 hover:bg-shnoor-lavender cursor-pointer transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedTestsForInstitute.includes(test.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedTestsForInstitute([...selectedTestsForInstitute, test.id]);
+                                    } else {
+                                      setSelectedTestsForInstitute(selectedTestsForInstitute.filter(id => id !== test.id));
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-indigo"
+                                />
+                                <span className="text-sm font-medium text-shnoor-navy flex-1">
+                                  {test.name} <span className="text-shnoor-indigoMedium">({test.questions} questions)</span>
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Selected tests count */}
                     {selectedTestsForInstitute.length > 0 && (
-                      <p className="text-xs text-shnoor-indigoMedium">
+                      <p className="text-xs text-shnoor-indigo mt-2 font-medium">
                         {selectedTestsForInstitute.length} test{selectedTestsForInstitute.length !== 1 ? 's' : ''} selected
                       </p>
                     )}
+                    
                     <button
-                      onClick={handleAssignTestToInstitute}
+                      onClick={() => {
+                        handleAssignTestToInstitute();
+                        setIsInstituteTestDropdownOpen(false);
+                      }}
                       disabled={selectedTestsForInstitute.length === 0 || isAssigningTestToInstitute}
                       className={`w-full px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center space-x-2 ${selectedTestsForInstitute.length > 0 && !isAssigningTestToInstitute
                         ? 'bg-shnoor-indigo hover:bg-shnoor-navy text-white shadow-lg hover:-translate-y-0.5'
@@ -4102,46 +4138,72 @@ const handleDownloadShortlistedPDF = async () => {
                         <h5 className="text-sm font-bold text-shnoor-navy mb-3">
                           Assign Test to {selectedStudentsForDelete.length} Selected Student{selectedStudentsForDelete.length !== 1 ? 's' : ''}
                         </h5>
-                        <div className="space-y-3">
-                          {/* Checkbox list for test selection */}
-                          <div className="max-h-48 overflow-y-auto bg-white rounded-xl border border-shnoor-light p-3 space-y-2">
-                            {tests.filter(test => test.status === 'published').length === 0 ? (
-                              <p className="text-sm text-shnoor-indigoMedium flex items-center justify-center py-4">
-                                <AlertCircle size={16} className="mr-1" />
-                                No published tests available. Please publish a test first.
-                              </p>
-                            ) : (
-                              tests.filter(test => test.status === 'published').map((test) => (
-                                <label
-                                  key={test.id}
-                                  className="flex items-center space-x-3 p-2 hover:bg-shnoor-lavender rounded-lg cursor-pointer transition-colors"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedTestsForStudentModal.includes(test.id)}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setSelectedTestsForStudentModal([...selectedTestsForStudentModal, test.id]);
-                                      } else {
-                                        setSelectedTestsForStudentModal(selectedTestsForStudentModal.filter(id => id !== test.id));
-                                      }
-                                    }}
-                                    className="w-4 h-4 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-lavender"
-                                  />
-                                  <span className="text-sm text-shnoor-navy font-medium flex-1">
-                                    {test.name} <span className="text-shnoor-indigoMedium">({test.questions} questions • {test.duration} mins)</span>
-                                  </span>
-                                </label>
-                              ))
-                            )}
-                          </div>
+                        <div className="relative space-y-3">
+                          {/* Custom Dropdown Button */}
+                          <button
+                            type="button"
+                            onClick={() => setIsStudentTestDropdownOpen(!isStudentTestDropdownOpen)}
+                            className="w-full px-4 py-3 border border-shnoor-light rounded-xl bg-white text-shnoor-navy font-medium transition-all flex items-center justify-between hover:border-shnoor-indigo focus:ring-4 focus:ring-shnoor-lavender focus:border-shnoor-indigo"
+                          >
+                            <span className={selectedTestsForStudentModal.length === 0 ? 'text-shnoor-indigoMedium' : 'text-shnoor-navy'}>
+                              {selectedTestsForStudentModal.length === 0 
+                                ? '-- Select a test --' 
+                                : `${selectedTestsForStudentModal.length} test${selectedTestsForStudentModal.length !== 1 ? 's' : ''} selected`
+                              }
+                            </span>
+                            <ChevronDown size={20} className={`transition-transform ${isStudentTestDropdownOpen ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          {/* Dropdown Menu with Checkboxes */}
+                          {isStudentTestDropdownOpen && (
+                            <div className="absolute z-50 w-full mt-2 bg-white border border-shnoor-light rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                              {tests.filter(test => test.status === 'published').length === 0 ? (
+                                <div className="p-4 text-center text-shnoor-indigoMedium text-sm flex items-center justify-center">
+                                  <AlertCircle size={16} className="mr-1" />
+                                  No published tests available. Please publish a test first.
+                                </div>
+                              ) : (
+                                <div className="py-2">
+                                  {tests.filter(test => test.status === 'published').map((test) => (
+                                    <label
+                                      key={test.id}
+                                      className="flex items-center space-x-3 px-4 py-3 hover:bg-shnoor-lavender cursor-pointer transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedTestsForStudentModal.includes(test.id)}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setSelectedTestsForStudentModal([...selectedTestsForStudentModal, test.id]);
+                                          } else {
+                                            setSelectedTestsForStudentModal(selectedTestsForStudentModal.filter(id => id !== test.id));
+                                          }
+                                        }}
+                                        className="w-4 h-4 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-indigo"
+                                      />
+                                      <span className="text-sm font-medium text-shnoor-navy flex-1">
+                                        {test.name} <span className="text-shnoor-indigoMedium">({test.questions} questions • {test.duration} mins)</span>
+                                      </span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          {/* Selected tests count */}
                           {selectedTestsForStudentModal.length > 0 && (
-                            <p className="text-xs text-shnoor-indigoMedium">
+                            <p className="text-xs text-shnoor-indigo mt-2 font-medium">
                               {selectedTestsForStudentModal.length} test{selectedTestsForStudentModal.length !== 1 ? 's' : ''} selected
                             </p>
                           )}
+                          
                           <button
-                            onClick={handleAssignTestInModal}
+                            onClick={() => {
+                              handleAssignTestInModal();
+                              setIsStudentTestDropdownOpen(false);
+                            }}
                             disabled={selectedTestsForStudentModal.length === 0 || isAssigningTestInModal}
                             className={`w-full px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center space-x-2 ${selectedTestsForStudentModal.length > 0 && !isAssigningTestInModal
                               ? 'bg-shnoor-indigo hover:bg-shnoor-navy text-white shadow-lg hover:-translate-y-0.5'
