@@ -68,15 +68,16 @@ const AdminDashboard = () => {
 
   // Multi-Institute Selection States (for bulk test assignment)
   const [selectedInstitutes, setSelectedInstitutes] = useState([]);
-  const [selectedTestForMultipleInstitutes, setSelectedTestForMultipleInstitutes] = useState('');
+  const [selectedTestsForMultipleInstitutes, setSelectedTestsForMultipleInstitutes] = useState([]);
   const [isAssigningTestToMultipleInstitutes, setIsAssigningTestToMultipleInstitutes] = useState(false);
+  const [isTestDropdownOpen, setIsTestDropdownOpen] = useState(false);
 
   // Assigned Tests Modal States
   const [showAssignedTestsModal, setShowAssignedTestsModal] = useState(false);
   const [selectedInstituteForTests, setSelectedInstituteForTests] = useState(null);
   const [assignedTests, setAssignedTests] = useState([]);
   const [isLoadingAssignedTests, setIsLoadingAssignedTests] = useState(false);
-  const [selectedTestForInstitute, setSelectedTestForInstitute] = useState('');
+  const [selectedTestsForInstitute, setSelectedTestsForInstitute] = useState([]);
   const [isAssigningTestToInstitute, setIsAssigningTestToInstitute] = useState(false);
 
   // Student Management States
@@ -85,7 +86,7 @@ const AdminDashboard = () => {
   const [instituteStudentsForManagement, setInstituteStudentsForManagement] = useState([]);
   const [isLoadingStudentsForManagement, setIsLoadingStudentsForManagement] = useState(false);
   const [showAddStudentForm, setShowAddStudentForm] = useState(false);
-  const [selectedTestForStudentModal, setSelectedTestForStudentModal] = useState('');
+  const [selectedTestsForStudentModal, setSelectedTestsForStudentModal] = useState([]);
   const [isAssigningTestInModal, setIsAssigningTestInModal] = useState(false);
   const [newStudentData, setNewStudentData] = useState({
     full_name: '',
@@ -271,10 +272,14 @@ const AdminDashboard = () => {
       if (openMenuId && !event.target.closest('.relative')) {
         setOpenMenuId(null);
       }
+      // Close test dropdown when clicking outside
+      if (isTestDropdownOpen && !event.target.closest('.relative')) {
+        setIsTestDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [openMenuId]);
+  }, [openMenuId, isTestDropdownOpen]);
 
   const fetchTests = async () => {
     try {
@@ -1295,18 +1300,12 @@ const handleDownloadShortlistedPDF = async () => {
       return;
     }
 
-    if (!selectedTestForMultipleInstitutes) {
-      alert('Please select a test to assign');
+    if (selectedTestsForMultipleInstitutes.length === 0) {
+      alert('Please select at least one test to assign');
       return;
     }
 
-    const selectedTest = tests.find(t => t.id === parseInt(selectedTestForMultipleInstitutes));
-    if (!selectedTest) {
-      alert('Invalid test selected');
-      return;
-    }
-
-    const confirmMessage = `Assign "${selectedTest.name}" to ${selectedInstitutes.length} institute(s)?`;
+    const confirmMessage = `Assign ${selectedTestsForMultipleInstitutes.length} test${selectedTestsForMultipleInstitutes.length !== 1 ? 's' : ''} to ${selectedInstitutes.length} institute${selectedInstitutes.length !== 1 ? 's' : ''}?`;
     if (!confirm(confirmMessage)) {
       return;
     }
@@ -1320,50 +1319,56 @@ const handleDownloadShortlistedPDF = async () => {
       let alreadyAssignedCount = 0;
       const errors = [];
 
+      // Loop through each institute
       for (const instituteId of selectedInstitutes) {
-        try {
-          const response = await apiFetch(`api/institutes/${instituteId}/assign-test`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              test_id: selectedTestForMultipleInstitutes
-            })
-          });
+        // Loop through each selected test
+        for (const testId of selectedTestsForMultipleInstitutes) {
+          try {
+            const response = await apiFetch(`api/institutes/${instituteId}/assign-test`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                test_id: testId
+              })
+            });
 
-          const data = await response.json();
+            const data = await response.json();
 
-          if (response.ok && data.success) {
-            successCount++;
-          } else if (data.message && data.message.includes('already assigned')) {
-            alreadyAssignedCount++;
-          } else {
+            if (response.ok && data.success) {
+              successCount++;
+            } else if (data.message && data.message.includes('already assigned')) {
+              alreadyAssignedCount++;
+            } else {
+              failCount++;
+              const institute = allInstitutes.find(i => i.id === instituteId);
+              const test = tests.find(t => t.id === testId);
+              errors.push(`${institute?.display_name || `Institute ${instituteId}`} - ${test?.name || `Test ${testId}`}: ${data.message}`);
+            }
+          } catch (error) {
             failCount++;
             const institute = allInstitutes.find(i => i.id === instituteId);
-            errors.push(`${institute?.display_name || `Institute ${instituteId}`}: ${data.message}`);
+            const test = tests.find(t => t.id === testId);
+            errors.push(`${institute?.display_name || `Institute ${instituteId}`} - ${test?.name || `Test ${testId}`}: ${error.message}`);
           }
-        } catch (error) {
-          failCount++;
-          const institute = allInstitutes.find(i => i.id === instituteId);
-          errors.push(`${institute?.display_name || `Institute ${instituteId}`}: ${error.message}`);
-        }
 
-        // Small delay to avoid overwhelming the server
-        await new Promise(resolve => setTimeout(resolve, 100));
+          // Small delay to avoid overwhelming the server
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
 
       // Show summary
       let summaryMessage = '';
       if (successCount > 0) {
-        summaryMessage += `✓ Successfully assigned to ${successCount} institute(s)\n`;
+        summaryMessage += `✓ Successfully assigned ${successCount} test${successCount !== 1 ? 's' : ''}\n`;
       }
       if (alreadyAssignedCount > 0) {
-        summaryMessage += `ℹ Already assigned to ${alreadyAssignedCount} institute(s)\n`;
+        summaryMessage += `ℹ ${alreadyAssignedCount} test${alreadyAssignedCount !== 1 ? 's were' : ' was'} already assigned\n`;
       }
       if (failCount > 0) {
-        summaryMessage += `✗ Failed for ${failCount} institute(s)\n`;
+        summaryMessage += `✗ Failed to assign ${failCount} test${failCount !== 1 ? 's' : ''}\n`;
         if (errors.length > 0) {
           summaryMessage += `\nErrors:\n${errors.slice(0, 3).join('\n')}`;
           if (errors.length > 3) {
@@ -1376,7 +1381,8 @@ const handleDownloadShortlistedPDF = async () => {
 
       // Clear selections and refresh
       setSelectedInstitutes([]);
-      setSelectedTestForMultipleInstitutes('');
+      setSelectedTestsForMultipleInstitutes([]);
+      setIsTestDropdownOpen(false); // Close dropdown after assignment
       fetchAllInstitutes();
      
     } catch (error) {
@@ -1391,7 +1397,7 @@ const handleDownloadShortlistedPDF = async () => {
     setSelectedInstituteForTests(institute);
     setShowAssignedTestsModal(true);
     setIsLoadingAssignedTests(true);
-    setSelectedTestForInstitute('');
+    setSelectedTestsForInstitute([]);
 
     try {
       const token = localStorage.getItem('adminToken');
@@ -1418,41 +1424,80 @@ const handleDownloadShortlistedPDF = async () => {
   };
 
   const handleAssignTestToInstitute = async () => {
-    if (!selectedTestForInstitute) {
-      alert('Please select a test to assign');
+    if (selectedTestsForInstitute.length === 0) {
+      alert('Please select at least one test to assign');
       return;
     }
 
     try {
       setIsAssigningTestToInstitute(true);
       const token = localStorage.getItem('adminToken');
-      const response = await apiFetch(`api/institutes/${selectedInstituteForTests.id}/assign-test`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          test_id: parseInt(selectedTestForInstitute)
-        })
-      });
+      
+      let successCount = 0;
+      let alreadyAssignedCount = 0;
+      let failCount = 0;
+      const errors = [];
 
-      const data = await response.json();
+      // Loop through each selected test
+      for (const testId of selectedTestsForInstitute) {
+        try {
+          const response = await apiFetch(`api/institutes/${selectedInstituteForTests.id}/assign-test`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              test_id: parseInt(testId)
+            })
+          });
 
-      if (response.ok && data.success) {
-        alert(data.message || 'Test assigned successfully');
-        setSelectedTestForInstitute('');
-        handleViewAssignedTests(selectedInstituteForTests);
-        fetchAllInstitutes(); // Refresh institute list to update test counts
-      } else if (response.status === 409 && data.already_assigned) {
-        // Handle duplicate assignment
-        alert(data.message || 'This test is already assigned to this institute');
-      } else {
-        alert(data.message || 'Failed to assign test');
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            successCount++;
+          } else if (response.status === 409 && data.already_assigned) {
+            alreadyAssignedCount++;
+          } else {
+            failCount++;
+            const test = tests.find(t => t.id === testId);
+            errors.push(`${test?.name || `Test ${testId}`}: ${data.message}`);
+          }
+        } catch (error) {
+          failCount++;
+          const test = tests.find(t => t.id === testId);
+          errors.push(`${test?.name || `Test ${testId}`}: ${error.message}`);
+        }
+
+        // Small delay to avoid overwhelming the server
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
+
+      // Show summary
+      let summaryMessage = '';
+      if (successCount > 0) {
+        summaryMessage += `✓ Successfully assigned ${successCount} test${successCount !== 1 ? 's' : ''}\n`;
+      }
+      if (alreadyAssignedCount > 0) {
+        summaryMessage += `ℹ ${alreadyAssignedCount} test${alreadyAssignedCount !== 1 ? 's were' : ' was'} already assigned\n`;
+      }
+      if (failCount > 0) {
+        summaryMessage += `✗ Failed to assign ${failCount} test${failCount !== 1 ? 's' : ''}\n`;
+        if (errors.length > 0) {
+          summaryMessage += `\nErrors:\n${errors.slice(0, 3).join('\n')}`;
+          if (errors.length > 3) {
+            summaryMessage += `\n... and ${errors.length - 3} more`;
+          }
+        }
+      }
+
+      alert(summaryMessage || 'Tests assigned successfully');
+      setSelectedTestsForInstitute([]);
+      handleViewAssignedTests(selectedInstituteForTests);
+      fetchAllInstitutes(); // Refresh institute list to update test counts
     } catch (error) {
       console.error('Error assigning test:', error);
-      alert('Failed to assign test');
+      alert('Failed to assign tests');
     } finally {
       setIsAssigningTestToInstitute(false);
     }
@@ -1697,8 +1742,8 @@ const handleDownloadShortlistedPDF = async () => {
   };
 
   const handleAssignTestInModal = async () => {
-    if (!selectedTestForStudentModal) {
-      alert('⚠️ Please select a test to assign');
+    if (selectedTestsForStudentModal.length === 0) {
+      alert('⚠️ Please select at least one test to assign');
       return;
     }
 
@@ -1707,45 +1752,70 @@ const handleDownloadShortlistedPDF = async () => {
       return;
     }
 
-    if (!confirm(`Assign test to ${selectedStudentsForDelete.length} student(s)?`)) {
+    if (!confirm(`Assign ${selectedTestsForStudentModal.length} test${selectedTestsForStudentModal.length !== 1 ? 's' : ''} to ${selectedStudentsForDelete.length} student${selectedStudentsForDelete.length !== 1 ? 's' : ''}?`)) {
       return;
     }
 
     try {
       setIsAssigningTestInModal(true);
       const token = localStorage.getItem('adminToken');
-      const response = await apiFetch('api/tests/assign', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          test_id: parseInt(selectedTestForStudentModal),
-          student_ids: selectedStudentsForDelete
-        })
-      });
+      
+      let totalSuccess = 0;
+      let totalAlreadyAssigned = 0;
+      let totalFailed = 0;
 
-      const data = await response.json();
+      // Loop through each selected test
+      for (const testId of selectedTestsForStudentModal) {
+        try {
+          const response = await apiFetch('api/tests/assign', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              test_id: parseInt(testId),
+              student_ids: selectedStudentsForDelete
+            })
+          });
 
-      if (response.ok && data.success) {
-        // Show message about assignments
-        alert(`✅ ${data.message}`);
-        setSelectedStudentsForDelete([]);
-        setSelectedTestForStudentModal('');
-        // Refresh the student list to update assigned test counts
-        handleManageStudents(selectedInstituteForStudents);
-      } else {
-        // Handle case where all students already have the test
-        if (data.already_assigned > 0 && data.newly_assigned === 0) {
-          alert(`⚠️ ${data.message}`);
-        } else {
-          alert(`❌ ${data.message || 'Failed to assign test'}`);
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            totalSuccess += data.newly_assigned || 0;
+            totalAlreadyAssigned += data.already_assigned || 0;
+          } else {
+            totalFailed += selectedStudentsForDelete.length;
+          }
+        } catch (error) {
+          console.error('Error assigning test:', error);
+          totalFailed += selectedStudentsForDelete.length;
         }
+
+        // Small delay to avoid overwhelming the server
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
+
+      // Show summary message
+      let summaryMessage = '';
+      if (totalSuccess > 0) {
+        summaryMessage += `✅ Successfully assigned ${totalSuccess} test assignment${totalSuccess !== 1 ? 's' : ''}\n`;
+      }
+      if (totalAlreadyAssigned > 0) {
+        summaryMessage += `ℹ️ ${totalAlreadyAssigned} test${totalAlreadyAssigned !== 1 ? 's were' : ' was'} already assigned\n`;
+      }
+      if (totalFailed > 0) {
+        summaryMessage += `❌ Failed to assign ${totalFailed} test assignment${totalFailed !== 1 ? 's' : ''}`;
+      }
+
+      alert(summaryMessage || '✅ Tests assigned successfully');
+      setSelectedStudentsForDelete([]);
+      setSelectedTestsForStudentModal([]);
+      // Refresh the student list to update assigned test counts
+      handleManageStudents(selectedInstituteForStudents);
     } catch (error) {
       console.error('Error assigning test:', error);
-      alert('❌ An error occurred while assigning the test');
+      alert('❌ An error occurred while assigning tests');
     } finally {
       setIsAssigningTestInModal(false);
     }
@@ -3011,29 +3081,76 @@ const handleDownloadShortlistedPDF = async () => {
                             </div>
                           </div>
 
-                          <div>
+                          <div className="relative">
                             <label className="block text-sm font-bold text-shnoor-navy mb-2">
                               Select Test to Assign
                             </label>
-                            <select
-                              value={selectedTestForMultipleInstitutes}
-                              onChange={(e) => setSelectedTestForMultipleInstitutes(e.target.value)}
-                              className="w-full px-4 py-3 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-shnoor-mist focus:border-shnoor-indigo bg-white text-shnoor-navy font-medium"
+                            
+                            {/* Custom Dropdown Button */}
+                            <button
+                              type="button"
+                              onClick={() => setIsTestDropdownOpen(!isTestDropdownOpen)}
+                              className="w-full px-4 py-3 border border-shnoor-light rounded-xl bg-white text-shnoor-navy font-medium transition-all flex items-center justify-between hover:border-shnoor-indigo focus:ring-4 focus:ring-shnoor-lavender focus:border-shnoor-indigo"
                             >
-                              <option value="">-- Select a test --</option>
-                              {tests.map((test) => (
-                                <option key={test.id} value={test.id}>
-                                  {test.name}
-                                </option>
-                              ))}
-                            </select>
+                              <span className={selectedTestsForMultipleInstitutes.length === 0 ? 'text-shnoor-indigoMedium' : 'text-shnoor-navy'}>
+                                {selectedTestsForMultipleInstitutes.length === 0 
+                                  ? '-- Select a test --' 
+                                  : `${selectedTestsForMultipleInstitutes.length} test${selectedTestsForMultipleInstitutes.length !== 1 ? 's' : ''} selected`
+                                }
+                              </span>
+                              <ChevronDown size={20} className={`transition-transform ${isTestDropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {/* Dropdown Menu with Checkboxes */}
+                            {isTestDropdownOpen && (
+                              <div className="absolute z-50 w-full mt-2 bg-white border border-shnoor-light rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                                {tests.filter(test => test.status === 'published').length === 0 ? (
+                                  <div className="p-4 text-center text-shnoor-indigoMedium text-sm">
+                                    No published tests available
+                                  </div>
+                                ) : (
+                                  <div className="py-2">
+                                    {tests.filter(test => test.status === 'published').map((test) => (
+                                      <label
+                                        key={test.id}
+                                        className="flex items-center space-x-3 px-4 py-3 hover:bg-shnoor-lavender cursor-pointer transition-colors"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedTestsForMultipleInstitutes.includes(test.id)}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              setSelectedTestsForMultipleInstitutes([...selectedTestsForMultipleInstitutes, test.id]);
+                                            } else {
+                                              setSelectedTestsForMultipleInstitutes(selectedTestsForMultipleInstitutes.filter(id => id !== test.id));
+                                            }
+                                          }}
+                                          className="w-4 h-4 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-indigo"
+                                        />
+                                        <span className="text-sm font-medium text-shnoor-navy flex-1">
+                                          {test.name}
+                                        </span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            
+                            {/* Selected tests count */}
+                            {selectedTestsForMultipleInstitutes.length > 0 && (
+                              <p className="text-xs text-shnoor-indigo mt-2 font-medium">
+                                {selectedTestsForMultipleInstitutes.length} test{selectedTestsForMultipleInstitutes.length !== 1 ? 's' : ''} selected
+                              </p>
+                            )}
                           </div>
 
                           <button
                             onClick={handleAssignTestToMultipleInstitutes}
-                            disabled={!selectedTestForMultipleInstitutes || isAssigningTestToMultipleInstitutes}
+                            disabled={selectedTestsForMultipleInstitutes.length === 0 || isAssigningTestToMultipleInstitutes}
                             className={`w-full px-6 py-4 rounded-xl font-bold transition-all flex items-center justify-center space-x-2 ${
-                              selectedTestForMultipleInstitutes && !isAssigningTestToMultipleInstitutes
+                              selectedTestsForMultipleInstitutes.length > 0 && !isAssigningTestToMultipleInstitutes
                                 ? 'bg-shnoor-indigo hover:bg-shnoor-navy text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
                                 : 'bg-shnoor-light text-shnoor-soft cursor-not-allowed'
                             }`}
@@ -3045,7 +3162,7 @@ const handleDownloadShortlistedPDF = async () => {
                             <span>
                               {isAssigningTestToMultipleInstitutes
                                 ? 'Assigning...'
-                                : `Assign to ${selectedInstitutes.length} Institute${selectedInstitutes.length !== 1 ? 's' : ''}`
+                                : `Assign ${selectedTestsForMultipleInstitutes.length} Test${selectedTestsForMultipleInstitutes.length !== 1 ? 's' : ''} to ${selectedInstitutes.length} Institute${selectedInstitutes.length !== 1 ? 's' : ''}`
                               }
                             </span>
                           </button>
@@ -3743,23 +3860,48 @@ const handleDownloadShortlistedPDF = async () => {
                   <label className="block text-sm font-bold text-shnoor-navy mb-3">
                     Assign New Test to Institute
                   </label>
-                  <div className="flex space-x-3">
-                    <select
-                      value={selectedTestForInstitute}
-                      onChange={(e) => setSelectedTestForInstitute(e.target.value)}
-                      className="flex-1 px-4 py-3 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-shnoor-lavender focus:border-shnoor-indigo bg-white text-shnoor-navy font-medium transition-all"
-                    >
-                      <option value="">-- Select a test --</option>
-                      {tests.filter(test => test.status === 'published').map((test) => (
-                        <option key={test.id} value={test.id}>
-                          {test.name} ({test.questions} questions)
-                        </option>
-                      ))}
-                    </select>
+                  <div className="space-y-3">
+                    {/* Checkbox list for test selection */}
+                    <div className="max-h-48 overflow-y-auto bg-white rounded-xl border border-shnoor-light p-3 space-y-2">
+                      {tests.filter(test => test.status === 'published').length === 0 ? (
+                        <p className="text-sm text-shnoor-indigoMedium flex items-center justify-center py-4">
+                          <AlertCircle size={16} className="mr-1" />
+                          No published tests available. Please publish a test first.
+                        </p>
+                      ) : (
+                        tests.filter(test => test.status === 'published').map((test) => (
+                          <label
+                            key={test.id}
+                            className="flex items-center space-x-3 p-2 hover:bg-shnoor-lavender rounded-lg cursor-pointer transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedTestsForInstitute.includes(test.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedTestsForInstitute([...selectedTestsForInstitute, test.id]);
+                                } else {
+                                  setSelectedTestsForInstitute(selectedTestsForInstitute.filter(id => id !== test.id));
+                                }
+                              }}
+                              className="w-4 h-4 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-lavender"
+                            />
+                            <span className="text-sm text-shnoor-navy font-medium flex-1">
+                              {test.name} <span className="text-shnoor-indigoMedium">({test.questions} questions)</span>
+                            </span>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                    {selectedTestsForInstitute.length > 0 && (
+                      <p className="text-xs text-shnoor-indigoMedium">
+                        {selectedTestsForInstitute.length} test{selectedTestsForInstitute.length !== 1 ? 's' : ''} selected
+                      </p>
+                    )}
                     <button
                       onClick={handleAssignTestToInstitute}
-                      disabled={!selectedTestForInstitute || isAssigningTestToInstitute}
-                      className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center space-x-2 ${selectedTestForInstitute && !isAssigningTestToInstitute
+                      disabled={selectedTestsForInstitute.length === 0 || isAssigningTestToInstitute}
+                      className={`w-full px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center space-x-2 ${selectedTestsForInstitute.length > 0 && !isAssigningTestToInstitute
                         ? 'bg-shnoor-indigo hover:bg-shnoor-navy text-white shadow-lg hover:-translate-y-0.5'
                         : 'bg-shnoor-light text-shnoor-soft cursor-not-allowed'
                         }`}
@@ -3767,15 +3909,16 @@ const handleDownloadShortlistedPDF = async () => {
                       {isAssigningTestToInstitute && (
                         <Loader2 className="animate-spin" size={16} />
                       )}
-                      <span>{isAssigningTestToInstitute ? 'Assigning...' : 'Assign Test'}</span>
+                      <span>
+                        {isAssigningTestToInstitute 
+                          ? 'Assigning...' 
+                          : selectedTestsForInstitute.length > 0 
+                            ? `Assign ${selectedTestsForInstitute.length} Test${selectedTestsForInstitute.length !== 1 ? 's' : ''}`
+                            : 'Select Tests to Assign'
+                        }
+                      </span>
                     </button>
                   </div>
-                  {tests.filter(test => test.status === 'published').length === 0 && (
-                    <p className="mt-2 text-sm text-shnoor-indigoMedium flex items-center">
-                      <AlertCircle size={16} className="mr-1" />
-                      No published tests available. Please publish a test first.
-                    </p>
-                  )}
                 </div>
 
                 {/* Assigned Tests List */}
@@ -3848,7 +3991,7 @@ const handleDownloadShortlistedPDF = async () => {
                   onClick={() => {
                     setShowStudentManagementModal(false);
                     setSelectedStudentsForDelete([]);
-                    setSelectedTestForStudentModal('');
+                    setSelectedTestsForStudentModal([]);
                   }}
                   className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
                 >
@@ -3959,23 +4102,48 @@ const handleDownloadShortlistedPDF = async () => {
                         <h5 className="text-sm font-bold text-shnoor-navy mb-3">
                           Assign Test to {selectedStudentsForDelete.length} Selected Student{selectedStudentsForDelete.length !== 1 ? 's' : ''}
                         </h5>
-                        <div className="flex space-x-3">
-                          <select
-                            value={selectedTestForStudentModal}
-                            onChange={(e) => setSelectedTestForStudentModal(e.target.value)}
-                            className="flex-1 px-4 py-3 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-shnoor-lavender focus:border-shnoor-indigo bg-white text-shnoor-navy font-medium transition-all"
-                          >
-                            <option value="">-- Select a test --</option>
-                            {tests.filter(test => test.status === 'published').map((test) => (
-                              <option key={test.id} value={test.id}>
-                                {test.name} ({test.questions} questions • {test.duration} mins)
-                              </option>
-                            ))}
-                          </select>
+                        <div className="space-y-3">
+                          {/* Checkbox list for test selection */}
+                          <div className="max-h-48 overflow-y-auto bg-white rounded-xl border border-shnoor-light p-3 space-y-2">
+                            {tests.filter(test => test.status === 'published').length === 0 ? (
+                              <p className="text-sm text-shnoor-indigoMedium flex items-center justify-center py-4">
+                                <AlertCircle size={16} className="mr-1" />
+                                No published tests available. Please publish a test first.
+                              </p>
+                            ) : (
+                              tests.filter(test => test.status === 'published').map((test) => (
+                                <label
+                                  key={test.id}
+                                  className="flex items-center space-x-3 p-2 hover:bg-shnoor-lavender rounded-lg cursor-pointer transition-colors"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedTestsForStudentModal.includes(test.id)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedTestsForStudentModal([...selectedTestsForStudentModal, test.id]);
+                                      } else {
+                                        setSelectedTestsForStudentModal(selectedTestsForStudentModal.filter(id => id !== test.id));
+                                      }
+                                    }}
+                                    className="w-4 h-4 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-lavender"
+                                  />
+                                  <span className="text-sm text-shnoor-navy font-medium flex-1">
+                                    {test.name} <span className="text-shnoor-indigoMedium">({test.questions} questions • {test.duration} mins)</span>
+                                  </span>
+                                </label>
+                              ))
+                            )}
+                          </div>
+                          {selectedTestsForStudentModal.length > 0 && (
+                            <p className="text-xs text-shnoor-indigoMedium">
+                              {selectedTestsForStudentModal.length} test{selectedTestsForStudentModal.length !== 1 ? 's' : ''} selected
+                            </p>
+                          )}
                           <button
                             onClick={handleAssignTestInModal}
-                            disabled={!selectedTestForStudentModal || isAssigningTestInModal}
-                            className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center space-x-2 ${selectedTestForStudentModal && !isAssigningTestInModal
+                            disabled={selectedTestsForStudentModal.length === 0 || isAssigningTestInModal}
+                            className={`w-full px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center space-x-2 ${selectedTestsForStudentModal.length > 0 && !isAssigningTestInModal
                               ? 'bg-shnoor-indigo hover:bg-shnoor-navy text-white shadow-lg hover:-translate-y-0.5'
                               : 'bg-shnoor-light text-shnoor-soft cursor-not-allowed'
                               }`}
@@ -3984,7 +4152,14 @@ const handleDownloadShortlistedPDF = async () => {
                               <Loader2 className="animate-spin" size={16} />
                             )}
                             <UserCheck size={18} />
-                            <span>{isAssigningTestInModal ? 'Assigning...' : 'Assign'}</span>
+                            <span>
+                              {isAssigningTestInModal 
+                                ? 'Assigning...' 
+                                : selectedTestsForStudentModal.length > 0 
+                                  ? `Assign ${selectedTestsForStudentModal.length} Test${selectedTestsForStudentModal.length !== 1 ? 's' : ''}`
+                                  : 'Select Tests to Assign'
+                              }
+                            </span>
                           </button>
                         </div>
                       </div>
@@ -4065,7 +4240,7 @@ const handleDownloadShortlistedPDF = async () => {
                   onClick={() => {
                     setShowStudentManagementModal(false);
                     setSelectedStudentsForDelete([]);
-                    setSelectedTestForStudentModal('');
+                    setSelectedTestsForStudentModal([]);
                   }}
                   className="px-6 py-3 bg-shnoor-light hover:bg-shnoor-mist text-shnoor-navy rounded-xl font-medium transition-colors"
                 >
