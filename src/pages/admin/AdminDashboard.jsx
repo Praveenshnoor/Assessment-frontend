@@ -3,8 +3,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, FileSpreadsheet, LogOut, Download, ArrowLeft,
-  Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video, Loader2, X, Building2, MoreVertical, Copy, AlertCircle, Pencil, MessageSquare, Star, TrendingUp, BarChart3, Calendar
+  Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video, Loader2, X, Building2, MoreVertical, Copy, AlertCircle, Pencil, MessageSquare, Star, TrendingUp, BarChart3, Calendar, Filter, CheckSquare
 } from 'lucide-react';
+
+import axios from 'axios';
 import CreateTestSection from '../../components/admin/CreateTestSection';
 import ExamSearchFilter from '../../components/ExamSearchFilter';
 import ViewTestDetailsModal from '../../components/admin/ViewTestDetailsModal';
@@ -33,6 +35,10 @@ const AdminDashboard = () => {
   const [selectedStudentsForDelete, setSelectedStudentsForDelete] = useState([]);
   const [studentsData, setStudentsData] = useState({});
   const [loading, setLoading] = useState(false);
+
+  const [selectedCandidates, setSelectedCandidates] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'pass', 'fail'
+  const [showQuickSelectMenu, setShowQuickSelectMenu] = useState(false);
 
   // Test Assignment States
   const [institutes, setInstitutes] = useState([]);
@@ -357,9 +363,10 @@ const AdminDashboard = () => {
 
             groupedResults[testId].push({
               id: result.roll_number,
-              student_id: result.student_id, // Add actual database ID
+              student_id: result.student_id, 
               name: result.student_name,
               email: result.student_email,
+              institute_name: result.institute_name || 'Not Specified',
               score: result.marks_obtained,
               total: result.total_marks,
               passingPercentage: result.passing_percentage || 50,
@@ -550,7 +557,17 @@ const AdminDashboard = () => {
 
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await apiFetch(`api/export/results?testId=${selectedExamId}`, {
+      
+      // Build URL with optional studentIds filter
+      let url = `api/export/results?testId=${selectedExamId}`;
+      
+      if (selectedCandidates.length > 0) {
+        // Export only selected students
+        console.log('Exporting selected students:', selectedCandidates);
+        url += `&studentIds=${selectedCandidates.join(',')}`;
+      }
+      
+      const response = await apiFetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -574,20 +591,157 @@ const AdminDashboard = () => {
 
       // Download the file
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = url;
+      link.href = downloadUrl;
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(downloadUrl);
+      
+      // Clear selections after successful download if students were selected
+      if (selectedCandidates.length > 0) {
+        alert('Excel file downloaded successfully!');
+        setSelectedCandidates([]);
+        }
     } catch (error) {
-      console.error('Export error:', error);
-      alert('Failed to export results. Please try again.');
-    }
+        console.error('Export error:', error);
+        alert('Failed to export results. Please try again.');
+      }
   };
 
+const handleDownloadShortlistedPDF = async () => {
+    // Guard clause: check if any candidates are selected
+    if (selectedCandidates.length === 0) {
+      alert('Please select at least one candidate');
+      return;
+    }
+
+    try {
+      console.log('Selected Candidates IDs:', selectedCandidates);
+      console.log('All Students:', selectedExamStudents.map(s => ({ 
+        id: s.id, 
+        student_id: s.student_id, 
+        name: s.name 
+      })));
+
+      // Filter selected students from the exam results
+      const selectedStudents = selectedExamStudents.filter(student => {
+        const studentIdentifier = student.student_id || student.id;
+        const isSelected = selectedCandidates.includes(studentIdentifier);
+        console.log(`Checking student ${student.name}: identifier=${studentIdentifier}, isSelected=${isSelected}`);
+        return isSelected;
+      });
+
+      console.log('Filtered Selected Students:', selectedStudents.length);
+
+      if (selectedStudents.length === 0) {
+        alert('Error: Could not find selected students. Please try again.');
+        return;
+      }
+
+      // Extract institute name from first selected student (or default)
+      const collegeName = selectedStudents[0]?.institute_name || 'Not Specified';
+      const examName = selectedExamDetails?.name || 'Exam';
+
+      // Prepare data for PDF generation
+      const pdfData = selectedStudents.map(student => {
+        const percentage = (student.score / student.total * 100);
+        const isPassed = percentage >= (student.passingPercentage || 50);
+        const isShortlisted = isPassed && !student.flagged;
+        return {
+          student_id: student.student_id || student.id,
+          roll_number: student.id,
+          full_name: student.name,
+          student_name: student.name,
+          name: student.name,
+          email: student.email,
+          date: student.date,
+          marks_obtained: student.score,
+          total_marks: student.total,
+          percentage: percentage.toFixed(2),
+          status: isPassed ? 'Pass' : 'Fail',
+          no_face: student.noFace || 0,
+          multiple_faces: student.multipleFaces || 0,
+          phone_detected: student.phoneDetected || 0,
+          loud_noise: student.loudNoise || 0,
+          voice_detected: student.voiceDetected || 0,
+          total_violations: student.totalViolations || 0,
+          flagged: student.flagged ? 'Yes' : 'No',
+          shortlisted: isShortlisted ? 'Yes' : 'No'
+        };
+      });
+
+      console.log('PDF Data to send:', pdfData);
+
+      const token = localStorage.getItem('adminToken');
+
+      // Make POST request with responseType: 'blob'
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/export/shortlisted-pdf`,
+        {
+          examName,
+          collegeName,
+          students: pdfData
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          responseType: 'blob'
+        }
+      );
+
+      console.log('PDF Response received:', response.status, response.data);
+
+      // Handle the Blob download - create a proper download link
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Shortlisted_${examName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+
+      // Append to body, click, and clean up
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up after a short delay to ensure download starts
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      alert('PDF downloaded successfully!');
+
+      // Clear selections after successful download
+      setSelectedCandidates([]);
+    } catch (error) {
+      console.error('PDF download error:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+
+      // Try to get a more detailed error message
+      let errorMessage = 'Failed to generate PDF. Please try again.';
+      if (error.response?.data) {
+        try {
+          // If the error response is JSON
+          if (error.response.data instanceof Blob) {
+            const text = await error.response.data.text();
+            const jsonError = JSON.parse(text);
+            errorMessage = jsonError.message || errorMessage;
+          } else if (typeof error.response.data === 'object') {
+            errorMessage = error.response.data.message || errorMessage;
+          }
+        } catch (e) {
+          console.error('Error parsing error response:', e);
+        }
+      }
+
+      alert(errorMessage);
+    }
+  };
 
 
   // Fetch Institutes
@@ -1785,7 +1939,106 @@ const AdminDashboard = () => {
                     <span>Created on {selectedExamDetails?.date}</span>
                   </div>
                 </div>
+
                 <div className="flex space-x-3">
+                  {/* Quick Select Dropdown */}
+                  {selectedExamStudents.length > 0 && (
+                    <div className="relative">
+                      <button
+                        onClick={() => {
+                          console.log('Quick Select button clicked, current state:', showQuickSelectMenu);
+                          setShowQuickSelectMenu(!showQuickSelectMenu);
+                        }}
+                        className="flex items-center space-x-2 px-5 py-3 rounded-xl font-medium transition-all bg-shnoor-lavender text-shnoor-indigo hover:bg-shnoor-light shadow-[0_8px_30px_rgba(14,14,39,0.06)] transform hover:-translate-y-0.5"
+                      >
+                        <CheckSquare size={20} />
+                        <span>Quick Select</span>
+                        <ChevronDown size={16} className={`transition-transform ${showQuickSelectMenu ? 'rotate-180' : ''}`} />
+                      </button>
+                      {showQuickSelectMenu && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-[9999]" 
+                            onClick={() => setShowQuickSelectMenu(false)}
+                          />
+                          <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-[0_20px_60px_rgba(14,14,39,0.15)] border border-shnoor-light z-[10000] overflow-hidden">
+                            <div className="py-2">
+                              <button
+                                onClick={() => {
+                                  console.log('Select All Visible clicked');
+                                  const filteredStudents = selectedExamStudents.filter(s => {
+                                    if (statusFilter === 'all') return true;
+                                    const percentage = (Number(s.score) / Number(s.total) * 100);
+                                    const passingPercentage = s.passingPercentage || 50;
+                                    const isPassed = percentage >= passingPercentage;
+                                    if (statusFilter === 'pass') return isPassed;
+                                    if (statusFilter === 'fail') return !isPassed;
+                                    return true;
+                                  });
+                                  console.log('Filtered students count:', filteredStudents.length);
+                                  const ids = filteredStudents.map(s => s.student_id || s.id);
+                                  console.log('Setting selected candidates:', ids);
+                                  setSelectedCandidates(ids);
+                                  setShowQuickSelectMenu(false);
+                                }}
+                                className="w-full px-4 py-3 text-left hover:bg-shnoor-lavender transition-colors flex items-center space-x-3 text-sm"
+                              >
+                                <CheckCircle size={16} className="text-shnoor-indigo" />
+                                <span className="font-medium text-shnoor-navy">Select All Visible</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  console.log('Select Shortlisted Students clicked');
+                                  const shortlistedStudents = selectedExamStudents.filter(s => {
+                                    const percentage = (Number(s.score) / Number(s.total) * 100);
+                                    const passingPercentage = s.passingPercentage || 50;
+                                    return percentage >= passingPercentage && !s.flagged;
+                                  }).map(s => s.student_id || s.id);
+                                  console.log('Shortlisted students:', shortlistedStudents);
+                                  setSelectedCandidates(shortlistedStudents);
+                                  setShowQuickSelectMenu(false);
+                                }}
+                                className="w-full px-4 py-3 text-left hover:bg-shnoor-successLight transition-colors flex items-center space-x-3 text-sm"
+                              >
+                                <CheckCircle size={16} className="text-shnoor-success" />
+                                <span className="font-medium text-shnoor-navy">Select Shortlisted Students</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  console.log('Select All Failed clicked');
+                                  const failedStudents = selectedExamStudents.filter(s => {
+                                    const percentage = (Number(s.score) / Number(s.total) * 100);
+                                    const passingPercentage = s.passingPercentage || 50;
+                                    return percentage < passingPercentage;
+                                  }).map(s => s.student_id || s.id);
+                                  console.log('Failed students:', failedStudents);
+                                  setSelectedCandidates(failedStudents);
+                                  setShowQuickSelectMenu(false);
+                                }}
+                                className="w-full px-4 py-3 text-left hover:bg-shnoor-dangerLight transition-colors flex items-center space-x-3 text-sm"
+                              >
+                                <XCircle size={16} className="text-shnoor-danger" />
+                                <span className="font-medium text-shnoor-navy">Select All Failed</span>
+                              </button>
+                              <div className="border-t border-shnoor-light my-1"></div>
+                              <button
+                                onClick={() => {
+                                  console.log('Clear All clicked');
+                                  setSelectedCandidates([]);
+                                  setShowQuickSelectMenu(false);
+                                }}
+                                className="w-full px-4 py-3 text-left hover:bg-shnoor-lavender transition-colors flex items-center space-x-3 text-sm"
+                              >
+                                <X size={16} className="text-shnoor-indigoMedium" />
+                                <span className="font-medium text-shnoor-navy">Clear All</span>
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
                   <button
                     onClick={exportToExcel}
                     disabled={selectedExamStudents.length === 0}
@@ -1793,10 +2046,22 @@ const AdminDashboard = () => {
                       ? 'bg-shnoor-light text-shnoor-soft cursor-not-allowed'
                       : 'bg-shnoor-indigo hover:bg-shnoor-navy text-white hover:shadow-[0_8px_30px_rgba(14,14,39,0.06)] transform hover:-translate-y-0.5'
                       }`}
-                    title={selectedExamStudents.length === 0 ? 'No results to export' : 'Export to Excel'}
+                    title={selectedExamStudents.length === 0 ? 'No results to export' : selectedCandidates.length > 0 ? `Export Excel (${selectedCandidates.length} selected)` : 'Export All to Excel'}
                   >
-                    <FileSpreadsheet size={20} />
-                    <span>Export to Excel</span>
+                  <FileSpreadsheet size={20} />
+                  <span>Export Excel {selectedCandidates.length > 0 && `(${selectedCandidates.length})`}</span>
+                  </button>
+                  <button
+                    onClick={handleDownloadShortlistedPDF}
+                    disabled={selectedCandidates.length === 0}
+                    className={`flex items-center space-x-2 px-5 py-3 rounded-xl font-medium transition-all shadow-[0_8px_30px_rgba(14,14,39,0.06)] ${selectedCandidates.length === 0
+                      ? 'bg-shnoor-light text-shnoor-soft cursor-not-allowed opacity-50'
+                      : 'bg-shnoor-indigo hover:bg-shnoor-navy text-white hover:shadow-[0_8px_30px_rgba(14,14,39,0.06)] transform hover:-translate-y-0.5'
+                      }`}
+                    title={selectedCandidates.length === 0 ? 'Select candidates to download PDF' : `Download PDF (${selectedCandidates.length} selected)`}
+                  >
+                    <Download size={20} />
+                    <span>Export PDF {selectedCandidates.length > 0 && `(${selectedCandidates.length})`}</span>
                   </button>
                 </div>
               </div>
@@ -1836,8 +2101,22 @@ const AdminDashboard = () => {
                 const passedCount = selectedExamStudents.filter(s =>
                   (Number(s.score) / Number(s.total) * 100) >= (s.passingPercentage || 50)
                 ).length;
+                const failedCount = selectedExamStudents.length - passedCount;
                 const passRate = selectedExamStudents.length > 0 ? (passedCount / selectedExamStudents.length) * 100 : 0;
                 const flaggedCount = selectedExamStudents.filter(s => s.flagged === true).length;
+
+
+                 // Filter students based on statusFilter
+                const filteredStudents = selectedExamStudents.filter(s => {
+                  if (statusFilter === 'all') return true;
+                  const percentage = (Number(s.score) / Number(s.total) * 100);
+                  const passingPercentage = s.passingPercentage || 50;
+                  const isPassed = percentage >= passingPercentage;
+                  if (statusFilter === 'pass') return isPassed;
+                  if (statusFilter === 'fail') return !isPassed;
+                  return true;
+                });
+
 
                 return (
                   <div className="bg-white border border-shnoor-light rounded-lg p-4 mb-6 shadow-[0_8px_30px_rgba(14,14,39,0.06)]">
@@ -1886,10 +2165,146 @@ const AdminDashboard = () => {
 
               {/* Results Tab Content */}
               {detailViewTab === 'results' && (
-                <div className="overflow-x-auto rounded-xl border border-shnoor-light shadow-[0_8px_30px_rgba(14,14,39,0.06)]">
-                  <table className="w-full">
+                <>
+                  {/* Status Filter Tabs - Matching Results/Feedback Style */}
+                  {selectedExamStudents.length > 0 && (() => {
+                    const passedCount = selectedExamStudents.filter(s =>
+                      (Number(s.score) / Number(s.total) * 100) >= (s.passingPercentage || 50)
+                    ).length;
+                    const failedCount = selectedExamStudents.length - passedCount;
+                    const filteredCount = selectedExamStudents.filter(s => {
+                      if (statusFilter === 'all') return true;
+                      const percentage = (Number(s.score) / Number(s.total) * 100);
+                      const passingPercentage = s.passingPercentage || 50;
+                      const isPassed = percentage >= passingPercentage;
+                      return statusFilter === 'pass' ? isPassed : !isPassed;
+                    }).length;
+
+                    return (
+                      <div className="flex items-center justify-between mb-6">
+                        {/* Filter Tabs matching existing tab style */}
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => setStatusFilter('all')}
+                            className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center space-x-2 ${
+                              statusFilter === 'all'
+                                ? 'bg-shnoor-indigo text-white shadow-[0_8px_30px_rgba(14,14,39,0.06)]'
+                                : 'bg-shnoor-lavender opacity-80 text-shnoor-indigo hover:bg-shnoor-light'
+                            }`}
+                          >
+                            <Filter size={18} />
+                            <span>All</span>
+                            <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                              statusFilter === 'all' 
+                                ? 'bg-white bg-opacity-20' 
+                                : 'bg-shnoor-indigo bg-opacity-20'
+                            }`}>
+                              {selectedExamStudents.length}
+                            </span>
+                          </button>
+                          <button
+                            onClick={() => setStatusFilter('pass')}
+                            className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center space-x-2 ${
+                              statusFilter === 'pass'
+                                ? 'bg-shnoor-success text-white shadow-[0_8px_30px_rgba(14,14,39,0.06)]'
+                                : 'bg-shnoor-successLight opacity-80 text-shnoor-success hover:bg-green-100'
+                            }`}
+                          >
+                            <CheckCircle size={18} />
+                            <span>Passed</span>
+                            <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                              statusFilter === 'pass' 
+                                ? 'bg-white bg-opacity-20' 
+                                : 'bg-shnoor-success bg-opacity-20'
+                            }`}>
+                              {passedCount}
+                            </span>
+                          </button>
+                          <button
+                            onClick={() => setStatusFilter('fail')}
+                            className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center space-x-2 ${
+                              statusFilter === 'fail'
+                                ? 'bg-shnoor-danger text-white shadow-[0_8px_30px_rgba(14,14,39,0.06)]'
+                                : 'bg-shnoor-dangerLight opacity-80 text-shnoor-danger hover:bg-red-100'
+                            }`}
+                          >
+                            <XCircle size={18} />
+                            <span>Failed</span>
+                            <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                              statusFilter === 'fail' 
+                                ? 'bg-white bg-opacity-20' 
+                                : 'bg-shnoor-danger bg-opacity-20'
+                            }`}>
+                              {failedCount}
+                            </span>
+                          </button>
+                        </div>
+
+                        {/* Selection Indicator - Subtle and consistent */}
+                        {selectedCandidates.length > 0 && (
+                          <div className="flex items-center space-x-2">
+                            <div className="bg-shnoor-lavender text-shnoor-indigo px-4 py-2 rounded-lg font-medium flex items-center space-x-2">
+                              <CheckSquare size={16} />
+                              <span className="text-sm">
+                                <span className="font-bold">{selectedCandidates.length}</span>
+                                <span className="text-shnoor-indigoMedium"> of {filteredCount} selected</span>
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => setSelectedCandidates([])}
+                              className="p-2 rounded-lg text-shnoor-indigoMedium hover:bg-shnoor-dangerLight hover:text-shnoor-danger transition-all"
+                              title="Clear selection"
+                            >
+                              <X size={18} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  <div className="overflow-x-auto rounded-xl border border-shnoor-light shadow-[0_8px_30px_rgba(14,14,39,0.06)]">
+                    <table className="w-full">
                     <thead className="bg-shnoor-indigo text-white">
                       <tr>
+                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">
+                          <input
+                            type="checkbox"
+                            checked={(() => {
+                              const filteredStudents = selectedExamStudents.filter(s => {
+                                if (statusFilter === 'all') return true;
+                                const percentage = (Number(s.score) / Number(s.total) * 100);
+                                const passingPercentage = s.passingPercentage || 50;
+                                const isPassed = percentage >= passingPercentage;
+                                if (statusFilter === 'pass') return isPassed;
+                                if (statusFilter === 'fail') return !isPassed;
+                                return true;
+                              });
+                              return filteredStudents.length > 0 && filteredStudents.every(s => selectedCandidates.includes(s.student_id || s.id));
+                            })()}
+                            onChange={(e) => {
+                              const filteredStudents = selectedExamStudents.filter(s => {
+                                if (statusFilter === 'all') return true;
+                                const percentage = (Number(s.score) / Number(s.total) * 100);
+                                const passingPercentage = s.passingPercentage || 50;
+                                const isPassed = percentage >= passingPercentage;
+                                if (statusFilter === 'pass') return isPassed;
+                                if (statusFilter === 'fail') return !isPassed;
+                                return true;
+                              });
+                              if (e.target.checked) {
+                                const filteredIds = filteredStudents.map(s => s.student_id || s.id);
+                                setSelectedCandidates(prev => [...new Set([...prev, ...filteredIds])]);
+                              } else {
+                                const filteredIds = filteredStudents.map(s => s.student_id || s.id);
+                                setSelectedCandidates(prev => prev.filter(id => !filteredIds.includes(id)));
+                              }
+                            }}
+                            className="w-4 h-4 cursor-pointer"
+                            title="Select All Visible"
+                          />
+                        </th>
+
                         <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Student ID</th>
                         <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Student Name</th>
                         <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Email</th>
@@ -1903,17 +2318,55 @@ const AdminDashboard = () => {
                         <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Voice</th>
                         <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Total</th>
                         <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Flagged</th>
-                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Actions</th>
+                        {/* <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Actions</th> */}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-[#E5E7EB]">
-                      {selectedExamStudents.length > 0 ? (
+                      {/* {selectedExamStudents.length > 0 ? (
                         selectedExamStudents.map((student, idx) => {
                           const percentage = (student.score / student.total * 100);
-                          const passingPercentage = student.passingPercentage || 50;
+                          const passingPercentage = student.passingPercentage || 50; */}
+                          {/* const isPassed = percentage >= passingPercentage; */}
+                      {(() => {
+                        // Filter students based on statusFilter
+                        const filteredStudents = selectedExamStudents.filter(s => {
+                          if (statusFilter === 'all') return true;
+                          const percentage = (Number(s.score) / Number(s.total) * 100);
+                          const passingPercentage = s.passingPercentage || 50;
                           const isPassed = percentage >= passingPercentage;
+                          if (statusFilter === 'pass') return isPassed;
+                          if (statusFilter === 'fail') return !isPassed;
+                          return true;
+                        });
+
+                        return filteredStudents.length > 0 ? (
+                          filteredStudents.map((student, idx) => {
+                            const percentage = (student.score / student.total * 100);
+                            const passingPercentage = student.passingPercentage || 50;
+                            const isPassed = percentage >= passingPercentage;
+                            const studentIdentifier = student.student_id || student.id;
                           return (
                             <tr key={idx} className="hover:bg-shnoor-lavender">
+                              <td className="px-4 py-4 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedCandidates.includes(studentIdentifier)}
+                                  onChange={(e) => {
+                                    console.log('Checkbox clicked:', {
+                                      checked: e.target.checked,
+                                      studentIdentifier,
+                                      studentName: student.name,
+                                      currentSelections: selectedCandidates
+                                    });
+                                    if (e.target.checked) {
+                                      setSelectedCandidates(prev => [...prev, studentIdentifier]);
+                                    } else {
+                                      setSelectedCandidates(prev => prev.filter(id => id !== studentIdentifier));
+                                    }
+                                  }}
+                                  className="w-4 h-4 cursor-pointer"
+                                />
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-shnoor-navy">{student.id}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-shnoor-navy">{student.name}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-shnoor-indigoMedium">{student.email || 'N/A'}</td>
@@ -1933,6 +2386,15 @@ const AdminDashboard = () => {
                                   : 'bg-shnoor-dangerLight text-shnoor-danger'
                                   }`}>
                                   {isPassed ? 'Pass' : 'Fail'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                  isPassed && !student.flagged
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-gray-100 text-gray-600'
+                                  }`}>
+                                  {isPassed && !student.flagged ? 'Shortlisted' : 'Not Shortlisted'}
                                 </span>
                               </td>
                               <td className="px-4 py-4 text-center text-sm text-shnoor-indigo">{student.noFace || 0}</td>
@@ -1971,22 +2433,27 @@ const AdminDashboard = () => {
                                   title="Schedule Interview"
                                 >
                                   <Video size={14} className="mr-1" />
-                                  Interview
+                                    Interview
                                 </button>
                               </td>
                             </tr>
                           );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan="14" className="px-6 py-12 text-center text-shnoor-indigoMedium">
-                            No students have attempted this exam yet.
-                          </td>
-                        </tr>
-                      )}
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan="15" className="px-6 py-12 text-center text-shnoor-indigoMedium">
+                              {statusFilter !== 'all' 
+                                ? `No ${statusFilter === 'pass' ? 'passed' : 'failed'} students found.`
+                                : 'No students have attempted this exam yet.'
+                              }
+                            </td>
+                          </tr>
+                        );
+                      })()}
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
 
               {/* Feedback Tab Content */}
