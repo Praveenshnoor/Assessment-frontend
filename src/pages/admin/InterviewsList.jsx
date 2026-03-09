@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Video, Calendar, Clock, Users } from 'lucide-react';
+import { Video, Calendar, Clock, Users, Trash2 } from 'lucide-react';
 import { apiFetch } from '../../config/api';
 
 const InterviewsList = () => {
@@ -42,6 +42,33 @@ const InterviewsList = () => {
 
   const joinInterview = (interviewId) => {
     navigate(`/admin/interview-room/${interviewId}`);
+  };
+
+  const deleteInterview = async (interviewId, studentName) => {
+    if (!confirm(`Are you sure you want to delete the interview with ${studentName}?`)) {
+      return;
+    }
+
+    try {
+      const response = await apiFetch(`api/interviews/${interviewId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Interview deleted successfully');
+        fetchInterviews(); // Refresh the list
+      } else {
+        alert(data.message || 'Failed to delete interview');
+      }
+    } catch (error) {
+      console.error('Delete interview error:', error);
+      alert('Failed to delete interview');
+    }
   };
 
   const formatTime = (datetime) => {
@@ -154,15 +181,25 @@ const InterviewsList = () => {
                   </div>
                 </div>
 
-                {(interview.status === 'scheduled' || interview.status === 'in_progress') && (
+                <div className="flex items-center space-x-2">
+                  {(interview.status === 'scheduled' || interview.status === 'in_progress') && (
+                    <button
+                      onClick={() => joinInterview(interview.id)}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      <Video size={18} />
+                      <span>{interview.status === 'in_progress' ? 'Resume Call' : 'Call'}</span>
+                    </button>
+                  )}
+                  
                   <button
-                    onClick={() => joinInterview(interview.id)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    onClick={() => deleteInterview(interview.id, interview.student_name)}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Delete interview"
                   >
-                    <Video size={18} />
-                    <span>{interview.status === 'in_progress' ? 'Resume Call' : 'Call'}</span>
+                    <Trash2 size={18} />
                   </button>
-                )}
+                </div>
               </div>
             </div>
           ))}

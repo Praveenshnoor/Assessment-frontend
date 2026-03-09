@@ -10,7 +10,7 @@ const InterviewSchedule = ({ student, testId, onClose, onScheduled }) => {
   const [loading, setLoading] = useState(false);
 
   // Convert IST datetime-local to UTC ISO string (same as test scheduling)
-  const convertISTtoUTC = (dateTimeString) => {
+  const convertISTToUTC = (dateTimeString) => {
     if (!dateTimeString) return null;
     // Parse the datetime-local value as IST and convert to UTC
     const [datePart, timePart] = dateTimeString.split('T');
@@ -34,8 +34,8 @@ const InterviewSchedule = ({ student, testId, onClose, onScheduled }) => {
     console.log('Form Data (IST):', formData);
 
     try {
-      // Convert IST to UTC before sending to backend
-      const scheduledTimeUTC = convertISTtoUTC(formData.scheduled_time);
+      // Convert IST to UTC before sending to backend (same as test scheduling)
+      const scheduledTimeUTC = convertISTToUTC(formData.scheduled_time);
       
       console.log('Scheduled Time (IST input):', formData.scheduled_time);
       console.log('Scheduled Time (UTC ISO):', scheduledTimeUTC);
