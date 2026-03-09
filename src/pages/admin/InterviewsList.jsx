@@ -71,10 +71,13 @@ const InterviewsList = () => {
     }
   };
 
-  const formatTime = (datetime) => {
-    // Format time in IST timezone
-    return new Date(datetime).toLocaleTimeString('en-IN', {
+  const formatDateTime = (datetime) => {
+    // Format date and time in IST timezone (same as test scheduling)
+    return new Date(datetime).toLocaleString('en-IN', {
       timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
@@ -175,7 +178,7 @@ const InterviewsList = () => {
                     </p>
                     <p className="flex items-center">
                       <Clock className="w-4 h-4 mr-2" />
-                      {formatTime(interview.scheduled_time)} ({interview.duration} min)
+                      {formatDateTime(interview.scheduled_time)} ({interview.duration} min)
                     </p>
                     <p className="text-gray-500">{interview.student_email}</p>
                   </div>
