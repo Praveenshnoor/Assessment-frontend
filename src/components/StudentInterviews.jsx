@@ -120,16 +120,22 @@ const StudentInterviews = () => {
   };
 
   const formatDateTime = (datetime) => {
+    // Convert UTC datetime to IST for display
     const date = new Date(datetime);
+    
+    // Format in IST timezone
     return {
-      date: date.toLocaleDateString('en-US', { 
+      date: date.toLocaleDateString('en-IN', { 
+        timeZone: 'Asia/Kolkata',
         month: 'short', 
         day: 'numeric', 
         year: 'numeric' 
       }),
-      time: date.toLocaleTimeString('en-US', {
+      time: date.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        hour12: true
       })
     };
   };

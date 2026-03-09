@@ -45,9 +45,12 @@ const InterviewsList = () => {
   };
 
   const formatTime = (datetime) => {
-    return new Date(datetime).toLocaleTimeString('en-US', {
+    // Format time in IST timezone
+    return new Date(datetime).toLocaleTimeString('en-IN', {
+      timeZone: 'Asia/Kolkata',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: true
     });
   };
 
