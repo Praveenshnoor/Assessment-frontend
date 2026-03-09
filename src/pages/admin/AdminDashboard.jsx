@@ -11,6 +11,8 @@ import ViewTestDetailsModal from '../../components/admin/ViewTestDetailsModal';
 import EditTestDetailsModal from '../../components/admin/EditTestDetailsModal';
 import BulkStudentUpload from '../../components/admin/BulkStudentUpload';
 import InstituteRegistrationControl from '../../components/admin/InstituteRegistrationControl';
+import InterviewsList from './InterviewsList';
+import InterviewSchedule from './InterviewSchedule';
 import AdminReports from './AdminReports';
 import { apiFetch } from '../../config/api';
 import AdminHeader from '../../components/AdminHeader';
@@ -134,6 +136,10 @@ const AdminDashboard = () => {
   const [showTestHistoryModal, setShowTestHistoryModal] = useState(false);
   const [testHistory, setTestHistory] = useState(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // Interview Schedule Modal States
+  const [showInterviewScheduleModal, setShowInterviewScheduleModal] = useState(false);
+  const [selectedStudentForInterview, setSelectedStudentForInterview] = useState(null);
 
   // Derived state: Get students for the selected exam
   const selectedExamStudents = selectedExamId ? (studentsData[selectedExamId] || []) : [];
@@ -351,6 +357,7 @@ const AdminDashboard = () => {
 
             groupedResults[testId].push({
               id: result.roll_number,
+              student_id: result.student_id, // Add actual database ID
               name: result.student_name,
               email: result.student_email,
               score: result.marks_obtained,
@@ -1716,6 +1723,7 @@ const AdminDashboard = () => {
                 { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
                 { id: 'bulk-upload', label: 'Bulk Upload', icon: Users },
                 { id: 'violations', label: 'Violations', icon: AlertCircle },
+                { id: 'interviews', label: 'Interviews', icon: Video },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -1895,6 +1903,7 @@ const AdminDashboard = () => {
                         <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Voice</th>
                         <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Total</th>
                         <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Flagged</th>
+                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-[#E5E7EB]">
@@ -1940,12 +1949,37 @@ const AdminDashboard = () => {
                                   {student.flagged ? 'Yes' : 'No'}
                                 </span>
                               </td>
+                              <td className="px-4 py-4 text-center">
+                                <button
+                                  onClick={() => {
+                                    console.log('=== INTERVIEW BUTTON CLICKED ===');
+                                    console.log('Student object:', student);
+                                    console.log('student.student_id:', student.student_id);
+                                    console.log('student.id:', student.id);
+
+                                    // Prefer the actual database ID; fall back to displayed id if needed
+                                    const resolvedStudentId = student.student_id || student.id || null;
+
+                                    setSelectedStudentForInterview({
+                                      id: resolvedStudentId,
+                                      name: student.name,
+                                      email: student.email
+                                    });
+                                    setShowInterviewScheduleModal(true);
+                                  }}
+                                  className="inline-flex items-center px-3 py-1.5 bg-shnoor-indigo hover:bg-shnoor-navy text-white text-xs font-medium rounded-lg transition-colors"
+                                  title="Schedule Interview"
+                                >
+                                  <Video size={14} className="mr-1" />
+                                  Interview
+                                </button>
+                              </td>
                             </tr>
                           );
                         })
                       ) : (
                         <tr>
-                          <td colSpan="13" className="px-6 py-12 text-center text-shnoor-indigoMedium">
+                          <td colSpan="14" className="px-6 py-12 text-center text-shnoor-indigoMedium">
                             No students have attempted this exam yet.
                           </td>
                         </tr>
@@ -2910,6 +2944,13 @@ const AdminDashboard = () => {
                 </div>
               </div>
             )}
+
+            {/* Interviews Tab */}
+            {activeTab === 'interviews' && (
+              <div className="space-y-6">
+                <InterviewsList />
+              </div>
+            )}
           </>
         )}
 
@@ -3766,6 +3807,22 @@ const AdminDashboard = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Interview Schedule Modal */}
+        {showInterviewScheduleModal && selectedStudentForInterview && (
+          <InterviewSchedule
+            student={selectedStudentForInterview}
+            testId={selectedExamId}
+            onClose={() => {
+              setShowInterviewScheduleModal(false);
+              setSelectedStudentForInterview(null);
+            }}
+            onScheduled={() => {
+              setShowInterviewScheduleModal(false);
+              setSelectedStudentForInterview(null);
+            }}
+          />
         )}
       </div>
     </div>

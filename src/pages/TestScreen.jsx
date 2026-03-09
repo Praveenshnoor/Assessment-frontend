@@ -6,6 +6,8 @@ import { useTabSwitch } from '../hooks/useTabSwitch';
 import { useProctoringWithAI } from '../hooks/useProctoringWithAI';
 import FullscreenWarning from '../components/FullscreenWarning';
 import AIViolationAlert from '../components/AIViolationAlert';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 import StudentMessageAlert from '../components/student/StudentMessageAlert';
 import StudentWarningsSidebar from '../components/student/StudentWarningsSidebar';
@@ -25,12 +27,14 @@ import { apiFetch } from '../config/api';
 const TestScreen = () => {
   const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
-  const [codingQuestions, setCodingQuestions] = useState([]);
+  // DISABLED: Coding questions feature
+  // const [codingQuestions, setCodingQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [codingConsoleOutput, setCodingConsoleOutput] = useState({}); // Store console output per question
+  // DISABLED: Coding console output
+  // const [codingConsoleOutput, setCodingConsoleOutput] = useState({}); // Store console output per question
   const [markedForReview, setMarkedForReview] = useState(new Set());
   
  // Warnings sidebar state
@@ -78,8 +82,10 @@ int main() {
   const [currentAIViolation, setCurrentAIViolation] = useState(null);
   const [aiViolationCount, setAiViolationCount] = useState(0);
 
-  // Calculate total questions (MCQ + Coding)
-  const totalQuestions = questions.length + codingQuestions.length;
+  // Calculate total questions (MCQ only)
+  const totalQuestions = questions.length;
+  // DISABLED: Coding questions
+  // const totalQuestions = questions.length + codingQuestions.length;
 
   // Helper function to format errors for display
   const formatErrorForDisplay = (error) => {
@@ -170,27 +176,17 @@ int main() {
     unreadCount
   } = useProctoringWithAI(handleCameraLost, handleAIViolation);
 
-  // Helper function to get a valid (refreshed) Firebase token
+  // Helper function to get the stored JWT session token
   const getValidToken = useCallback(async () => {
-    try {
-      const { auth } = await import('../config/firebase');
-      const currentUser = auth.currentUser;
-      
-      if (!currentUser) {
-        console.warn('[Token] No authenticated user found');
-        return localStorage.getItem('studentAuthToken');
-      }
-      
-      // Force token refresh to get a new valid token
-      const freshToken = await currentUser.getIdToken(true);
-      localStorage.setItem('studentAuthToken', freshToken);
-      console.log('✅ [Token] Refreshed successfully at:', new Date().toISOString());
-      return freshToken;
-    } catch (error) {
-      console.error('❌ [Token] Refresh failed:', error);
-      // Fallback to stored token
-      return localStorage.getItem('studentAuthToken');
+    // Simply return the stored JWT session token
+    // No need to refresh - JWT tokens are valid for 7 days
+    const token = localStorage.getItem('studentAuthToken');
+    
+    if (!token) {
+      console.warn('[Token] No token found in localStorage');
     }
+    
+    return token;
   }, []);
 
   // Submit test function - defined early so it can be used by other callbacks
@@ -201,15 +197,8 @@ int main() {
     stopProctoring();
 
     const testId = localStorage.getItem('selectedTestId');
-    const studentId = localStorage.getItem('studentId'); // Get student ID from localStorage
-    
-    // ✅ CRITICAL FIX: Try to get token, but don't fail if it expires
-    let token = null;
-    try {
-      token = await getValidToken();
-    } catch (error) {
-      console.warn('[Submit] Could not get token, will try without it:', error);
-    }
+    const studentId = localStorage.getItem('studentId');
+    const token = localStorage.getItem('studentAuthToken');
 
     console.log('=== SUBMITTING TEST ===');
     console.log('Test ID:', testId);
@@ -272,7 +261,7 @@ int main() {
       console.error('Error submitting exam:', error);
       alert('Error submitting exam. Please try again.');
     }
-  }, [answers, warningCount, timeLeft, stopTimer, navigate, stopProctoring, getValidToken]);
+  }, [answers, warningCount, timeLeft, stopTimer, navigate, stopProctoring]);
 
   // Update handleTimeUp to use submitTest
   useEffect(() => {
@@ -360,8 +349,8 @@ int main() {
 
   // Manual save function - only called when user clicks Save & Next or Skip
   const saveProgressNow = useCallback(async () => {
-    // ✅ CRITICAL FIX: Refresh token before saving to prevent expiry errors
-    const token = await getValidToken();
+    // Get JWT session token from localStorage
+    const token = localStorage.getItem('studentAuthToken');
     const testId = localStorage.getItem('selectedTestId');
 
     if (!token || !testId || questions.length === 0) return;
@@ -399,32 +388,10 @@ int main() {
     } catch (error) {
       return false;
     }
-  }, [answers, currentQuestion, markedForReview, visited, timeLeft, warningCount, questions.length, getValidToken]);
+  }, [answers, currentQuestion, markedForReview, visited, timeLeft, warningCount, questions.length]);
 
   // Progress only saves when user clicks Save & Next or Skip buttons
 
-  // ✅ CRITICAL FIX: Auto-refresh token every 3 hours to prevent expiry during long exams
-  useEffect(() => {
-    if (!hasStarted) return;
-
-    console.log('🔄 [Token] Auto-refresh enabled - will refresh every 3 hours');
-    
-    const tokenRefreshInterval = setInterval(async () => {
-      try {
-        await getValidToken();
-        console.log('✅ [Token] Auto-refreshed during exam at:', new Date().toISOString());
-      } catch (error) {
-        console.error('❌ [Token] Auto-refresh failed:', error);
-      }
-    }, 180 * 60 * 1000); // 3 hours (180 minutes)
-
-    return () => {
-      console.log('🛑 [Token] Auto-refresh disabled');
-      clearInterval(tokenRefreshInterval);
-    };
-  }, [hasStarted, getValidToken]);
-
-  // Security: Prevent copy-paste and right click
   // Security: Prevent copy-paste and right click
   useEffect(() => {
     const preventAction = (e) => {
@@ -476,16 +443,20 @@ int main() {
         if (data.success && data.test && data.test.questions) {
           console.log('Test data received:', data.test);
           console.log('MCQ Questions:', data.test.questions.length);
-          console.log('Coding Questions:', data.test.codingQuestions);
+          // DISABLED: Coding questions
+          // console.log('Coding Questions:', data.test.codingQuestions);
           
           setQuestions(data.test.questions);
-          setCodingQuestions(data.test.codingQuestions || []);
+          // DISABLED: Coding questions
+          // setCodingQuestions(data.test.codingQuestions || []);
           
           // Store test details for instruction screen
           setTestDetails({
             title: data.test.title || 'Assessment',
             duration: data.test.duration || 60,
-            totalQuestions: data.test.questions.length + (data.test.codingQuestions?.length || 0)
+            totalQuestions: data.test.questions.length
+            // DISABLED: Coding questions
+            // totalQuestions: data.test.questions.length + (data.test.codingQuestions?.length || 0)
           });
 
           // Get test duration from backend
@@ -768,11 +739,14 @@ int main() {
     );
   }
 
+  // DISABLED: Coding questions - all questions are MCQ now
   // Determine if current question is MCQ or Coding
-  const isCodingQuestion = currentQuestion >= questions.length;
-  const currentQ = isCodingQuestion 
-    ? codingQuestions[currentQuestion - questions.length]
-    : questions[currentQuestion];
+  // const isCodingQuestion = currentQuestion >= questions.length;
+  // const currentQ = isCodingQuestion 
+  //   ? codingQuestions[currentQuestion - questions.length]
+  //   : questions[currentQuestion];
+  const isCodingQuestion = false;
+  const currentQ = questions[currentQuestion];
 
   return (
     <div className="h-screen bg-shnoor-lavender flex flex-col overflow-hidden">
@@ -813,25 +787,35 @@ int main() {
       <header className="bg-white border-b border-shnoor-light shadow-lg flex-shrink-0">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
+            {/* Left: Logo and Title */}
             <div className="flex items-center space-x-4">
               <div className="w-10 h-10 bg-gradient-to-br from-shnoor-navy to-shnoor-indigo rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold">EX</span>
               </div>
               <div>
-                <h1 className="text-lg font-bold text-shnoor-navy">Java Programming Mock Test</h1>
+                <h1 className="text-lg font-bold text-shnoor-navy">{testDetails?.title || 'Assessment'}</h1>
                 <p className="text-xs text-shnoor-indigoMedium">Question {currentQuestion + 1} of {totalQuestions}</p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-6">
-              {/* Timer */}
-              <div className="flex items-center space-x-2 bg-shnoor-lavender px-4 py-2 rounded-xl shadow-inner border border-shnoor-light">
-                <Clock className="w-5 h-5 text-shnoor-indigo" />
-                <span className="text-xl font-mono font-bold text-shnoor-navy">{formattedTime}</span>
-              </div>
-
-              {/* Timer and Info - Submit button removed, now floating at bottom-right */}
+            {/* Center: Timer */}
+            <div className="flex items-center space-x-2 bg-shnoor-lavender px-4 py-2 rounded-xl shadow-inner border border-shnoor-light">
+              <Clock className="w-5 h-5 text-shnoor-indigo" />
+              <span className="text-xl font-mono font-bold text-shnoor-navy">{formattedTime}</span>
             </div>
+
+            {/* Right: Finish Test Button */}
+            <button
+              onClick={() => {
+                if (window.confirm('Are you sure you want to finish and submit the test? This action cannot be undone.')) {
+                  submitTest('manual');
+                }
+              }}
+              className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-shnoor-danger to-shnoor-danger hover:from-shnoor-danger hover:to-shnoor-danger text-white font-bold rounded-xl shadow-lg transition-all duration-200 hover:scale-105 border-2 border-shnoor-danger"
+            >
+              <CheckCircle size={20} />
+              <span>Finish Test</span>
+            </button>
           </div>
         </div>
       </header>
@@ -873,8 +857,8 @@ int main() {
               </>
             )}
 
-            {/* Coding Questions */}
-            {codingQuestions.length > 0 && (
+            {/* DISABLED: Coding Questions */}
+            {/* {codingQuestions.length > 0 && (
               <>
                 <p className="text-xs text-shnoor-indigoMedium mb-2 font-medium">Coding Questions</p>
                 <div className="grid grid-cols-5 gap-2">
@@ -903,7 +887,7 @@ int main() {
                   })}
                 </div>
               </>
-            )}
+            )} */}
           </div>
 
           <div className="p-4 space-y-3">
@@ -953,13 +937,12 @@ int main() {
         </aside>
 
         {/* Main Question Area - MCQ */}
-        {/* Main Question Area - MCQ */}
         {!isCodingQuestion && (
-          <main className="flex-1 overflow-y-auto p-6 bg-shnoor-lavender">
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-white rounded-2xl shadow-xl border border-shnoor-light p-8 mb-6">
+          <main className="flex-1 flex flex-col bg-shnoor-lavender p-6 overflow-hidden">
+            {/* Question Card - Fixed Height with Internal Scrolling */}
+            <div className="flex-1 bg-white rounded-2xl shadow-xl border border-shnoor-light p-8 flex flex-col overflow-hidden">
               {/* Question Header */}
-              <div className="flex items-start justify-between mb-6">
+              <div className="flex items-start justify-between mb-6 flex-shrink-0">
                 <div className="flex items-center space-x-3">
                   <span className="w-10 h-10 bg-gradient-to-br from-shnoor-indigo to-shnoor-navy text-white rounded-xl flex items-center justify-center font-bold shadow-lg">
                     Q{currentQuestion + 1}
@@ -985,23 +968,37 @@ int main() {
                 </button>
               </div>
 
-              {/* Question Content - MCQ or Coding */}
-              {!isCodingQuestion ? (
-                <>
-                  {/* MCQ Question Text */}
-                  <div className="mb-8">
+              {/* Split Screen Layout: Question on Left (60%), Options on Right (40%) */}
+              <div className="grid grid-cols-5 gap-6 flex-1 overflow-hidden">
+                {/* Left Side: Question Text (60% = 3 columns) */}
+                <div className="col-span-3 bg-shnoor-lavender/30 rounded-xl p-6 border-2 border-shnoor-mist overflow-y-auto">
+                  <h3 className="text-sm font-semibold text-shnoor-indigoMedium mb-4 uppercase tracking-wide">Question</h3>
+                  {currentQ.format === 'paragraph' ? (
+                    <div className="text-lg text-shnoor-navy leading-relaxed prose prose-lg max-w-none">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {currentQ.question}
+                      </ReactMarkdown>
+                    </div>
+                  ) : currentQ.format === 'code' ? (
+                    <pre className="text-sm text-shnoor-navy leading-relaxed bg-gray-50 p-4 rounded-lg overflow-x-auto font-mono border border-shnoor-mist">
+                      <code>{currentQ.question}</code>
+                    </pre>
+                  ) : (
                     <p className="text-lg text-shnoor-navy leading-relaxed whitespace-pre-wrap font-medium">
                       {currentQ.question}
                     </p>
-                  </div>
+                  )}
+                </div>
 
-                  {/* MCQ Options */}
+                {/* Right Side: Options (40% = 2 columns) */}
+                <div className="col-span-2 bg-shnoor-lavender/30 rounded-xl p-6 border-2 border-shnoor-mist overflow-y-auto">
+                  <h3 className="text-sm font-semibold text-shnoor-indigoMedium mb-4 uppercase tracking-wide">Choose Your Answer</h3>
                   <div className="space-y-3">
                     {currentQ.options.map((option, index) => (
                       <label
                         key={index}
                         className={`
-                          flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 shadow-sm
+                          flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 shadow-sm bg-white
                           ${answers[currentQuestion] === index
                             ? 'border-shnoor-indigo bg-shnoor-lavender shadow-lg'
                             : 'border-shnoor-light hover:border-shnoor-soft hover:bg-shnoor-mist/30'}
@@ -1021,57 +1018,54 @@ int main() {
                       </label>
                     ))}
                   </div>
-                </>
-              ) : null}
-            </div>
-
-            {/* Navigation Buttons - Only for MCQ */}
-            {!isCodingQuestion && (
-              <div className="flex justify-between items-center">
-                <button
-                  onClick={handlePrevious}
-                  disabled={currentQuestion === 0}
-                  className={`
-                    flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 shadow-sm
-                    ${currentQuestion === 0
-                      ? 'bg-shnoor-mist text-shnoor-soft cursor-not-allowed'
-                      : 'bg-white border-2 border-shnoor-light text-shnoor-navy hover:border-shnoor-soft hover:bg-shnoor-mist/30 shadow-lg'}
-                  `}
-                >
-                  <ChevronLeft size={20} />
-                  <span>Previous</span>
-                </button>
-
-                <div className="flex space-x-3">
-                  <button
-                    onClick={async () => {
-                      await saveProgressNow(); // Save before skipping
-                      handleNext();
-                    }}
-                    className="px-6 py-3 border-2 border-shnoor-light text-shnoor-indigoMedium rounded-xl font-semibold hover:border-shnoor-soft hover:bg-shnoor-mist/30 transition-all duration-200 shadow-sm"
-                  >
-                    Skip
-                  </button>
-
-                  <button
-                    onClick={async () => {
-                      if (answers[currentQuestion] !== undefined) {
-                        await saveProgressNow(); // Save before moving to next
-                        handleNext();
-                      } else {
-                        alert('Please select an answer or click Skip');
-                      }
-                    }}
-                    className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-shnoor-indigo to-shnoor-navy hover:from-shnoor-navy hover:to-shnoor-indigo text-white rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
-                  >
-                    <span>Save & Next</span>
-                    <ChevronRight size={20} />
-                  </button>
                 </div>
               </div>
-            )}
-          </div>
-        </main>
+            </div>
+
+            {/* Floating Navigation Buttons - Fixed at Bottom */}
+            <div className="flex justify-between items-center mt-6 flex-shrink-0">
+              <button
+                onClick={handlePrevious}
+                disabled={currentQuestion === 0}
+                className={`
+                  flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg
+                  ${currentQuestion === 0
+                    ? 'bg-shnoor-mist text-shnoor-soft cursor-not-allowed'
+                    : 'bg-white border-2 border-shnoor-light text-shnoor-navy hover:border-shnoor-soft hover:bg-shnoor-mist/30 hover:shadow-xl'}
+                `}
+              >
+                <ChevronLeft size={20} />
+                <span>Previous</span>
+              </button>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    saveProgressNow(); // Save in background without blocking
+                    handleNext();
+                  }}
+                  className="px-6 py-3 bg-white border-2 border-shnoor-light text-shnoor-indigoMedium rounded-xl font-semibold hover:border-shnoor-soft hover:bg-shnoor-mist/30 transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  Skip
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (answers[currentQuestion] !== undefined) {
+                      saveProgressNow(); // Save in background without blocking
+                      handleNext();
+                    } else {
+                      alert('Please select an answer or click Skip');
+                    }
+                  }}
+                  className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-shnoor-indigo to-shnoor-navy hover:from-shnoor-navy hover:to-shnoor-indigo text-white rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  <span>Save & Next</span>
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            </div>
+          </main>
         )}
         {/* Coding Question - Split Screen Layout */}
         {/* Coding Question - Split Screen Layout */}
@@ -1684,19 +1678,6 @@ int main() {
           onToggleCollapse={() => setWarningsSidebarCollapsed(prev => !prev)}
         />
       </div>
-
-      {/* Floating Finish Test Button - Bottom Right */}
-      <button
-        onClick={() => {
-          if (window.confirm('Are you sure you want to finish and submit the test? This action cannot be undone.')) {
-            submitTest('manual');
-          }
-        }}
-        className="fixed bottom-4 right-4 z-40 flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-shnoor-danger to-shnoor-danger hover:from-shnoor-danger hover:to-shnoor-danger text-white font-bold rounded-xl shadow-2xl transition-all duration-200 hover:scale-105 border-2 border-shnoor-danger"
-      >
-        <CheckCircle size={20} />
-        <span>Finish Test</span>
-      </button>
     </div>
   );
 

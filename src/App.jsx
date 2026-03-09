@@ -22,6 +22,8 @@ const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminReports = React.lazy(() => import('./pages/admin/AdminReports'));
 const LiveProctoring = React.lazy(() => import('./pages/admin/LiveProctoring'));
 const AdminSettings = React.lazy(() => import('./pages/admin/AdminSettings'));
+const InterviewsList = React.lazy(() => import('./pages/admin/InterviewsList'));
+const InterviewRoom = React.lazy(() => import('./pages/InterviewRoom'));
 const ServerDown = React.lazy(() => import('./pages/ServerDown'));
 const Maintenance = React.lazy(() => import('./pages/Maintenance'));
 const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
@@ -74,6 +76,11 @@ function App() {
             <Route path="/admin/reports" element={<AdminRoute><AdminReports /></AdminRoute>} />
             <Route path="/admin/live-proctoring" element={<AdminRoute><LiveProctoring /></AdminRoute>} />
             <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+            <Route path="/admin/interviews" element={<AdminRoute><InterviewsList /></AdminRoute>} />
+            <Route path="/admin/interview-room/:interviewId" element={<AdminRoute><InterviewRoom /></AdminRoute>} />
+
+            {/* Student Interview Route */}
+            <Route path="/interview-room/:interviewId" element={<StudentRoute><InterviewRoom /></StudentRoute>} />
 
             {/* Default */}
             <Route path="*" element={<Navigate to="/" replace />} />

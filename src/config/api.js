@@ -20,16 +20,16 @@ export const API_URL = API_BASE_URL;
 export const apiFetch = async (endpoint, options = {}) => {
   const controller = new AbortController();
 
-// Don't apply tight timeouts to upload routes or report generations
-const isLongRequest = endpoint.includes('/upload') || endpoint.includes('/export') || endpoint.includes('/predict');
-const timeoutDuration = isLongRequest ? 120000 : API_TIMEOUT;
+  // Don't apply tight timeouts to upload routes or report generations
+  const isLongRequest = endpoint.includes('/upload') || endpoint.includes('/export') || endpoint.includes('/predict');
+  const timeoutDuration = isLongRequest ? 120000 : API_TIMEOUT;
 
   // If external signal provided, listen to it and abort our controller
   if (options.signal) {
     options.signal.addEventListener('abort', () => controller.abort());
   }
 
-    const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
   try {
     const response = await fetch(getApiUrl(endpoint), {

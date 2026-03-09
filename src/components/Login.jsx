@@ -72,79 +72,99 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // Step 1: Attempt Admin Login (silently)
+      // Step 1: Try Firebase Authentication (for both admin and student)
       try {
-        const adminResponse = await apiFetch('api/admin/login', {
+        const { signInWithEmailAndPassword, auth } = await import('../config/firebase');
+        const userCredential = await signInWithEmailAndPassword(
+          auth,
+          email.trim(),
+          password
+        );
+
+        // Get Firebase ID token
+        const idToken = await userCredential.user.getIdToken();
+
+        // Call backend to get user profile (admin or student)
+        const response = await apiFetch('api/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email: email.trim(), password }),
+            'Authorization': `Bearer ${idToken}`
+          }
         });
 
-        const adminData = await adminResponse.json();
+        const data = await response.json();
 
-        if (adminResponse.ok && adminData.success) {
-          // Admin Login Successful
-          localStorage.setItem('adminToken', adminData.token);
-          localStorage.setItem('adminUser', JSON.stringify(adminData.admin));
+        if (!response.ok) {
+          throw new Error(data.message || 'Authentication failed');
+        }
+
+        // Extract user data, role, and JWT session token
+        const { user, token, role } = data;
+
+        if (!user || !token || !role) {
+          throw new Error('Session data incomplete');
+        }
+
+        // Store JWT session token and redirect based on role
+        if (role === 'admin') {
+          localStorage.setItem('adminToken', token);
+          localStorage.setItem('adminUser', JSON.stringify(user));
           navigate('/admin/dashboard');
-          return; // Exit function, no need to try student login
+        } else {
+          localStorage.setItem('studentAuthToken', token);
+          localStorage.setItem('studentId', user.id.toString());
+          localStorage.setItem('studentName', user.full_name || '');
+          localStorage.setItem('rollNumber', user.roll_number || '');
+          localStorage.setItem('email', user.email || '');
+          localStorage.setItem('institute', user.institute || '');
+          
+          navigate('/dashboard', {
+            replace: true,
+            state: {
+              studentId: user.id,
+              studentName: user.full_name
+            }
+          });
         }
-        // If admin login fails (401), silently continue to student login
-      } catch (adminErr) {
-        // Silently continue to student login
-      }
+        return; // Success, exit function
 
-      // Step 2: Authenticate with Firebase (Student Login)
-      const { signInWithEmailAndPassword, auth } = await import('../config/firebase');
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email.trim(),
-        password
-      );
+      } catch (firebaseError) {
+        // If Firebase auth fails, try direct admin login (for admins not in Firebase)
+        console.log('Firebase auth failed, trying direct admin login...');
+        
+        if (firebaseError.code === 'auth/invalid-credential' || 
+            firebaseError.code === 'auth/user-not-found' ||
+            firebaseError.code === 'auth/wrong-password') {
+          
+          // Try direct admin login with bcrypt
+          try {
+            const adminResponse = await apiFetch('api/admin/login', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ email: email.trim(), password }),
+            });
 
-      // Step 3: Get Firebase ID token
-      const idToken = await userCredential.user.getIdToken();
+            const adminData = await adminResponse.json();
 
-      // Step 4: Call backend to get student profile
-      const response = await apiFetch('api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
+            if (adminResponse.ok && adminData.success) {
+              // Admin login successful
+              localStorage.setItem('adminToken', adminData.token);
+              localStorage.setItem('adminUser', JSON.stringify(adminData.admin));
+              navigate('/admin/dashboard');
+              return;
+            }
+          } catch (adminError) {
+            // Admin login also failed, throw original Firebase error
+            throw firebaseError;
+          }
         }
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Authentication failed');
+        
+        // If it's not an auth error, throw it
+        throw firebaseError;
       }
-
-      // Extract user data from backend response
-      const { user } = data;
-
-      if (!user || !user.id) {
-        throw new Error('Session data incomplete');
-      }
-
-      // Store user data in localStorage
-      localStorage.setItem('studentAuthToken', idToken);
-      localStorage.setItem('studentId', user.id.toString());
-      localStorage.setItem('studentName', user.full_name || '');
-      localStorage.setItem('rollNumber', user.roll_number || '');
-      localStorage.setItem('email', user.email || '');
-      localStorage.setItem('institute', user.institute || '');
-      
-      // Navigate to dashboard
-      navigate('/dashboard', {
-        replace: true,
-        state: {
-          studentId: user.id,
-          studentName: user.full_name
-        }
-      });
 
     } catch (error) {
       console.error('Login error:', error);

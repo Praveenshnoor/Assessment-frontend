@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { LogOut, Clock, BookOpen, AlertCircle, FileText, X } from 'lucide-react';
+import { LogOut, Clock, BookOpen, AlertCircle, FileText, X, Video } from 'lucide-react';
 import ExamSearchFilter from '../components/ExamSearchFilter';
+import StudentInterviews from '../components/StudentInterviews';
 import { apiFetch } from '../config/api';
 
 const Dashboard = () => {
@@ -27,6 +28,7 @@ const Dashboard = () => {
   const [selectedTest, setSelectedTest] = useState(null);
   const [showJobModal, setShowJobModal] = useState(false);
   const [selectedJobRoleIndex, setSelectedJobRoleIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState('tests'); // 'tests' or 'interviews'
 
   // Search, Filter, Sort States
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,6 +41,13 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      // Validate token type - force re-login if old Firebase token
+      const { validateAndCleanupToken } = await import('../utils/tokenValidator');
+      if (!validateAndCleanupToken()) {
+        navigate('/login');
+        return;
+      }
+      
       const token = localStorage.getItem('studentAuthToken');
       if (!token) {
         navigate('/login');
@@ -365,17 +374,49 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <main className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Tab Navigation - COMMENTED OUT */}
+        
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-shnoor-navy mb-2">Available Examinations</h2>
-          <p className="text-shnoor-indigoMedium">Select a test to begin your assessment</p>
+          <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-mist p-2 inline-flex space-x-2">
+            <button
+              onClick={() => setActiveTab('tests')}
+              className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all ${
+                activeTab === 'tests'
+                  ? 'bg-shnoor-indigo text-white'
+                  : 'bg-white text-shnoor-indigoMedium hover:text-shnoor-navy hover:bg-shnoor-lavender'
+              }`}
+            >
+              <BookOpen size={20} />
+              <span>My Tests</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('interviews')}
+              className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all ${
+                activeTab === 'interviews'
+                  ? 'bg-shnoor-indigo text-white'
+                  : 'bg-white text-shnoor-indigoMedium hover:text-shnoor-navy hover:bg-shnoor-lavender'
+              }`}
+            >
+              <Video size={20} />
+              <span>Interviews</span>
+            </button>
+          </div>
         </div>
 
-        {loading && (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-shnoor-indigo"></div>
-            <span className="ml-3 text-shnoor-indigoMedium">Loading...</span>
-          </div>
-        )}
+        {/* Tests Tab */}
+        {activeTab === 'tests' && (
+          <>
+            {/* <div className="mb-8">
+              <h2 className="text-2xl font-bold text-shnoor-navy mb-2">Available Examinations</h2>
+              <p className="text-shnoor-indigoMedium">Select a test to begin your assessment</p>
+            </div> */}
+
+            {loading && (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-shnoor-indigo"></div>
+                <span className="ml-3 text-shnoor-indigoMedium">Loading...</span>
+              </div>
+            )}
 
         {error && (
           <div className="bg-shnoor-dangerLight border border-shnoor-dangerLight text-shnoor-danger px-4 py-3 rounded-lg mb-6 shadow-sm">
@@ -555,6 +596,13 @@ const Dashboard = () => {
               </div>
             )}
           </>
+        )}
+        </>
+        )}
+
+        {/* Interviews Tab */}
+        {activeTab === 'interviews' && (
+          <StudentInterviews />
         )}
 
         {/* Info Section */}
