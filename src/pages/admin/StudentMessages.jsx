@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, MailOpen, Trash2, Image, Filter, RefreshCw, CheckCheck, Clock, User, AlertCircle, X, Send, Building, MessageCircle } from 'lucide-react';
 import AdminLayout from '../../components/AdminLayout';
+import { apiClient } from '../../config/api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -27,9 +28,8 @@ const StudentMessages = () => {
   const fetchMessages = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('adminToken');
       
-      let url = `${API_URL}/api/student-messages?page=${pagination.page}&limit=${pagination.limit}`;
+      let url = `/api/student-messages?page=${pagination.page}&limit=${pagination.limit}`;
       if (filter !== 'all') {
         url += `&status=${filter}`;
       }
@@ -37,13 +37,9 @@ const StudentMessages = () => {
         url += `&college=${encodeURIComponent(selectedCollege)}`;
       }
 
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await apiClient.get(url);
 
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success) {
         setMessages(data.messages);

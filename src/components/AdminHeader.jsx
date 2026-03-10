@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Video, LogOut, Settings, MessageSquare, X } from 'lucide-react';
 import Button from './Button';
 import { useSupportSocket } from '../hooks/useSupportSocket';
+import { useAdminAuth } from '../contexts/AdminAuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
   const navigate = useNavigate();
+  const { logout } = useAdminAuth();
   const [unreadCount, setUnreadCount] = useState(0);
   const [toastNotification, setToastNotification] = useState(null);
   
@@ -93,10 +95,15 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
     };
   }, [clearNotifications]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminUser');
-    navigate('/admin/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Force logout even if API call fails
+      navigate('/login');
+    }
   };
 
   return (

@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import React, { Suspense } from 'react';
 import ErrorBoundary from './components/ErrorBoundary';
+import { AdminAuthProvider } from './contexts/AdminAuthContext';
+import AdminProtectedRoute from './components/AdminProtectedRoute';
 
 // Eagerly load Loading Spinner to show while chunks are fetched
 const LoadingFallback = () => (
@@ -44,51 +46,48 @@ const TestRoute = ({ children }) => {
   return children;
 };
 
-const AdminRoute = ({ children }) => {
-  const token = localStorage.getItem('adminToken');
-  return token ? children : <Navigate to="/login" replace />;
-};
-
 function App() {
   return (
     <ErrorBoundary>
-      <Router>
-        <Suspense fallback={<LoadingFallback />}>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/admin/login" element={<Navigate to="/login" replace />} />
-            <Route path="/server-down" element={<ServerDown />} />
-            <Route path="/maintenance" element={<Maintenance />} />
+      <AdminAuthProvider>
+        <Router>
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+              <Route path="/server-down" element={<ServerDown />} />
+              <Route path="/maintenance" element={<Maintenance />} />
 
-            {/* Student Routes */}
-            <Route path="/dashboard" element={<StudentRoute><Dashboard /></StudentRoute>} />
-            <Route path="/instructions" element={<TestRoute><Instructions /></TestRoute>} />
-            <Route path="/test" element={<TestRoute><TestScreen /></TestRoute>} />
-            <Route path="/result" element={<StudentRoute><Result /></StudentRoute>} />
-            <Route path="/feedback" element={<StudentRoute><Feedback /></StudentRoute>} />
+              {/* Student Routes */}
+              <Route path="/dashboard" element={<StudentRoute><Dashboard /></StudentRoute>} />
+              <Route path="/instructions" element={<TestRoute><Instructions /></TestRoute>} />
+              <Route path="/test" element={<TestRoute><TestScreen /></TestRoute>} />
+              <Route path="/result" element={<StudentRoute><Result /></StudentRoute>} />
+              <Route path="/feedback" element={<StudentRoute><Feedback /></StudentRoute>} />
 
-            {/* Admin Routes */}
-            <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-            <Route path="/admin/reports" element={<AdminRoute><AdminReports /></AdminRoute>} />
-            <Route path="/admin/live-proctoring" element={<AdminRoute><LiveProctoring /></AdminRoute>} />
-            <Route path="/admin/student-messages" element={<AdminRoute><StudentMessages /></AdminRoute>} />
-            <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
-            <Route path="/admin/interviews" element={<AdminRoute><InterviewsList /></AdminRoute>} />
-            <Route path="/admin/interview-room/:interviewId" element={<AdminRoute><InterviewRoom /></AdminRoute>} />
+              {/* Admin Routes - Now with Enhanced Protection */}
+              <Route path="/admin/dashboard" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
+              <Route path="/admin/reports" element={<AdminProtectedRoute><AdminReports /></AdminProtectedRoute>} />
+              <Route path="/admin/live-proctoring" element={<AdminProtectedRoute><LiveProctoring /></AdminProtectedRoute>} />
+              <Route path="/admin/student-messages" element={<AdminProtectedRoute><StudentMessages /></AdminProtectedRoute>} />
+              <Route path="/admin/settings" element={<AdminProtectedRoute><AdminSettings /></AdminProtectedRoute>} />
+              <Route path="/admin/interviews" element={<AdminProtectedRoute><InterviewsList /></AdminProtectedRoute>} />
+              <Route path="/admin/interview-room/:interviewId" element={<AdminProtectedRoute><InterviewRoom /></AdminProtectedRoute>} />
 
-            {/* Student Interview Route */}
-            <Route path="/interview-room/:interviewId" element={<StudentRoute><InterviewRoom /></StudentRoute>} />
+              {/* Student Interview Route */}
+              <Route path="/interview-room/:interviewId" element={<StudentRoute><InterviewRoom /></StudentRoute>} />
 
-            {/* Default */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
-      </Router>
+              {/* Default */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </Router>
+      </AdminAuthProvider>
     </ErrorBoundary>
   );
 }

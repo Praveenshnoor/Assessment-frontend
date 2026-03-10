@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { apiFetch } from '../config/api';
+import { useAdminAuth } from '../contexts/AdminAuthContext';
 import shnoorLogo from '../../public/favicon.png';
 import Button from './Button';
 import Badge from './Badge';
@@ -33,6 +34,7 @@ const LEFT_FEATURES = [
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login: adminLogin, isAuthenticated } = useAdminAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
@@ -41,10 +43,23 @@ const Login = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/admin/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
+
   useEffect(() => {
     if (location.state?.message) {
       setSuccessMessage(location.state.message);
       window.history.replaceState({}, document.title);
+    }
+    
+    // Check for session expiry
+    const urlParams = new URLSearchParams(location.search);
+    if (urlParams.get('expired') === 'true') {
+      setApiError('Your session has expired. Please login again.');
     }
   }, [location]);
 
@@ -137,28 +152,16 @@ const Login = () => {
             firebaseError.code === 'auth/user-not-found' ||
             firebaseError.code === 'auth/wrong-password') {
           
-          // Try direct admin login with bcrypt
-          try {
-            const adminResponse = await apiFetch('api/admin/login', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ email: email.trim(), password }),
-            });
-
-            const adminData = await adminResponse.json();
-
-            if (adminResponse.ok && adminData.success) {
-              // Admin login successful
-              localStorage.setItem('adminToken', adminData.token);
-              localStorage.setItem('adminUser', JSON.stringify(adminData.admin));
-              navigate('/admin/dashboard');
-              return;
-            }
-          } catch (adminError) {
-            // Admin login also failed, throw original Firebase error
-            throw firebaseError;
+          // Try direct admin login using AdminAuthContext
+          const adminResult = await adminLogin(email.trim(), password);
+          
+          if (adminResult.success) {
+            // Admin login successful - context will handle navigation
+            navigate('/admin/dashboard');
+            return;
+          } else {
+            // Admin login failed, show error
+            throw new Error(adminResult.message || 'Invalid credentials');
           }
         }
         

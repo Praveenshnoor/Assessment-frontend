@@ -1,6 +1,8 @@
 // API Configuration
 // This ensures API calls work in both development and production
 
+import apiClient from '../utils/apiInterceptor';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Timeout for API requests (30 seconds for cold starts)
@@ -16,7 +18,10 @@ export const getApiUrl = (endpoint) => {
 // Export base URL for direct use
 export const API_URL = API_BASE_URL;
 
-// Helper for fetch with automatic URL building and timeout
+// Export the configured axios client for authenticated requests
+export { apiClient };
+
+// Helper for fetch with automatic URL building and timeout (legacy support)
 export const apiFetch = async (endpoint, options = {}) => {
   const controller = new AbortController();
 
@@ -81,5 +86,6 @@ export const apiFetch = async (endpoint, options = {}) => {
 export default {
   getApiUrl,
   API_URL,
-  apiFetch
+  apiFetch,
+  apiClient
 };
