@@ -150,13 +150,10 @@ const StudentInterviews = () => {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
+  // Student can actually enter the room ONLY when admin has started the call
   const canJoinInterview = (interview) => {
     if (!interview) return false;
-    if (interview.status === 'in_progress') return true;
-    if (interview.status !== 'scheduled') return false;
-    const t = new Date(interview.scheduled_time).getTime();
-    if (Number.isNaN(t)) return false;
-    return Date.now() >= t;
+    return interview.status === 'in_progress';
   };
 
   if (loading) {
@@ -259,10 +256,16 @@ const StudentInterviews = () => {
                         )}
                       </div>
 
-                      {canJoin && (
+                      {interview.status === 'in_progress' && (
                         <div className="mt-3 flex items-center text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg">
                           <AlertCircle size={16} className="mr-2" />
-                          <span className="font-medium">You can join now!</span>
+                          <span className="font-medium">Your interviewer is calling. You can join now.</span>
+                        </div>
+                      )}
+                      {interview.status === 'scheduled' && (
+                        <div className="mt-3 flex items-center text-sm text-shnoor-soft bg-shnoor-mist/20 px-3 py-2 rounded-lg">
+                          <AlertCircle size={16} className="mr-2" />
+                          <span className="font-medium">Wait here. You’ll see a call banner when the interviewer starts.</span>
                         </div>
                       )}
                     </div>
@@ -278,13 +281,7 @@ const StudentInterviews = () => {
                         }`}
                       >
                         <Video size={20} />
-                        <span>
-                          {interview.status === 'in_progress'
-                            ? 'Answer Live Call'
-                            : canJoin
-                              ? 'Join Call'
-                              : 'Not started'}
-                        </span>
+                        <span>{interview.status === 'in_progress' ? 'Answer Live Call' : 'Waiting for call'}</span>
                       </button>
                     </div>
                   </div>

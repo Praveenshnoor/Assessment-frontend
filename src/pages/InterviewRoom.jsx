@@ -5,6 +5,10 @@ import Peer from 'peerjs';
 import { io } from 'socket.io-client';
 import { apiFetch } from '../config/api';
 
+// Backend currently does not implement the required interview Socket.IO events.
+// Disable socket-driven signaling/chat to avoid infinite "Socket not connected" retries.
+const SOCKET_ENABLED = false;
+
 const InterviewRoom = () => {
   const { interviewId } = useParams();
   const navigate = useNavigate();
@@ -29,6 +33,7 @@ const InterviewRoom = () => {
   const localStreamRef = useRef(null);
   const screenStreamRef = useRef(null);
   const socketRef = useRef(null);
+  const pollRef = useRef(null);
 
   const isAdmin = !!localStorage.getItem('adminToken');
   const isStudent = !!localStorage.getItem('studentAuthToken') && !isAdmin;
@@ -37,6 +42,19 @@ const InterviewRoom = () => {
   useEffect(() => {
     fetchInterviewDetails();
     initializeSocketAndPeer();
+
+    // Fallback: Enable admin call button after 5 seconds even if socket fails
+    if (isAdmin) {
+      const fallbackTimer = setTimeout(() => {
+        console.log('Fallback: Enabling admin call button');
+        setAdminJoined(true);
+      }, 5000);
+      
+      return () => {
+        cleanup();
+        clearTimeout(fallbackTimer);
+      };
+    }
 
     return () => {
       cleanup();
@@ -68,10 +86,79 @@ const InterviewRoom = () => {
 
   const initializeSocketAndPeer = async () => {
     try {
+      // Fallback path: PeerJS only + DB polling for peer_id.
+      if (!SOCKET_ENABLED) {
+        if (isAdmin) setAdminJoined(true);
+
+        const newPeer = new Peer();
+
+        newPeer.on('open', async (id) => {
+          console.log('My peer ID:', id);
+          setPeerId(id);
+          setConnectionStatus(isStudent ? 'Ready - waiting for interviewer...' : 'Ready');
+
+          // Student registers their peer ID in DB so admin can call them.
+          if (isStudent) {
+            try {
+              await apiFetch(`api/interviews/${interviewId}/join`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('studentAuthToken')}`
+                },
+                body: JSON.stringify({ peer_id: id })
+              });
+            } catch (e) {
+              console.error('Failed to register peer id:', e);
+            }
+          }
+        });
+
+        // Incoming PeerJS call (admin -> student)
+        newPeer.on('call', (incoming) => {
+          if (!isStudent) {
+            incoming.close();
+            return;
+          }
+          console.log('Receiving call...');
+          setConnectionStatus('Incoming call...');
+          answerCall(incoming);
+        });
+
+        newPeer.on('error', (err) => {
+          console.error('Peer error:', err);
+          setConnectionStatus('Connection error - ' + err.type);
+        });
+
+        setPeer(newPeer);
+
+        // Admin polls interview details to get the latest student peer_id.
+        if (isAdmin) {
+          pollRef.current = setInterval(async () => {
+            try {
+              const token = localStorage.getItem('adminToken');
+              const response = await apiFetch(`api/interviews/${interviewId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+              const data = await response.json();
+              if (response.ok && data.success && data.interview?.peer_id) {
+                setRemotePeerId(String(data.interview.peer_id));
+              }
+            } catch (e) {
+              // ignore
+            }
+          }, 1500);
+        }
+
+        return;
+      }
+
       // Initialize Socket.IO with proper configuration
       const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      console.log('Connecting to socket URL:', socketUrl);
+      
       const socket = io(socketUrl, {
-        transports: ['websocket', 'polling'],
+        transports: ['polling', 'websocket'], // Try polling first to avoid WebSocket warning
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionAttempts: 5,
@@ -79,7 +166,7 @@ const InterviewRoom = () => {
         upgrade: true,
         rememberUpgrade: true,
         timeout: 20000, // Connection timeout
-        forceNew: false
+        forceNew: true // Force new connection
       });
 
       socketRef.current = socket;
@@ -88,12 +175,10 @@ const InterviewRoom = () => {
         console.log('Socket connected:', socket.id);
         setConnectionStatus('Connected to server');
         
-        // Don't join with 'pending' peer ID - wait for actual peer ID
-        // The join will happen when PeerJS peer ID is ready
-        
-        // If admin, mark as joined immediately
+        // If admin, mark as joined immediately since they don't need to wait for themselves
         if (isAdmin) {
           setAdminJoined(true);
+          console.log('Admin connected - enabling call button');
         }
       });
 
@@ -124,41 +209,65 @@ const InterviewRoom = () => {
       
       newPeer.on('open', (id) => {
         console.log('My peer ID:', id);
+        console.log('Role:', role);
+        console.log('Interview ID:', interviewId);
+        console.log('Socket connected:', socket.connected);
         setPeerId(id);
         setConnectionStatus('Ready');
         
-        // Update interview room with peer ID
-        if (socket.connected) {
-          socket.emit('interview:join', {
-            interviewId,
-            peerId: id,
-            role
-          });
-          
-          // Signal peer ID to other participant
-          socket.emit('interview:signal-peer', {
-            interviewId,
-            peerId: id
-          });
-        }
+        // Wait for socket to be connected before emitting (with retry limit)
+        let retryCount = 0;
+        const maxRetries = 10;
+        
+        const emitPeerInfo = () => {
+          if (socket.connected) {
+            console.log('Emitting interview:join with peer ID:', id);
+            socket.emit('interview:join', {
+              interviewId,
+              peerId: id,
+              role
+            });
+            
+            // Signal peer ID to other participant
+            console.log('Emitting interview:signal-peer');
+            socket.emit('interview:signal-peer', {
+              interviewId,
+              peerId: id
+            });
+          } else if (retryCount < maxRetries) {
+            retryCount++;
+            console.warn(`Socket not connected, retry ${retryCount}/${maxRetries} in 500ms...`);
+            setTimeout(emitPeerInfo, 500);
+          } else {
+            console.error('Socket connection failed after max retries');
+            setConnectionStatus('Connection failed - please refresh');
+          }
+        };
+        
+        emitPeerInfo();
       });
 
       // Listen for other participant's peer ID
       socket.on('interview:peer-available', (data) => {
-        console.log('Peer available:', data);
-        setRemotePeerId(data.peerId);
+        console.log('Peer available event received:', data);
+        const peerIdString = typeof data.peerId === 'string' ? data.peerId : String(data.peerId);
+        console.log('Setting remote peer ID to:', peerIdString);
+        setRemotePeerId(peerIdString);
         setConnectionStatus(`${data.role === 'admin' ? 'Interviewer' : 'Student'} is ready`);
         
         // Track if admin joined
         if (data.role === 'admin') {
           setAdminJoined(true);
+          console.log('Admin joined - adminJoined set to true');
         }
       });
 
       // Listen for peer joining
       socket.on('interview:peer-joined', (data) => {
         console.log('Peer joined:', data);
-        setRemotePeerId(data.peerId);
+        const peerIdString = typeof data.peerId === 'string' ? data.peerId : String(data.peerId);
+        console.log('Setting remotePeerId to:', peerIdString);
+        setRemotePeerId(peerIdString);
         setConnectionStatus(`${data.role === 'admin' ? 'Interviewer' : 'Student'} joined`);
         
         // Track if admin joined
@@ -345,6 +454,24 @@ const InterviewRoom = () => {
 
   const startCall = async () => {
     try {
+      console.log('Starting call...');
+      console.log('Remote peer ID:', remotePeerId);
+      console.log('Peer object:', peer);
+      
+      // Mark interview as started and trigger dashboard notification
+      if (isAdmin) {
+        try {
+          await apiFetch(`api/interviews/${interviewId}/start`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+            }
+          });
+        } catch (e) {
+          console.error('Failed to start interview via API:', e);
+        }
+      }
+
       // Get media access first
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       localStreamRef.current = stream;
@@ -353,18 +480,9 @@ const InterviewRoom = () => {
         localVideoRef.current.srcObject = stream;
       }
       
-      // Notify student that admin is calling (this will trigger dashboard notification and in-room notification)
-      if (isAdmin && socketRef.current) {
-        socketRef.current.emit('interview:start-call', {
-          interviewId,
-          studentId: interview?.student_id
-        });
-        
-        setConnectionStatus('Calling student...');
-      }
-      
       // If student is already in the room (remotePeerId exists), start PeerJS call immediately
-      if (remotePeerId) {
+      if (remotePeerId && peer) {
+        console.log('Calling remote peer:', remotePeerId);
         const outgoingCall = peer.call(remotePeerId, stream);
         setCall(outgoingCall);
         setConnectionStatus('Calling...');
@@ -383,6 +501,7 @@ const InterviewRoom = () => {
         });
       } else {
         // Student not in room yet, just wait for them to join and answer
+        console.log('No remote peer ID yet, waiting for student...');
         setConnectionStatus('Waiting for student to answer...');
       }
     } catch (error) {
@@ -553,9 +672,17 @@ const InterviewRoom = () => {
     if (peer) {
       peer.destroy();
     }
-    if (socketRef.current) {
-      socketRef.current.emit('interview:leave', { interviewId });
-      socketRef.current.disconnect();
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    // Student leaving: clear their peer_id so admin never calls a stale ID
+    if (isStudent) {
+      const token = localStorage.getItem('studentAuthToken');
+      apiFetch(`api/interviews/${interviewId}/leave`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).catch(() => {});
     }
   };
 
@@ -727,7 +854,7 @@ const InterviewRoom = () => {
           </div>
         </div>
 
-        {(isAdmin || isStudent) && (
+        {SOCKET_ENABLED && (isAdmin || isStudent) && (
           <div className="w-full lg:w-80 border-l border-white/10 bg-black/40 flex flex-col h-full">
             <div className="px-5 py-4 border-b border-white/10 flex items-center space-x-2 flex-shrink-0">
               <MessageSquare className="text-white/70" size={18} />

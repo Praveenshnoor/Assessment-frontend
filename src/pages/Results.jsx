@@ -49,6 +49,9 @@ const Result = () => {
                 return;
             }
             
+            // Validate rating if provided (must be 1-5 or null/0 for not rated)
+            const validRating = rating > 0 ? rating : null;
+            
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/feedback`, {
                 method: 'POST',
                 headers: {
@@ -57,9 +60,9 @@ const Result = () => {
                 body: JSON.stringify({
                     studentId: studentId,
                     testId: testId,
-                    rating: rating,
-                    difficulty: difficulty,
-                    feedbackText: feedback,
+                    rating: validRating,
+                    difficulty: difficulty || null,
+                    feedbackText: feedback || null,
                     submissionReason: submissionReason
                 })
             });
