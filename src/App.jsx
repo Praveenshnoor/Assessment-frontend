@@ -23,6 +23,7 @@ const AdminReports = React.lazy(() => import('./pages/admin/AdminReports'));
 const LiveProctoring = React.lazy(() => import('./pages/admin/LiveProctoring'));
 const AdminSettings = React.lazy(() => import('./pages/admin/AdminSettings'));
 const InterviewsList = React.lazy(() => import('./pages/admin/InterviewsList'));
+const StudentMessages = React.lazy(() => import('./pages/admin/StudentMessages'));
 const InterviewRoom = React.lazy(() => import('./pages/InterviewRoom'));
 const ServerDown = React.lazy(() => import('./pages/ServerDown'));
 const Maintenance = React.lazy(() => import('./pages/Maintenance'));
@@ -75,6 +76,7 @@ function App() {
             <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
             <Route path="/admin/reports" element={<AdminRoute><AdminReports /></AdminRoute>} />
             <Route path="/admin/live-proctoring" element={<AdminRoute><LiveProctoring /></AdminRoute>} />
+            <Route path="/admin/student-messages" element={<AdminRoute><StudentMessages /></AdminRoute>} />
             <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
             <Route path="/admin/interviews" element={<AdminRoute><InterviewsList /></AdminRoute>} />
             <Route path="/admin/interview-room/:interviewId" element={<AdminRoute><InterviewRoom /></AdminRoute>} />

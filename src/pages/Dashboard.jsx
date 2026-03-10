@@ -5,6 +5,8 @@ import ExamSearchFilter from '../components/ExamSearchFilter';
 import StudentInterviews from '../components/StudentInterviews';
 import { apiFetch } from '../config/api';
 
+import StudentSupportChatbot from '../components/chatbot/StudentSupportChatbot';
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [studentName, setStudentName] = useState('');
@@ -628,6 +630,10 @@ const Dashboard = () => {
           </ul>
         </div>
       </main>
+
+      {/* Support Chatbot */}
+      <StudentSupportChatbot />
+
     </div>
   );
 };
