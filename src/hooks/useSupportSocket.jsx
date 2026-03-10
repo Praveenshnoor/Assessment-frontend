@@ -152,95 +152,118 @@ export const useSupportSocket = ({
       return;
     }
 
-    // Create socket connection
-    const socket = io(SOCKET_URL, {
-      transports: ['polling', 'websocket'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 2000,
-      timeout: 20000,
-      autoConnect: true
-    });
+    let socket;
+    
+    try {
+      // Create socket connection
+      socket = io(SOCKET_URL, {
+        transports: ['polling', 'websocket'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 2000,
+        timeout: 20000,
+        autoConnect: true
+      });
 
-    socketRef.current = socket;
+      socketRef.current = socket;
 
-    socket.on('connect', () => {
-      console.log('[SupportSocket] Connected:', socket.id);
-      setIsConnected(true);
+      socket.on('connect', () => {
+        console.log('[SupportSocket] Connected:', socket.id);
+        setIsConnected(true);
 
-      // Join appropriate room based on user type
+        // Join appropriate room based on user type
+        try {
+          if (isAdmin) {
+            socket.emit('admin:join-support');
+            console.log('[SupportSocket] Admin joining support room');
+          } else if (rollNumber) {
+            socket.emit('student:join-support', { rollNumber, studentName });
+            console.log('[SupportSocket] Student joining support room:', `support-student-${rollNumber}`);
+          }
+        } catch (error) {
+          console.error('[SupportSocket] Error joining room:', error);
+        }
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.log('[SupportSocket] Disconnected:', reason);
+        setIsConnected(false);
+      });
+
+      socket.on('connect_error', (error) => {
+        console.error('[SupportSocket] Connection error:', error.message);
+        setIsConnected(false);
+      });
+
+      // Admin notifications - new student message
       if (isAdmin) {
-        socket.emit('admin:join-support');
-        console.log('[SupportSocket] Admin joining support room');
-      } else if (rollNumber) {
-        socket.emit('student:join-support', { rollNumber, studentName });
-        console.log('[SupportSocket] Student joining support room:', `support-student-${rollNumber}`);
+        socket.on('support:new-student-message', (data) => {
+          try {
+            console.log('[SupportSocket] New student message received:', data);
+            addNotification({
+              type: 'student-message',
+              id: data.id,
+              studentName: data.studentName,
+              studentId: data.studentId,
+              college: data.college,
+              messagePreview: data.messagePreview,
+              topic: data.topic,
+              createdAt: data.createdAt,
+              hasImage: data.hasImage
+            }, true);
+          } catch (error) {
+            console.error('[SupportSocket] Error handling student message:', error);
+          }
+        });
+
+        // Listen for confirmation that we joined the room
+        socket.on('admin:support-joined', (data) => {
+          console.log('[SupportSocket] Admin support room joined:', data);
+        });
       }
-    });
 
-    socket.on('disconnect', (reason) => {
-      console.log('[SupportSocket] Disconnected:', reason);
+      // Student notifications - new admin reply
+      if (!isAdmin && rollNumber) {
+        socket.on('support:new-admin-reply', (data) => {
+          try {
+            console.log('[SupportSocket] New admin reply received:', data);
+            addNotification({
+              type: 'admin-reply',
+              id: data.id,
+              messagePreview: data.messagePreview,
+              createdAt: data.createdAt,
+              hasImage: data.hasImage
+            }, true);
+          } catch (error) {
+            console.error('[SupportSocket] Error handling admin reply:', error);
+          }
+        });
+
+        // Listen for confirmation that we joined the room
+        socket.on('student:support-joined', (data) => {
+          console.log('[SupportSocket] Student support room joined:', data);
+        });
+      }
+    } catch (error) {
+      console.error('[SupportSocket] Failed to initialize socket:', error);
       setIsConnected(false);
-    });
-
-    socket.on('connect_error', (error) => {
-      console.error('[SupportSocket] Connection error:', error.message);
-      setIsConnected(false);
-    });
-
-    // Admin notifications - new student message
-    if (isAdmin) {
-      socket.on('support:new-student-message', (data) => {
-        console.log('[SupportSocket] New student message received:', data);
-        addNotification({
-          type: 'student-message',
-          id: data.id,
-          studentName: data.studentName,
-          studentId: data.studentId,
-          college: data.college,
-          messagePreview: data.messagePreview,
-          topic: data.topic,
-          createdAt: data.createdAt,
-          hasImage: data.hasImage
-        }, true);
-      });
-
-      // Listen for confirmation that we joined the room
-      socket.on('admin:support-joined', (data) => {
-        console.log('[SupportSocket] Admin support room joined:', data);
-      });
-    }
-
-    // Student notifications - new admin reply
-    if (!isAdmin && rollNumber) {
-      socket.on('support:new-admin-reply', (data) => {
-        console.log('[SupportSocket] New admin reply received:', data);
-        addNotification({
-          type: 'admin-reply',
-          id: data.id,
-          messagePreview: data.messagePreview,
-          createdAt: data.createdAt,
-          hasImage: data.hasImage
-        }, true);
-      });
-
-      // Listen for confirmation that we joined the room
-      socket.on('student:support-joined', (data) => {
-        console.log('[SupportSocket] Student support room joined:', data);
-      });
     }
 
     // Cleanup on unmount
     return () => {
-      if (socket) {
-        socket.off('connect');
-        socket.off('disconnect');
-        socket.off('connect_error');
-        socket.off('support:new-student-message');
-        socket.off('support:new-admin-reply');
-        socket.off('student:support-joined');
-        socket.off('admin:support-joined');
-        socket.disconnect();
+      try {
+        if (socket) {
+          socket.off('connect');
+          socket.off('disconnect');
+          socket.off('connect_error');
+          socket.off('support:new-student-message');
+          socket.off('support:new-admin-reply');
+          socket.off('student:support-joined');
+          socket.off('admin:support-joined');
+          socket.disconnect();
+        }
+      } catch (error) {
+        console.error('[SupportSocket] Error during cleanup:', error);
       }
     };
   }, [enabled, isAdmin, rollNumber, studentName, addNotification]);

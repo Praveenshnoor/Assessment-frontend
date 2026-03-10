@@ -11,6 +11,9 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [toastNotification, setToastNotification] = useState(null);
   
+  // Disable support socket in interview room to avoid conflicts
+  const isInterviewRoom = window.location.pathname.includes('/interview/');
+  
   // Use support socket for real-time notifications with browser notifications enabled
   const { 
     notifications, 
@@ -18,7 +21,11 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
     clearNotifications,
     notificationPermission,
     requestPermission
-  } = useSupportSocket({ isAdmin: true, enabled: true, enableBrowserNotifications: true });
+  } = useSupportSocket({ 
+    isAdmin: true, 
+    enabled: !isInterviewRoom, // Disable in interview room
+    enableBrowserNotifications: !isInterviewRoom 
+  });
 
   // Request notification permission on first interaction if not granted
   useEffect(() => {

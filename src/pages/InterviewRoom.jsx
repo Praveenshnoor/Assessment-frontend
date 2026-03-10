@@ -5,9 +5,9 @@ import Peer from 'peerjs';
 import { io } from 'socket.io-client';
 import { apiFetch } from '../config/api';
 
-// Backend currently does not implement the required interview Socket.IO events.
-// Disable socket-driven signaling/chat to avoid infinite "Socket not connected" retries.
-const SOCKET_ENABLED = false;
+// Backend defines full interview Socket.IO events (see server.js),
+// so we enable socket-based signaling for reliable calls + notifications.
+const SOCKET_ENABLED = true;
 
 const InterviewRoom = () => {
   const { interviewId } = useParams();
@@ -44,16 +44,17 @@ const InterviewRoom = () => {
     fetchInterviewDetails();
     initializeSocketAndPeer();
 
-    // Fallback: Enable admin call button after 5 seconds even if socket fails
+    // For admin, always enable the call button after a short delay
     if (isAdmin) {
-      const fallbackTimer = setTimeout(() => {
-        console.log('Fallback: Enabling admin call button');
+      const enableTimer = setTimeout(() => {
+        console.log('Admin call button enabled');
         setAdminJoined(true);
-      }, 5000);
+        setIsInterviewTimeValid(true);
+      }, 1000); // 1 second delay
       
       return () => {
         cleanup();
-        clearTimeout(fallbackTimer);
+        clearTimeout(enableTimer);
       };
     }
 
@@ -72,29 +73,25 @@ const InterviewRoom = () => {
   const checkInterviewTimeValidity = (scheduledTime, duration) => {
     const now = new Date();
     const interviewStart = new Date(scheduledTime);
-    const interviewEnd = new Date(interviewStart.getTime() + (duration * 60 * 1000)); // duration in minutes
     
-    // Allow joining 15 minutes before scheduled time and during the interview duration
+    // Allow joining 15 minutes before scheduled time and REMAIN ENABLED afterwards
     const allowedStartTime = new Date(interviewStart.getTime() - (15 * 60 * 1000)); // 15 minutes before
     
-    const isValid = now >= allowedStartTime && now <= interviewEnd;
+    const isValid = now >= allowedStartTime; // Remove end time restriction - stay enabled after start
     setIsInterviewTimeValid(isValid);
     
     // Update connection status based on time validity
     if (!isValid) {
-      if (now < allowedStartTime) {
-        const timeUntilValid = allowedStartTime.getTime() - now.getTime();
-        const minutesUntil = Math.ceil(timeUntilValid / (1000 * 60));
-        setConnectionStatus(`Interview starts in ${minutesUntil} minutes`);
-        
-        // Set up a timer to check again when it becomes valid
-        setTimeout(() => {
-          checkInterviewTimeValidity(scheduledTime, duration);
-        }, Math.min(timeUntilValid, 60000)); // Check every minute or when valid
-      } else if (now > interviewEnd) {
-        setConnectionStatus('Interview time has ended');
-      }
+      const timeUntilValid = allowedStartTime.getTime() - now.getTime();
+      const minutesUntil = Math.ceil(timeUntilValid / (1000 * 60));
+      setConnectionStatus(`Interview starts in ${minutesUntil} minutes`);
+      
+      // Set up a timer to check again when it becomes valid
+      setTimeout(() => {
+        checkInterviewTimeValidity(scheduledTime, duration);
+      }, Math.min(timeUntilValid, 60000)); // Check every minute or when valid
     } else {
+      // Once valid, it stays valid - no end time restriction
       setConnectionStatus(isStudent ? 'Ready - waiting for interviewer...' : 'Ready');
     }
   };
@@ -110,8 +107,11 @@ const InterviewRoom = () => {
       if (response.ok && data.success) {
         setInterview(data.interview);
         
-        // Check if current time is within interview schedule
-        if (data.interview?.scheduled_time) {
+        // For admin, always allow interview access regardless of time
+        if (isAdmin) {
+          setIsInterviewTimeValid(true);
+        } else if (data.interview?.scheduled_time) {
+          // Only check time for students
           checkInterviewTimeValidity(data.interview.scheduled_time, data.interview.duration);
         }
       }
@@ -136,7 +136,8 @@ const InterviewRoom = () => {
           // Student registers their peer ID in DB so admin can call them.
           if (isStudent) {
             try {
-              await apiFetch(`api/interviews/${interviewId}/join`, {
+              console.log('Student registering peer_id:', id);
+              const response = await apiFetch(`api/interviews/${interviewId}/join`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -144,6 +145,8 @@ const InterviewRoom = () => {
                 },
                 body: JSON.stringify({ peer_id: id })
               });
+              const result = await response.json();
+              console.log('Student peer_id registration result:', result);
             } catch (e) {
               console.error('Failed to register peer id:', e);
             }
@@ -156,8 +159,11 @@ const InterviewRoom = () => {
             incoming.close();
             return;
           }
-          console.log('Receiving call...');
+          console.log('Student receiving PeerJS call...');
           setConnectionStatus('Incoming call...');
+          setIncomingCall(true); // Show answer button for student
+          
+          // Auto-answer the call for seamless experience
           answerCall(incoming);
         });
 
@@ -177,11 +183,15 @@ const InterviewRoom = () => {
                 headers: { 'Authorization': `Bearer ${token}` }
               });
               const data = await response.json();
+              console.log('Admin polling - interview data:', data);
               if (response.ok && data.success && data.interview?.peer_id) {
+                console.log('Admin found student peer_id:', data.interview.peer_id);
                 setRemotePeerId(String(data.interview.peer_id));
+              } else {
+                console.log('Admin polling - no student peer_id found');
               }
             } catch (e) {
-              // ignore
+              console.error('Admin polling error:', e);
             }
           }, 1500);
         }
@@ -423,18 +433,21 @@ const InterviewRoom = () => {
 
   const answerCall = async (incoming) => {
     try {
+      console.log('Student answering call...');
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       localStreamRef.current = stream;
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
 
+      console.log('Student answering with stream...');
       incoming.answer(stream);
       setCall(incoming);
       setIncomingCall(false); // Hide "Answer Call" button
+      setConnectionStatus('Connecting...');
 
       incoming.on('stream', (remoteStream) => {
-        console.log('Received remote stream');
+        console.log('Student received remote stream');
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = remoteStream;
         }
@@ -442,13 +455,24 @@ const InterviewRoom = () => {
       });
 
       incoming.on('close', () => {
+        console.log('Student call closed');
         setConnectionStatus('Call ended');
+        setCall(null);
+        setIncomingCall(false);
+      });
+
+      incoming.on('error', (err) => {
+        console.error('Student call error:', err);
+        setConnectionStatus('Call failed');
         setCall(null);
         setIncomingCall(false);
       });
     } catch (error) {
       console.error('Failed to get media:', error);
       setConnectionStatus('Media access denied');
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        alert('Please allow camera and microphone access to answer the call');
+      }
     }
   };
   
@@ -492,7 +516,6 @@ const InterviewRoom = () => {
     try {
       console.log('Starting call...');
       console.log('Remote peer ID:', remotePeerId);
-      console.log('Peer object:', peer);
       
       // Mark interview as started and trigger dashboard notification
       if (isAdmin) {
@@ -532,8 +555,14 @@ const InterviewRoom = () => {
         });
 
         outgoingCall.on('close', () => {
+          console.log('Call closed');
           setConnectionStatus('Call ended');
           setCall(null);
+        });
+
+        outgoingCall.on('error', (err) => {
+          console.error('Outgoing call error:', err);
+          setConnectionStatus('Call failed');
         });
       } else {
         // Student not in room yet, just wait for them to join and answer
@@ -561,6 +590,29 @@ const InterviewRoom = () => {
     }
   };
 
+  // Allow admin to retry call if previous attempt didn't fully connect
+  const handleCallButtonClick = () => {
+    if (!isAdmin) return;
+
+    // If there's an existing call but we're not connected, close and retry
+    if (call && connectionStatus !== 'Connected') {
+      try {
+        call.close();
+      } catch (e) {
+        // ignore
+      }
+      setCall(null);
+      setConnectionStatus('Retrying call…');
+      startCall();
+      return;
+    }
+
+    // No active call – start a new one
+    if (!call) {
+      startCall();
+    }
+  };
+
   const toggleAudio = () => {
     if (localStreamRef.current) {
       const audioTrack = localStreamRef.current.getAudioTracks()[0];
@@ -572,12 +624,8 @@ const InterviewRoom = () => {
   };
 
   const sendChatMessage = () => {
-    if (!chatInput.trim() || !socketRef.current) {
-      console.log('Cannot send message:', { 
-        hasInput: !!chatInput.trim(), 
-        hasSocket: !!socketRef.current,
-        socketConnected: socketRef.current?.connected 
-      });
+    if (!chatInput.trim()) {
+      console.log('Cannot send message: no input');
       return;
     }
 
@@ -591,10 +639,7 @@ const InterviewRoom = () => {
 
     console.log('Sending chat message:', message);
 
-    // Emit to server
-    socketRef.current.emit('interview:send-chat', message);
-
-    // Add to local state immediately
+    // Add to local state immediately (browser cache approach)
     setChatMessages(prev => [...prev, message]);
     setChatInput('');
   };
@@ -712,6 +757,7 @@ const InterviewRoom = () => {
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
+    
     // Student leaving: clear their peer_id so admin never calls a stale ID
     if (isStudent) {
       const token = localStorage.getItem('studentAuthToken');
@@ -809,16 +855,21 @@ const InterviewRoom = () => {
               {!call && isAdmin && (
                 <button
                   onClick={startCall}
-                  disabled={!adminJoined || !isInterviewTimeValid}
-                  className="px-6 py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold flex items-center space-x-2 shadow-lg shadow-emerald-500/30"
+                  className="px-6 py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold flex items-center space-x-2 shadow-lg shadow-emerald-500/30"
+                >
+                  <Video size={20} />
+                  <span>Call Student</span>
+                </button>
+              )}
+
+              {call && isAdmin && (
+                <button
+                  onClick={handleCallButtonClick}
+                  className="px-6 py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold flex items-center space-x-2 shadow-lg shadow-emerald-500/30"
                 >
                   <Video size={20} />
                   <span>
-                    {!adminJoined 
-                      ? 'Connecting...' 
-                      : !isInterviewTimeValid
-                      ? 'Interview Not Available'
-                      : 'Call Student'}
+                    {connectionStatus !== 'Connected' ? 'Retry Call' : 'End Call'}
                   </span>
                 </button>
               )}
@@ -892,7 +943,7 @@ const InterviewRoom = () => {
           </div>
         </div>
 
-        {SOCKET_ENABLED && (isAdmin || isStudent) && (
+        {(isAdmin || isStudent) && (
           <div className="w-full lg:w-80 border-l border-white/10 bg-black/40 flex flex-col h-full">
             <div className="px-5 py-4 border-b border-white/10 flex items-center space-x-2 flex-shrink-0">
               <MessageSquare className="text-white/70" size={18} />

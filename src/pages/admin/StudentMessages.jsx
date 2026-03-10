@@ -46,12 +46,48 @@ const StudentMessages = () => {
       const data = await response.json();
 
       if (data.success) {
-        setMessages(data.messages);
+        // Group messages by student_id to create conversations
+        const groupedMessages = {};
+        
+        data.messages.forEach(msg => {
+          const conversationId = msg.student_id || `anonymous_${msg.id}`;
+          
+          if (!groupedMessages[conversationId]) {
+            groupedMessages[conversationId] = {
+              ...msg,
+              message_count: 1,
+              unread_count: msg.status === 'unread' ? 1 : 0,
+              latest_message_time: msg.created_at
+            };
+          } else {
+            // Update with latest message info if this message is newer
+            if (new Date(msg.created_at) > new Date(groupedMessages[conversationId].latest_message_time)) {
+              groupedMessages[conversationId] = {
+                ...msg,
+                message_count: groupedMessages[conversationId].message_count + 1,
+                unread_count: groupedMessages[conversationId].unread_count + (msg.status === 'unread' ? 1 : 0),
+                latest_message_time: msg.created_at
+              };
+            } else {
+              groupedMessages[conversationId].message_count += 1;
+              if (msg.status === 'unread') {
+                groupedMessages[conversationId].unread_count += 1;
+              }
+            }
+          }
+        });
+
+        // Convert back to array and sort by latest message time
+        const conversationArray = Object.values(groupedMessages).sort((a, b) => 
+          new Date(b.latest_message_time) - new Date(a.latest_message_time)
+        );
+
+        setMessages(conversationArray);
         setColleges(data.colleges || []);
         setPagination(prev => ({
           ...prev,
-          total: data.pagination.total,
-          pages: data.pagination.pages
+          total: conversationArray.length,
+          pages: Math.ceil(conversationArray.length / prev.limit)
         }));
       } else {
         throw new Error(data.message || 'Failed to fetch messages');
@@ -427,11 +463,11 @@ const StudentMessages = () => {
                   onClick={() => handleSelectMessage(msg)}
                   className={`p-4 cursor-pointer hover:bg-shnoor-lavender/50 transition-colors ${
                     selectedMessage?.id === msg.id ? 'bg-shnoor-lavender' : ''
-                  } ${msg.status === 'unread' ? 'bg-shnoor-indigo/5' : ''}`}
+                  } ${msg.status === 'unread' || (msg.unread_count && msg.unread_count > 0) ? 'bg-shnoor-indigo/5' : ''}`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${msg.status === 'unread' ? 'bg-shnoor-indigo/10' : 'bg-shnoor-mist'}`}>
-                      {msg.status === 'unread' ? (
+                    <div className={`p-2 rounded-lg ${msg.status === 'unread' || (msg.unread_count && msg.unread_count > 0) ? 'bg-shnoor-indigo/10' : 'bg-shnoor-mist'}`}>
+                      {msg.status === 'unread' || (msg.unread_count && msg.unread_count > 0) ? (
                         <Mail size={16} className="text-shnoor-indigo" />
                       ) : (
                         <MailOpen size={16} className="text-shnoor-soft" />
@@ -442,9 +478,16 @@ const StudentMessages = () => {
                         <p className={`text-sm truncate ${msg.status === 'unread' ? 'font-semibold text-shnoor-navy' : 'text-shnoor-navy'}`}>
                           {msg.name}
                         </p>
-                        <span className="text-xs text-shnoor-soft flex-shrink-0 ml-2">
-                          {formatDate(msg.created_at)}
-                        </span>
+                        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                          {msg.message_count > 1 && (
+                            <span className="text-xs bg-shnoor-indigo/10 text-shnoor-indigo px-2 py-0.5 rounded-full">
+                              {msg.message_count} msgs
+                            </span>
+                          )}
+                          <span className="text-xs text-shnoor-soft">
+                            {formatDate(msg.created_at)}
+                          </span>
+                        </div>
                       </div>
                       {msg.college && (
                         <p className="text-xs text-shnoor-indigo mb-1 flex items-center gap-1">
