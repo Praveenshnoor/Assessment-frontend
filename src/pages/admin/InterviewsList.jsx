@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Video, Calendar, Clock, Users, Trash2 } from 'lucide-react';
+import { Video, Calendar, Clock, Users, Trash2, Edit2 } from 'lucide-react';
 import { apiFetch } from '../../config/api';
 
 const InterviewsList = () => {
@@ -12,6 +12,32 @@ const InterviewsList = () => {
     date: new Date().toISOString().split('T')[0]
   });
   const [showAllDates, setShowAllDates] = useState(false);
+  const [editing, setEditing] = useState(null); // { id, scheduled_time, duration, student_name }
+
+  const toDatetimeLocalIST = (datetime) => {
+    if (!datetime) return '';
+    const date = new Date(datetime);
+    if (Number.isNaN(date.getTime())) return '';
+
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).formatToParts(date);
+
+    const get = (type) => parts.find(p => p.type === type)?.value;
+    const yyyy = get('year');
+    const mm = get('month');
+    const dd = get('day');
+    const hh = get('hour');
+    const min = get('minute');
+    if (!yyyy || !mm || !dd || !hh || !min) return '';
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+  };
 
   useEffect(() => {
     fetchInterviews();
@@ -68,6 +94,49 @@ const InterviewsList = () => {
     } catch (error) {
       console.error('Delete interview error:', error);
       alert('Failed to delete interview');
+    }
+  };
+
+  const openEditModal = (interview) => {
+    setEditing({
+      id: interview.id,
+      student_name: interview.student_name,
+      // Always edit in Asia/Kolkata wall-clock time
+      scheduled_time: toDatetimeLocalIST(interview.scheduled_time),
+      duration: interview.duration
+    });
+  };
+
+  const handleEditChange = (field, value) => {
+    setEditing(prev => prev ? { ...prev, [field]: value } : prev);
+  };
+
+  const saveSchedule = async () => {
+    if (!editing) return;
+    try {
+      const response = await apiFetch(`api/interviews/${editing.id}/reschedule`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        },
+        body: JSON.stringify({
+          scheduled_time: editing.scheduled_time,
+          duration: editing.duration
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert('Interview rescheduled successfully');
+        setEditing(null);
+        fetchInterviews();
+      } else {
+        alert(data.message || 'Failed to reschedule interview');
+      }
+    } catch (error) {
+      console.error('Reschedule interview error:', error);
+      alert('Failed to reschedule interview');
     }
   };
 
@@ -196,6 +265,14 @@ const InterviewsList = () => {
                   )}
                   
                   <button
+                    onClick={() => openEditModal(interview)}
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    title="Edit schedule"
+                  >
+                    <Edit2 size={18} />
+                  </button>
+                  
+                  <button
                     onClick={() => deleteInterview(interview.id, interview.student_name)}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     title="Delete interview"
@@ -206,6 +283,56 @@ const InterviewsList = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {editing && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+              Reschedule Interview • {editing.student_name}
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Interview Date &amp; Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={editing.scheduled_time || ''}
+                  onChange={(e) => handleEditChange('scheduled_time', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Duration (minutes)
+                </label>
+                <input
+                  type="number"
+                  min="15"
+                  step="5"
+                  value={editing.duration}
+                  onChange={(e) => handleEditChange('duration', parseInt(e.target.value, 10) || 60)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => setEditing(null)}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveSchedule}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+              >
+                Save
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

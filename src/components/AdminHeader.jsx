@@ -15,6 +15,7 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
   const { 
     notifications, 
     unreadCount: socketUnreadCount,
+    clearNotifications,
     notificationPermission,
     requestPermission
   } = useSupportSocket({ isAdmin: true, enabled: true, enableBrowserNotifications: true });
@@ -48,9 +49,7 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
 
   // Update unread count when socket notifications change
   useEffect(() => {
-    if (socketUnreadCount > 0) {
-      setUnreadCount(prev => prev + socketUnreadCount);
-    }
+    setUnreadCount(socketUnreadCount);
   }, [socketUnreadCount]);
 
   // Fetch unread message count
@@ -76,11 +75,23 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
     };
 
     fetchUnreadCount();
+
+    // Listen for unread count changes from StudentMessages page
+    const handleUnreadChange = (e) => {
+      setUnreadCount(e.detail.unreadCount || 0);
+      if ((e.detail.unreadCount || 0) === 0) {
+        clearNotifications();
+      }
+    };
+    window.addEventListener('admin-unread-messages-changed', handleUnreadChange);
     
     // Poll for new messages every 30 seconds
     const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('admin-unread-messages-changed', handleUnreadChange);
+    };
+  }, [clearNotifications]);
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');

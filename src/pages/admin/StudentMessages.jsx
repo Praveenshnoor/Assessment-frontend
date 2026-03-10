@@ -256,6 +256,13 @@ const StudentMessages = () => {
 
   const unreadCount = messages.filter(m => m.status === 'unread').length;
 
+  // Expose unread count to header via custom event so the badge updates when messages are viewed
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('admin-unread-messages-changed', {
+      detail: { unreadCount }
+    }));
+  }, [unreadCount]);
+
   return (
     <AdminLayout title="Student Support">
       <div className="mb-6">
