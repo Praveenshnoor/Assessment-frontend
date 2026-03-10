@@ -6,7 +6,7 @@ const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const FRAME_RATE = 5; // 5 frames per second
 const FRAME_INTERVAL = 1000 / FRAME_RATE; // 200ms
 
-export const useProctoringWithAI = (onCameraLost, onAIViolation, onMessageReceived) => {
+export const useProctoringWithAI = (onCameraLost, onAIViolation, onMessageReceived, onForceStop) => {
   const [stream, setStream] = useState(null);
   const [audioStream, setAudioStream] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -360,6 +360,17 @@ export const useProctoringWithAI = (onCameraLost, onAIViolation, onMessageReceiv
     });
     // Handle incoming messages from proctor
     socket.on('proctoring:message-received', handleMessageReceived);
+    
+    // Handle forced test stop from admin
+    socket.on('proctoring:force-stopped', (data) => {
+      console.log('[Proctoring] 🛑 Test force-stopped by admin:', data);
+      
+      // Call parent handler to trigger test submission
+      if (onForceStop) {
+        onForceStop(data);
+      }
+    });
+    
     socketRef.current = socket;
     return socket;
   };

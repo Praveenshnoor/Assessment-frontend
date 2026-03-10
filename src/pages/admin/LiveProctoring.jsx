@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { ArrowLeft, Users, Wifi, WifiOff, Camera, Clock, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Users, Wifi, WifiOff, Camera, Clock, MessageCircle, StopCircle, AlertTriangle } from 'lucide-react';
 import AdminChatModal from '../../components/admin/AdminChatModal';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -13,6 +13,9 @@ const LiveProctoring = () => {
   const [frameData, setFrameData] = useState(new Map()); // studentId -> frame base64
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [isStopModalOpen, setIsStopModalOpen] = useState(false);
+  const [stopReason, setStopReason] = useState('');
+  const [isStoppingTest, setIsStoppingTest] = useState(false);
   const socketRef = useRef(null);
   
 
@@ -126,6 +129,29 @@ const LiveProctoring = () => {
       });
     });
 
+    // Handle force-stop success
+    socket.on('admin:force-stop-success', (data) => {
+      console.log('[Admin] Force-stop successful:', data);
+      alert(`✅ Test successfully terminated for ${data.studentName}\n\nThe student has been notified.`);
+      setIsStopModalOpen(false);
+      setStopReason('');
+      setSelectedStudent(null);
+      setIsStoppingTest(false);
+    });
+
+    // Handle force-stop failure
+    socket.on('admin:force-stop-failed', (data) => {
+      console.error('[Admin] Force-stop failed:', data);
+      alert(`❌ Failed to stop test: ${data.error}`);
+      setIsStoppingTest(false);
+    });
+
+    // Handle notification when another admin stops a test
+    socket.on('admin:test-forcibly-stopped', (data) => {
+      console.log('[Admin] Test stopped by another admin:', data);
+      // Could show a toast notification here
+    });
+
     socketRef.current = socket;
 
     // Cleanup
@@ -154,6 +180,52 @@ const LiveProctoring = () => {
   const handleMessageSent = () => {
     // Optional: Add any additional handling when a message is sent
     console.log('[Admin] Message sent to student');
+  };
+
+  const handleOpenStopModal = (student) => {
+    setSelectedStudent(student);
+    setIsStopModalOpen(true);
+    setStopReason('');
+  };
+
+  const handleCloseStopModal = () => {
+    if (!isStoppingTest) {
+      setIsStopModalOpen(false);
+      setStopReason('');
+      setSelectedStudent(null);
+    }
+  };
+
+  const handleStopTest = () => {
+    if (!stopReason.trim()) {
+      alert('Please provide a reason for stopping the test');
+      return;
+    }
+
+    if (!socketRef.current || !socketRef.current.connected) {
+      alert('Not connected to server. Please refresh the page.');
+      return;
+    }
+
+    setIsStoppingTest(true);
+
+    const adminToken = localStorage.getItem('adminToken');
+    const adminData = JSON.parse(localStorage.getItem('adminData') || '{}');
+
+    console.log('[Admin] Sending force-stop request:', {
+      studentId: selectedStudent.studentId,
+      testId: selectedStudent.testId,
+      reason: stopReason
+    });
+
+    socketRef.current.emit('admin:force-stop-test', {
+      studentId: selectedStudent.studentId,
+      testId: selectedStudent.testId,
+      reason: stopReason.trim(),
+      adminId: adminData.id || 'admin',
+      adminName: adminData.full_name || adminData.email || 'Admin',
+      violationSummary: `Test stopped during live proctoring session. Duration: ${formatDuration(selectedStudent.startTime)}`
+    });
   };
 
   return (
@@ -279,6 +351,17 @@ const LiveProctoring = () => {
                       </button>
                     </div>
 
+                    {/* Stop Test Button */}
+                    <div className="mt-3">
+                      <button
+                        onClick={() => handleOpenStopModal(session)}
+                        className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        <StopCircle size={16} />
+                        <span className="text-sm font-medium">Stop Test</span>
+                      </button>
+                    </div>
+
                   </div>
                 </div>
               );
@@ -296,6 +379,86 @@ const LiveProctoring = () => {
           socket={socketRef.current}
           onMessageSent={handleMessageSent}
         />
+      )}
+
+      {/* Stop Test Confirmation Modal */}
+      {isStopModalOpen && selectedStudent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            {/* Modal Header */}
+            <div className="bg-red-600 text-white px-6 py-4 rounded-t-xl">
+              <div className="flex items-center space-x-3">
+                <AlertTriangle size={24} />
+                <h2 className="text-xl font-bold">Stop Test - Confirmation Required</h2>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              <div className="mb-4">
+                <p className="text-shnoor-navy font-semibold mb-2">Student Information:</p>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm"><span className="font-medium">Name:</span> {selectedStudent.studentName}</p>
+                  <p className="text-sm"><span className="font-medium">ID:</span> {selectedStudent.studentId}</p>
+                  <p className="text-sm"><span className="font-medium">Test:</span> {selectedStudent.testTitle}</p>
+                </div>
+              </div>
+
+              <div className="mb-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                <p className="text-sm text-yellow-800 font-medium">⚠️ Warning:</p>
+                <p className="text-sm text-yellow-700 mt-1">
+                  This action will immediately terminate the student's exam and submit their current answers. 
+                  The student will receive a notification that their test was stopped due to policy violations.
+                </p>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-shnoor-navy mb-2">
+                  Reason for Termination <span className="text-red-600">*</span>
+                </label>
+                <textarea
+                  value={stopReason}
+                  onChange={(e) => setStopReason(e.target.value)}
+                  placeholder="e.g., Multiple instances of unauthorized devices detected, suspicious behavior observed..."
+                  rows={4}
+                  disabled={isStoppingTest}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none disabled:bg-gray-100"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  This reason will be logged for audit purposes and may be shared with the student.
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end space-x-3">
+              <button
+                onClick={handleCloseStopModal}
+                disabled={isStoppingTest}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleStopTest}
+                disabled={isStoppingTest || !stopReason.trim()}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
+                {isStoppingTest ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Stopping...</span>
+                  </>
+                ) : (
+                  <>
+                    <StopCircle size={16} />
+                    <span>Stop Test Now</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       
     </div>
