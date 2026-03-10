@@ -301,10 +301,6 @@ const StudentSupportChatbot = () => {
     try {
       const token = localStorage.getItem('studentAuthToken');
       const formData = new FormData();
-      formData.append('name', studentName);
-      formData.append('email', studentEmail);
-      formData.append('studentId', studentId);
-      formData.append('college', institute);
       formData.append('message', newMessage.trim());
       formData.append('topic', 'Contact / Support');
       
