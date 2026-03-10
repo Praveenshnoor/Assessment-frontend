@@ -26,6 +26,7 @@ const InterviewRoom = () => {
   const [incomingCall, setIncomingCall] = useState(false); // Track if admin is calling
   const [chatMessages, setChatMessages] = useState([]); // Chat messages
   const [chatInput, setChatInput] = useState(''); // Current chat input
+  const [isInterviewTimeValid, setIsInterviewTimeValid] = useState(false); // Check if interview time is valid
   const chatEndRef = useRef(null); // For auto-scrolling chat
   
   const localVideoRef = useRef(null);
@@ -68,6 +69,36 @@ const InterviewRoom = () => {
     }
   }, [chatMessages]);
 
+  const checkInterviewTimeValidity = (scheduledTime, duration) => {
+    const now = new Date();
+    const interviewStart = new Date(scheduledTime);
+    const interviewEnd = new Date(interviewStart.getTime() + (duration * 60 * 1000)); // duration in minutes
+    
+    // Allow joining 15 minutes before scheduled time and during the interview duration
+    const allowedStartTime = new Date(interviewStart.getTime() - (15 * 60 * 1000)); // 15 minutes before
+    
+    const isValid = now >= allowedStartTime && now <= interviewEnd;
+    setIsInterviewTimeValid(isValid);
+    
+    // Update connection status based on time validity
+    if (!isValid) {
+      if (now < allowedStartTime) {
+        const timeUntilValid = allowedStartTime.getTime() - now.getTime();
+        const minutesUntil = Math.ceil(timeUntilValid / (1000 * 60));
+        setConnectionStatus(`Interview starts in ${minutesUntil} minutes`);
+        
+        // Set up a timer to check again when it becomes valid
+        setTimeout(() => {
+          checkInterviewTimeValidity(scheduledTime, duration);
+        }, Math.min(timeUntilValid, 60000)); // Check every minute or when valid
+      } else if (now > interviewEnd) {
+        setConnectionStatus('Interview time has ended');
+      }
+    } else {
+      setConnectionStatus(isStudent ? 'Ready - waiting for interviewer...' : 'Ready');
+    }
+  };
+
   const fetchInterviewDetails = async () => {
     try {
       const token = localStorage.getItem('adminToken') || localStorage.getItem('studentAuthToken');
@@ -78,6 +109,11 @@ const InterviewRoom = () => {
       const data = await response.json();
       if (response.ok && data.success) {
         setInterview(data.interview);
+        
+        // Check if current time is within interview schedule
+        if (data.interview?.scheduled_time) {
+          checkInterviewTimeValidity(data.interview.scheduled_time, data.interview.duration);
+        }
       }
     } catch (error) {
       console.error('Fetch interview error:', error);
@@ -773,13 +809,15 @@ const InterviewRoom = () => {
               {!call && isAdmin && (
                 <button
                   onClick={startCall}
-                  disabled={!adminJoined}
+                  disabled={!adminJoined || !isInterviewTimeValid}
                   className="px-6 py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold flex items-center space-x-2 shadow-lg shadow-emerald-500/30"
                 >
                   <Video size={20} />
                   <span>
                     {!adminJoined 
                       ? 'Connecting...' 
+                      : !isInterviewTimeValid
+                      ? 'Interview Not Available'
                       : 'Call Student'}
                   </span>
                 </button>

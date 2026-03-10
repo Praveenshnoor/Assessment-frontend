@@ -101,6 +101,45 @@ const StudentMessages = () => {
     }
   }, [conversationThread]);
 
+  // Auto-mark all messages as read when user visits the page
+  useEffect(() => {
+    const autoMarkAsRead = async () => {
+      try {
+        const token = localStorage.getItem('adminToken');
+        if (!token) return;
+
+        // Only auto-mark if there are unread messages
+        const hasUnread = messages.some(m => m.status === 'unread');
+        if (!hasUnread) return;
+
+        const response = await fetch(`${API_URL}/api/student-messages/mark-all-read`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          // Update local state to mark all as read
+          setMessages(prev => 
+            prev.map(msg => ({ 
+              ...msg, 
+              status: 'read', 
+              read_at: msg.read_at || new Date().toISOString() 
+            }))
+          );
+        }
+      } catch (err) {
+        console.error('Error auto-marking messages as read:', err);
+      }
+    };
+
+    // Auto-mark as read after a short delay to allow the page to load
+    const timer = setTimeout(autoMarkAsRead, 1000);
+    return () => clearTimeout(timer);
+  }, [messages.length]); // Only run when messages are first loaded
+
   const markAsRead = async (messageId) => {
     try {
       const token = localStorage.getItem('adminToken');
