@@ -125,6 +125,9 @@ const StudentMessages = () => {
               read_at: msg.read_at || new Date().toISOString() 
             }))
           );
+          
+          // Clear socket notifications since all messages are now read
+          window.dispatchEvent(new CustomEvent('admin-messages-all-read'));
         }
       } catch (err) {
         console.error('Error auto-marking messages as read:', err);
@@ -199,6 +202,8 @@ const StudentMessages = () => {
       const data = await response.json();
       if (data.success) {
         fetchMessages();
+        // Clear socket notifications since all messages are now read
+        window.dispatchEvent(new CustomEvent('admin-messages-all-read'));
       }
     } catch (err) {
       console.error('Error marking all as read:', err);

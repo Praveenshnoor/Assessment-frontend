@@ -85,13 +85,23 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
         clearNotifications();
       }
     };
+    
+    // Listen for all messages marked as read
+    const handleAllRead = () => {
+      setUnreadCount(0);
+      clearNotifications();
+      setToastNotification(null);
+    };
+    
     window.addEventListener('admin-unread-messages-changed', handleUnreadChange);
+    window.addEventListener('admin-messages-all-read', handleAllRead);
     
     // Poll for new messages every 30 seconds
     const interval = setInterval(fetchUnreadCount, 30000);
     return () => {
       clearInterval(interval);
       window.removeEventListener('admin-unread-messages-changed', handleUnreadChange);
+      window.removeEventListener('admin-messages-all-read', handleAllRead);
     };
   }, [clearNotifications]);
 
@@ -126,7 +136,10 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
           <Button
             variant="primary"
             className="!h-10 !px-5 text-sm bg-shnoor-indigo hover:bg-[#6b6be5] hover:shadow-[0_0_15px_rgba(107,107,229,0.4)] hover:-translate-y-0.5 transition-all border-0 relative"
-            onClick={() => navigate('/admin/student-messages')}
+            onClick={() => {
+              setToastNotification(null); // Clear toast when navigating to messages
+              navigate('/admin/student-messages');
+            }}
           >
             <MessageSquare size={16} className="mr-2" />
             Messages
@@ -171,6 +184,7 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
             className="bg-white rounded-xl shadow-2xl border border-gray-100 p-4 max-w-sm cursor-pointer hover:shadow-xl transition-shadow"
             onClick={() => {
               setToastNotification(null);
+              clearNotifications(); // Clear all socket notifications
               navigate('/admin/student-messages');
             }}
           >

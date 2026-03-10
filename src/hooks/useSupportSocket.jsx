@@ -152,6 +152,14 @@ export const useSupportSocket = ({
       return;
     }
 
+    // Listen for admin messages all read event
+    const handleAllRead = () => {
+      console.log('[SupportSocket] All messages marked as read, clearing notifications');
+      clearNotifications();
+    };
+    
+    window.addEventListener('admin-messages-all-read', handleAllRead);
+
     // Create socket connection
     const socket = io(SOCKET_URL, {
       transports: ['polling', 'websocket'],
@@ -232,6 +240,7 @@ export const useSupportSocket = ({
 
     // Cleanup on unmount
     return () => {
+      window.removeEventListener('admin-messages-all-read', handleAllRead);
       if (socket) {
         socket.off('connect');
         socket.off('disconnect');
@@ -243,7 +252,7 @@ export const useSupportSocket = ({
         socket.disconnect();
       }
     };
-  }, [enabled, isAdmin, rollNumber, studentName, addNotification]);
+  }, [enabled, isAdmin, rollNumber, studentName, addNotification, clearNotifications]);
 
   // Provide a getter function for the socket instead of directly returning ref.current
   const getSocket = useCallback(() => socketRef.current, []);

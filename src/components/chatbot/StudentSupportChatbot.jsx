@@ -151,6 +151,13 @@ const StudentSupportChatbot = () => {
       });
       setUnreadCount(0);
       socketMarkAllRead();
+      
+      // Clear toast notification when messages are read
+      setShowToastNotification(false);
+      setToastMessage(null);
+      
+      // Clear processed notifications to allow new ones
+      processedNotificationsRef.current.clear();
     } catch (error) {
       console.error('Error marking messages as read:', error);
     }
