@@ -38,7 +38,7 @@ const ViewTestDetailsModal = ({ test, onClose, onEdit }) => {
           {/* Test Title */}
           <div className="bg-shnoor-lavender border-l-4 border-shnoor-indigo p-4 rounded-r-lg">
             <h3 className="text-lg font-bold text-shnoor-navy mb-2">{test.name}</h3>
-            <div className="flex items-center space-x-4 text-sm text-shnoor-indigoMedium">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-shnoor-indigoMedium">
               <span className="flex items-center">
                 <FileText size={16} className="mr-1.5" />
                 {test.questions} Questions
@@ -48,8 +48,8 @@ const ViewTestDetailsModal = ({ test, onClose, onEdit }) => {
                 {test.duration} minutes
               </span>
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${test.status === 'published'
-                  ? 'bg-shnoor-successLight text-shnoor-success border border-shnoor-successLight'
-                  : 'bg-shnoor-lavender text-shnoor-navy border border-shnoor-mist'
+                ? 'bg-shnoor-successLight text-shnoor-success border border-shnoor-successLight'
+                : 'bg-shnoor-lavender text-shnoor-navy border border-shnoor-mist'
                 }`}>
                 {test.status === 'published' ? 'Published' : 'Draft'}
               </span>
@@ -80,7 +80,7 @@ const ViewTestDetailsModal = ({ test, onClose, onEdit }) => {
           </div>
 
           {/* Date & Time */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="border border-shnoor-light rounded-lg p-3 bg-white">
               <div className="flex items-center mb-2">
                 <Calendar size={16} className="text-shnoor-success mr-2" />
@@ -103,7 +103,7 @@ const ViewTestDetailsModal = ({ test, onClose, onEdit }) => {
           </div>
 
           {/* Test Settings */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="border border-shnoor-light rounded-lg p-3 text-center bg-white">
               <Clock size={20} className="text-shnoor-indigo mx-auto mb-1" />
               <h4 className="font-semibold text-shnoor-navy text-xs mb-1">Duration</h4>
@@ -128,7 +128,7 @@ const ViewTestDetailsModal = ({ test, onClose, onEdit }) => {
         </div>
 
         {/* Footer */}
-        <div className="bg-white border-t border-shnoor-light px-6 py-4 flex justify-between items-center">
+        <div className="bg-white border-t border-shnoor-light px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <p className="text-xs text-shnoor-soft">
             Created: {test.date}
           </p>
@@ -142,8 +142,8 @@ const ViewTestDetailsModal = ({ test, onClose, onEdit }) => {
             </Button>
             <Button
 
-            variant="primary"
-            onClick={() => {
+              variant="primary"
+              onClick={() => {
                 onClose();
                 onEdit(test);
               }}

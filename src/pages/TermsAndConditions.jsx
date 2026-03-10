@@ -21,31 +21,31 @@ const TermsAndConditions = () => {
         <div className="font-['Plus_Jakarta_Sans',sans-serif] text-shnoor-navy antialiased min-h-screen flex flex-col">
             {/* ── 1. NAVBAR ──────────────────────────────────────────────────────── */}
             <nav className="bg-white border-b border-shnoor-mist sticky top-0 z-50 shadow-sm">
-                <div className="max-w-[1280px] mx-auto px-8 flex items-center justify-between h-[72px]">
+                <div className="max-w-[1280px] mx-auto px-4 sm:px-8 flex flex-col sm:flex-row items-center justify-between h-auto py-4 sm:py-0 sm:h-[72px] gap-4 sm:gap-0">
                     <Link to="/" className="flex items-center gap-4 hover:opacity-90 transition-opacity">
-                        <img src={shnoorlogo1} alt="Shnoor" className="h-12 w-12 object-contain" />
+                        <img src={shnoorlogo1} alt="Shnoor" className="h-10 w-10 sm:h-12 sm:w-12 object-contain" width="48" height="48" loading="eager" fetchpriority="high" />
                         <div>
-                            <p className="font-bold text-shnoor-navy text-xl leading-tight">SHNOOR Assessments</p>
-                            <p className="text-[11px] text-shnoor-soft font-semibold uppercase tracking-widest">Secure Examination Portal</p>
+                            <p className="font-bold text-shnoor-navy text-lg sm:text-xl leading-tight">SHNOOR Assessments</p>
+                            <p className="text-[10px] sm:text-[11px] text-shnoor-soft font-semibold uppercase tracking-widest">Secure Examination Portal</p>
                         </div>
                     </Link>
-                    <div className="flex items-center gap-6">
-                        <Link to="/login" className="text-base font-semibold text-shnoor-navy hover:text-shnoor-indigo transition-colors px-4 py-2">
+                    <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6">
+                        <Link to="/login" className="text-sm sm:text-base font-semibold text-shnoor-navy hover:text-shnoor-indigo transition-colors px-2 sm:px-4 py-2">
                             Sign In
                         </Link>
                         <Link to="/register">
-                            <Button variant="primary">Register Now</Button>
+                            <Button variant="primary" className="text-sm sm:text-base">Register Now</Button>
                         </Link>
                     </div>
                 </div>
             </nav>
 
             {/* ── POLICY CONTENT ────────────────────────────────────────────────── */}
-            <main className="flex-grow bg-[#F8FAFC] py-16 px-8">
-                <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-shnoor-mist p-10 md:p-14">
-                    <div className="border-b border-shnoor-mist pb-8 mb-8">
-                        <h1 className="text-4xl font-extrabold text-shnoor-navy mb-4">Terms and Conditions</h1>
-                        <p className="text-lg text-shnoor-soft mb-4">Assessments Platform – assessments.shnoor.com</p>
+            <main className="flex-grow bg-[#F8FAFC] py-10 sm:py-16 px-4 sm:px-8">
+                <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-shnoor-mist p-6 sm:p-10 md:p-14">
+                    <div className="border-b border-shnoor-mist pb-6 sm:pb-8 mb-6 sm:mb-8">
+                        <h1 className="text-3xl sm:text-4xl font-extrabold text-shnoor-navy mb-4">Terms and Conditions</h1>
+                        <p className="text-base sm:text-lg text-shnoor-soft mb-4">Assessments Platform – assessments.shnoor.com</p>
                         <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 text-sm text-shnoor-soft font-medium bg-shnoor-lavender p-4 rounded-xl border border-shnoor-mist">
                             <span className="flex items-center gap-2">
                                 <div className="w-2 h-2 rounded-full bg-shnoor-indigo"></div>
@@ -99,12 +99,12 @@ const TermsAndConditions = () => {
             </main>
 
             {/* ── 8. FOOTER ──────────────────────────────────────────────────────── */}
-            <footer className="bg-shnoor-navy pt-16 pb-8 px-8 mt-auto">
+            <footer className="bg-shnoor-navy pt-12 sm:pt-16 pb-6 sm:pb-8 px-4 sm:px-8 mt-auto">
                 <div className="max-w-[1280px] mx-auto">
-                    <div className="grid md:grid-cols-3 gap-12 mb-12">
+                    <div className="grid md:grid-cols-3 gap-8 sm:gap-12 mb-10 sm:mb-12 text-center md:text-left">
                         <div>
                             <div className="flex items-center gap-3 mb-4">
-                                <img src={shnoorLogo} alt="Shnoor" className="h-9 w-9 object-contain" loading="lazy" />
+                                <img src={shnoorLogo} alt="Shnoor" className="h-9 w-9 object-contain" loading="lazy" width="36" height="36" decoding="async" />
                                 <span className="font-extrabold text-white text-lg">SHNOOR Assessments</span>
                             </div>
                             <p className="text-shnoor-soft mb-6 leading-relaxed text-sm">Secure examination platform for campus recruitment drives.</p>

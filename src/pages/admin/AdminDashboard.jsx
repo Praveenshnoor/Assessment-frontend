@@ -5,6 +5,7 @@ import {
   Plus, FileSpreadsheet, LogOut, Download, ArrowLeft,
   Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video, Loader2, X, Building2, MoreVertical, Copy, AlertCircle, Pencil, MessageSquare, Star, TrendingUp, BarChart3, Calendar, Filter, CheckSquare
 } from 'lucide-react';
+
 import axios from 'axios';
 import CreateTestSection from '../../components/admin/CreateTestSection';
 import ExamSearchFilter from '../../components/ExamSearchFilter';
@@ -12,6 +13,8 @@ import ViewTestDetailsModal from '../../components/admin/ViewTestDetailsModal';
 import EditTestDetailsModal from '../../components/admin/EditTestDetailsModal';
 import BulkStudentUpload from '../../components/admin/BulkStudentUpload';
 import InstituteRegistrationControl from '../../components/admin/InstituteRegistrationControl';
+import InterviewsList from './InterviewsList';
+import InterviewSchedule from './InterviewSchedule';
 import AdminReports from './AdminReports';
 import { apiFetch } from '../../config/api';
 import AdminHeader from '../../components/AdminHeader';
@@ -32,6 +35,7 @@ const AdminDashboard = () => {
   const [selectedStudentsForDelete, setSelectedStudentsForDelete] = useState([]);
   const [studentsData, setStudentsData] = useState({});
   const [loading, setLoading] = useState(false);
+
   const [selectedCandidates, setSelectedCandidates] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'pass', 'fail'
   const [showQuickSelectMenu, setShowQuickSelectMenu] = useState(false);
@@ -64,16 +68,18 @@ const AdminDashboard = () => {
 
   // Multi-Institute Selection States (for bulk test assignment)
   const [selectedInstitutes, setSelectedInstitutes] = useState([]);
-  const [selectedTestForMultipleInstitutes, setSelectedTestForMultipleInstitutes] = useState('');
+  const [selectedTestsForMultipleInstitutes, setSelectedTestsForMultipleInstitutes] = useState([]);
   const [isAssigningTestToMultipleInstitutes, setIsAssigningTestToMultipleInstitutes] = useState(false);
+  const [isTestDropdownOpen, setIsTestDropdownOpen] = useState(false);
 
   // Assigned Tests Modal States
   const [showAssignedTestsModal, setShowAssignedTestsModal] = useState(false);
   const [selectedInstituteForTests, setSelectedInstituteForTests] = useState(null);
   const [assignedTests, setAssignedTests] = useState([]);
   const [isLoadingAssignedTests, setIsLoadingAssignedTests] = useState(false);
-  const [selectedTestForInstitute, setSelectedTestForInstitute] = useState('');
+  const [selectedTestsForInstitute, setSelectedTestsForInstitute] = useState([]);
   const [isAssigningTestToInstitute, setIsAssigningTestToInstitute] = useState(false);
+  const [isInstituteTestDropdownOpen, setIsInstituteTestDropdownOpen] = useState(false);
 
   // Student Management States
   const [showStudentManagementModal, setShowStudentManagementModal] = useState(false);
@@ -81,8 +87,9 @@ const AdminDashboard = () => {
   const [instituteStudentsForManagement, setInstituteStudentsForManagement] = useState([]);
   const [isLoadingStudentsForManagement, setIsLoadingStudentsForManagement] = useState(false);
   const [showAddStudentForm, setShowAddStudentForm] = useState(false);
-  const [selectedTestForStudentModal, setSelectedTestForStudentModal] = useState('');
+  const [selectedTestsForStudentModal, setSelectedTestsForStudentModal] = useState([]);
   const [isAssigningTestInModal, setIsAssigningTestInModal] = useState(false);
+  const [isStudentTestDropdownOpen, setIsStudentTestDropdownOpen] = useState(false);
   const [newStudentData, setNewStudentData] = useState({
     full_name: '',
     email: '',
@@ -138,6 +145,10 @@ const AdminDashboard = () => {
   const [showTestHistoryModal, setShowTestHistoryModal] = useState(false);
   const [testHistory, setTestHistory] = useState(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // Interview Schedule Modal States
+  const [showInterviewScheduleModal, setShowInterviewScheduleModal] = useState(false);
+  const [selectedStudentForInterview, setSelectedStudentForInterview] = useState(null);
 
   // Derived state: Get students for the selected exam
   const selectedExamStudents = selectedExamId ? (studentsData[selectedExamId] || []) : [];
@@ -263,10 +274,22 @@ const AdminDashboard = () => {
       if (openMenuId && !event.target.closest('.relative')) {
         setOpenMenuId(null);
       }
+      // Close test dropdown when clicking outside
+      if (isTestDropdownOpen && !event.target.closest('.relative')) {
+        setIsTestDropdownOpen(false);
+      }
+      // Close institute test dropdown when clicking outside
+      if (isInstituteTestDropdownOpen && !event.target.closest('.relative')) {
+        setIsInstituteTestDropdownOpen(false);
+      }
+      // Close student test dropdown when clicking outside
+      if (isStudentTestDropdownOpen && !event.target.closest('.relative')) {
+        setIsStudentTestDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [openMenuId]);
+  }, [openMenuId, isTestDropdownOpen, isInstituteTestDropdownOpen, isStudentTestDropdownOpen]);
 
   const fetchTests = async () => {
     try {
@@ -549,16 +572,16 @@ const AdminDashboard = () => {
 
     try {
       const token = localStorage.getItem('adminToken');
-      
+
       // Build URL with optional studentIds filter
       let url = `api/export/results?testId=${selectedExamId}`;
-      
+
       if (selectedCandidates.length > 0) {
         // Export only selected students
         console.log('Exporting selected students:', selectedCandidates);
         url += `&studentIds=${selectedCandidates.join(',')}`;
       }
-      
+
       const response = await apiFetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -591,7 +614,7 @@ const AdminDashboard = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
-      
+
       // Clear selections after successful download if students were selected
       if (selectedCandidates.length > 0) {
         alert('Excel file downloaded successfully!');
@@ -612,10 +635,10 @@ const AdminDashboard = () => {
 
     try {
       console.log('Selected Candidates IDs:', selectedCandidates);
-      console.log('All Students:', selectedExamStudents.map(s => ({ 
-        id: s.id, 
-        student_id: s.student_id, 
-        name: s.name 
+      console.log('All Students:', selectedExamStudents.map(s => ({
+        id: s.id,
+        student_id: s.student_id,
+        name: s.name
       })));
 
       // Filter selected students from the exam results
@@ -668,7 +691,7 @@ const AdminDashboard = () => {
       console.log('PDF Data to send:', pdfData);
 
       const token = localStorage.getItem('adminToken');
-      
+
       // Make POST request with responseType: 'blob'
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/export/shortlisted-pdf`,
@@ -694,11 +717,11 @@ const AdminDashboard = () => {
       const link = document.createElement('a');
       link.href = url;
       link.download = `Shortlisted_${examName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-      
+
       // Append to body, click, and clean up
       document.body.appendChild(link);
       link.click();
-      
+
       // Clean up after a short delay to ensure download starts
       setTimeout(() => {
         document.body.removeChild(link);
@@ -706,14 +729,14 @@ const AdminDashboard = () => {
       }, 100);
 
       alert('PDF downloaded successfully!');
-      
+
       // Clear selections after successful download
       setSelectedCandidates([]);
     } catch (error) {
       console.error('PDF download error:', error);
       console.error('Error response:', error.response?.data);
       console.error('Error status:', error.response?.status);
-      
+
       // Try to get a more detailed error message
       let errorMessage = 'Failed to generate PDF. Please try again.';
       if (error.response?.data) {
@@ -730,11 +753,10 @@ const AdminDashboard = () => {
           console.error('Error parsing error response:', e);
         }
       }
-      
+
       alert(errorMessage);
     }
   };
-
 
 
   // Fetch Institutes
@@ -1288,18 +1310,12 @@ const AdminDashboard = () => {
       return;
     }
 
-    if (!selectedTestForMultipleInstitutes) {
-      alert('Please select a test to assign');
+    if (selectedTestsForMultipleInstitutes.length === 0) {
+      alert('Please select at least one test to assign');
       return;
     }
 
-    const selectedTest = tests.find(t => t.id === parseInt(selectedTestForMultipleInstitutes));
-    if (!selectedTest) {
-      alert('Invalid test selected');
-      return;
-    }
-
-    const confirmMessage = `Assign "${selectedTest.name}" to ${selectedInstitutes.length} institute(s)?`;
+    const confirmMessage = `Assign ${selectedTestsForMultipleInstitutes.length} test${selectedTestsForMultipleInstitutes.length !== 1 ? 's' : ''} to ${selectedInstitutes.length} institute${selectedInstitutes.length !== 1 ? 's' : ''}?`;
     if (!confirm(confirmMessage)) {
       return;
     }
@@ -1313,50 +1329,56 @@ const AdminDashboard = () => {
       let alreadyAssignedCount = 0;
       const errors = [];
 
+      // Loop through each institute
       for (const instituteId of selectedInstitutes) {
-        try {
-          const response = await apiFetch(`api/institutes/${instituteId}/assign-test`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              test_id: selectedTestForMultipleInstitutes
-            })
-          });
+        // Loop through each selected test
+        for (const testId of selectedTestsForMultipleInstitutes) {
+          try {
+            const response = await apiFetch(`api/institutes/${instituteId}/assign-test`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                test_id: testId
+              })
+            });
 
-          const data = await response.json();
+            const data = await response.json();
 
-          if (response.ok && data.success) {
-            successCount++;
-          } else if (data.message && data.message.includes('already assigned')) {
-            alreadyAssignedCount++;
-          } else {
+            if (response.ok && data.success) {
+              successCount++;
+            } else if (data.message && data.message.includes('already assigned')) {
+              alreadyAssignedCount++;
+            } else {
+              failCount++;
+              const institute = allInstitutes.find(i => i.id === instituteId);
+              const test = tests.find(t => t.id === testId);
+              errors.push(`${institute?.display_name || `Institute ${instituteId}`} - ${test?.name || `Test ${testId}`}: ${data.message}`);
+            }
+          } catch (error) {
             failCount++;
             const institute = allInstitutes.find(i => i.id === instituteId);
-            errors.push(`${institute?.display_name || `Institute ${instituteId}`}: ${data.message}`);
+            const test = tests.find(t => t.id === testId);
+            errors.push(`${institute?.display_name || `Institute ${instituteId}`} - ${test?.name || `Test ${testId}`}: ${error.message}`);
           }
-        } catch (error) {
-          failCount++;
-          const institute = allInstitutes.find(i => i.id === instituteId);
-          errors.push(`${institute?.display_name || `Institute ${instituteId}`}: ${error.message}`);
-        }
 
-        // Small delay to avoid overwhelming the server
-        await new Promise(resolve => setTimeout(resolve, 100));
+          // Small delay to avoid overwhelming the server
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
 
       // Show summary
       let summaryMessage = '';
       if (successCount > 0) {
-        summaryMessage += `✓ Successfully assigned to ${successCount} institute(s)\n`;
+        summaryMessage += `✓ Successfully assigned ${successCount} test${successCount !== 1 ? 's' : ''}\n`;
       }
       if (alreadyAssignedCount > 0) {
-        summaryMessage += `ℹ Already assigned to ${alreadyAssignedCount} institute(s)\n`;
+        summaryMessage += `ℹ ${alreadyAssignedCount} test${alreadyAssignedCount !== 1 ? 's were' : ' was'} already assigned\n`;
       }
       if (failCount > 0) {
-        summaryMessage += `✗ Failed for ${failCount} institute(s)\n`;
+        summaryMessage += `✗ Failed to assign ${failCount} test${failCount !== 1 ? 's' : ''}\n`;
         if (errors.length > 0) {
           summaryMessage += `\nErrors:\n${errors.slice(0, 3).join('\n')}`;
           if (errors.length > 3) {
@@ -1369,7 +1391,8 @@ const AdminDashboard = () => {
 
       // Clear selections and refresh
       setSelectedInstitutes([]);
-      setSelectedTestForMultipleInstitutes('');
+      setSelectedTestsForMultipleInstitutes([]);
+      setIsTestDropdownOpen(false); // Close dropdown after assignment
       fetchAllInstitutes();
 
     } catch (error) {
@@ -1384,7 +1407,7 @@ const AdminDashboard = () => {
     setSelectedInstituteForTests(institute);
     setShowAssignedTestsModal(true);
     setIsLoadingAssignedTests(true);
-    setSelectedTestForInstitute('');
+    setSelectedTestsForInstitute([]);
 
     try {
       const token = localStorage.getItem('adminToken');
@@ -1411,41 +1434,80 @@ const AdminDashboard = () => {
   };
 
   const handleAssignTestToInstitute = async () => {
-    if (!selectedTestForInstitute) {
-      alert('Please select a test to assign');
+    if (selectedTestsForInstitute.length === 0) {
+      alert('Please select at least one test to assign');
       return;
     }
 
     try {
       setIsAssigningTestToInstitute(true);
       const token = localStorage.getItem('adminToken');
-      const response = await apiFetch(`api/institutes/${selectedInstituteForTests.id}/assign-test`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          test_id: parseInt(selectedTestForInstitute)
-        })
-      });
 
-      const data = await response.json();
+      let successCount = 0;
+      let alreadyAssignedCount = 0;
+      let failCount = 0;
+      const errors = [];
 
-      if (response.ok && data.success) {
-        alert(data.message || 'Test assigned successfully');
-        setSelectedTestForInstitute('');
-        handleViewAssignedTests(selectedInstituteForTests);
-        fetchAllInstitutes(); // Refresh institute list to update test counts
-      } else if (response.status === 409 && data.already_assigned) {
-        // Handle duplicate assignment
-        alert(data.message || 'This test is already assigned to this institute');
-      } else {
-        alert(data.message || 'Failed to assign test');
+      // Loop through each selected test
+      for (const testId of selectedTestsForInstitute) {
+        try {
+          const response = await apiFetch(`api/institutes/${selectedInstituteForTests.id}/assign-test`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              test_id: parseInt(testId)
+            })
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            successCount++;
+          } else if (response.status === 409 && data.already_assigned) {
+            alreadyAssignedCount++;
+          } else {
+            failCount++;
+            const test = tests.find(t => t.id === testId);
+            errors.push(`${test?.name || `Test ${testId}`}: ${data.message}`);
+          }
+        } catch (error) {
+          failCount++;
+          const test = tests.find(t => t.id === testId);
+          errors.push(`${test?.name || `Test ${testId}`}: ${error.message}`);
+        }
+
+        // Small delay to avoid overwhelming the server
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
+
+      // Show summary
+      let summaryMessage = '';
+      if (successCount > 0) {
+        summaryMessage += `✓ Successfully assigned ${successCount} test${successCount !== 1 ? 's' : ''}\n`;
+      }
+      if (alreadyAssignedCount > 0) {
+        summaryMessage += `ℹ ${alreadyAssignedCount} test${alreadyAssignedCount !== 1 ? 's were' : ' was'} already assigned\n`;
+      }
+      if (failCount > 0) {
+        summaryMessage += `✗ Failed to assign ${failCount} test${failCount !== 1 ? 's' : ''}\n`;
+        if (errors.length > 0) {
+          summaryMessage += `\nErrors:\n${errors.slice(0, 3).join('\n')}`;
+          if (errors.length > 3) {
+            summaryMessage += `\n... and ${errors.length - 3} more`;
+          }
+        }
+      }
+
+      alert(summaryMessage || 'Tests assigned successfully');
+      setSelectedTestsForInstitute([]);
+      handleViewAssignedTests(selectedInstituteForTests);
+      fetchAllInstitutes(); // Refresh institute list to update test counts
     } catch (error) {
       console.error('Error assigning test:', error);
-      alert('Failed to assign test');
+      alert('Failed to assign tests');
     } finally {
       setIsAssigningTestToInstitute(false);
     }
@@ -1690,8 +1752,8 @@ const AdminDashboard = () => {
   };
 
   const handleAssignTestInModal = async () => {
-    if (!selectedTestForStudentModal) {
-      alert('⚠️ Please select a test to assign');
+    if (selectedTestsForStudentModal.length === 0) {
+      alert('⚠️ Please select at least one test to assign');
       return;
     }
 
@@ -1700,45 +1762,70 @@ const AdminDashboard = () => {
       return;
     }
 
-    if (!confirm(`Assign test to ${selectedStudentsForDelete.length} student(s)?`)) {
+    if (!confirm(`Assign ${selectedTestsForStudentModal.length} test${selectedTestsForStudentModal.length !== 1 ? 's' : ''} to ${selectedStudentsForDelete.length} student${selectedStudentsForDelete.length !== 1 ? 's' : ''}?`)) {
       return;
     }
 
     try {
       setIsAssigningTestInModal(true);
       const token = localStorage.getItem('adminToken');
-      const response = await apiFetch('api/tests/assign', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          test_id: parseInt(selectedTestForStudentModal),
-          student_ids: selectedStudentsForDelete
-        })
-      });
 
-      const data = await response.json();
+      let totalSuccess = 0;
+      let totalAlreadyAssigned = 0;
+      let totalFailed = 0;
 
-      if (response.ok && data.success) {
-        // Show message about assignments
-        alert(`✅ ${data.message}`);
-        setSelectedStudentsForDelete([]);
-        setSelectedTestForStudentModal('');
-        // Refresh the student list to update assigned test counts
-        handleManageStudents(selectedInstituteForStudents);
-      } else {
-        // Handle case where all students already have the test
-        if (data.already_assigned > 0 && data.newly_assigned === 0) {
-          alert(`⚠️ ${data.message}`);
-        } else {
-          alert(`❌ ${data.message || 'Failed to assign test'}`);
+      // Loop through each selected test
+      for (const testId of selectedTestsForStudentModal) {
+        try {
+          const response = await apiFetch('api/tests/assign', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              test_id: parseInt(testId),
+              student_ids: selectedStudentsForDelete
+            })
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            totalSuccess += data.newly_assigned || 0;
+            totalAlreadyAssigned += data.already_assigned || 0;
+          } else {
+            totalFailed += selectedStudentsForDelete.length;
+          }
+        } catch (error) {
+          console.error('Error assigning test:', error);
+          totalFailed += selectedStudentsForDelete.length;
         }
+
+        // Small delay to avoid overwhelming the server
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
+
+      // Show summary message
+      let summaryMessage = '';
+      if (totalSuccess > 0) {
+        summaryMessage += `✅ Successfully assigned ${totalSuccess} test assignment${totalSuccess !== 1 ? 's' : ''}\n`;
+      }
+      if (totalAlreadyAssigned > 0) {
+        summaryMessage += `ℹ️ ${totalAlreadyAssigned} test${totalAlreadyAssigned !== 1 ? 's were' : ' was'} already assigned\n`;
+      }
+      if (totalFailed > 0) {
+        summaryMessage += `❌ Failed to assign ${totalFailed} test assignment${totalFailed !== 1 ? 's' : ''}`;
+      }
+
+      alert(summaryMessage || '✅ Tests assigned successfully');
+      setSelectedStudentsForDelete([]);
+      setSelectedTestsForStudentModal([]);
+      // Refresh the student list to update assigned test counts
+      handleManageStudents(selectedInstituteForStudents);
     } catch (error) {
       console.error('Error assigning test:', error);
-      alert('❌ An error occurred while assigning the test');
+      alert('❌ An error occurred while assigning tests');
     } finally {
       setIsAssigningTestInModal(false);
     }
@@ -1862,19 +1949,20 @@ const AdminDashboard = () => {
 
         {/* Tab Navigation */}
         {!showCreateTest && !selectedExamId && (
-          <div className="mb-8">
-            <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-mist p-2 inline-flex space-x-2">
+          <div className="mb-4 sm:mb-8 overflow-x-auto pb-4 sm:pb-0 hide-scrollbar">
+            <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-mist p-2 flex sm:inline-flex space-x-2 min-w-max">
               {[
                 { id: 'exams', label: 'Manage Exams', icon: FileSpreadsheet },
                 { id: 'institutes', label: 'Manage Institutes', icon: Building2 },
                 { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
                 { id: 'bulk-upload', label: 'Bulk Upload', icon: Users },
                 { id: 'violations', label: 'Violations', icon: AlertCircle },
+                { id: 'interviews', label: 'Interviews', icon: Video },
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all ${activeTab === tab.id
+                  className={`flex items-center space-x-2 px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-medium transition-all shrink-0 text-sm sm:text-base ${activeTab === tab.id
                     ? 'bg-shnoor-indigo text-white'
                     : 'bg-white text-shnoor-indigoMedium hover:text-shnoor-navy hover:bg-shnoor-lavender'
                     }`}
@@ -1919,28 +2007,29 @@ const AdminDashboard = () => {
                 <span className="font-medium">Back to Exams List</span>
               </button>
 
-              <div className="flex justify-between items-center mb-8">
+              <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 sm:mb-8 space-y-4 md:space-y-0">
                 <div>
-                  <h2 className="text-3xl font-bold text-shnoor-navy mb-2">{selectedExamDetails?.name}</h2>
-                  <div className="flex items-center space-x-4 text-sm text-shnoor-indigoMedium">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-shnoor-navy mb-2">{selectedExamDetails?.name}</h2>
+                  <div className="flex flex-wrap items-center gap-2 sm:space-x-4 text-xs sm:text-sm text-shnoor-indigoMedium">
                     <span className="flex items-center">
                       <FileSpreadsheet size={16} className="mr-1" />
                       {selectedExamDetails?.questions} Questions
                     </span>
-                    <span>•</span>
+                    <span className="hidden sm:inline">•</span>
                     <span>Created on {selectedExamDetails?.date}</span>
                   </div>
                 </div>
-                <div className="flex space-x-3">
+
+                <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 w-full md:w-auto mt-4 md:mt-0">
                   {/* Quick Select Dropdown */}
                   {selectedExamStudents.length > 0 && (
-                    <div className="relative">
+                    <div className="relative w-full sm:w-auto">
                       <button
                         onClick={() => {
                           console.log('Quick Select button clicked, current state:', showQuickSelectMenu);
                           setShowQuickSelectMenu(!showQuickSelectMenu);
                         }}
-                        className="flex items-center space-x-2 px-5 py-3 rounded-xl font-medium transition-all bg-shnoor-lavender text-shnoor-indigo hover:bg-shnoor-light shadow-[0_8px_30px_rgba(14,14,39,0.06)] transform hover:-translate-y-0.5"
+                        className="w-full flex items-center justify-center space-x-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-medium transition-all bg-shnoor-lavender text-shnoor-indigo hover:bg-shnoor-light shadow-[0_8px_30px_rgba(14,14,39,0.06)] transform hover:-translate-y-0.5"
                       >
                         <CheckSquare size={20} />
                         <span>Quick Select</span>
@@ -1948,8 +2037,8 @@ const AdminDashboard = () => {
                       </button>
                       {showQuickSelectMenu && (
                         <>
-                          <div 
-                            className="fixed inset-0 z-[9999]" 
+                          <div
+                            className="fixed inset-0 z-[9999]"
                             onClick={() => setShowQuickSelectMenu(false)}
                           />
                           <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-[0_20px_60px_rgba(14,14,39,0.15)] border border-shnoor-light z-[10000] overflow-hidden">
@@ -2029,23 +2118,23 @@ const AdminDashboard = () => {
                       )}
                     </div>
                   )}
-                  
+
                   <button
                     onClick={exportToExcel}
                     disabled={selectedExamStudents.length === 0}
-                    className={`flex items-center space-x-2 px-5 py-3 rounded-xl font-medium transition-all shadow-[0_8px_30px_rgba(14,14,39,0.06)] ${selectedExamStudents.length === 0
+                    className={`w-full sm:w-auto flex items-center justify-center space-x-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-medium transition-all shadow-[0_8px_30px_rgba(14,14,39,0.06)] ${selectedExamStudents.length === 0
                       ? 'bg-shnoor-light text-shnoor-soft cursor-not-allowed'
-                      : 'bg-shnoor-success hover:bg-green-600 text-white hover:shadow-[0_8px_30px_rgba(14,14,39,0.06)] transform hover:-translate-y-0.5'
+                      : 'bg-shnoor-indigo hover:bg-shnoor-navy text-white hover:shadow-[0_8px_30px_rgba(14,14,39,0.06)] transform hover:-translate-y-0.5'
                       }`}
                     title={selectedExamStudents.length === 0 ? 'No results to export' : selectedCandidates.length > 0 ? `Export Excel (${selectedCandidates.length} selected)` : 'Export All to Excel'}
                   >
-                    <FileSpreadsheet size={20} />
+                    <FileSpreadsheet size={18} className="sm:size-5" />
                     <span>Export Excel {selectedCandidates.length > 0 && `(${selectedCandidates.length})`}</span>
                   </button>
                   <button
                     onClick={handleDownloadShortlistedPDF}
                     disabled={selectedCandidates.length === 0}
-                    className={`flex items-center space-x-2 px-5 py-3 rounded-xl font-medium transition-all shadow-[0_8px_30px_rgba(14,14,39,0.06)] ${selectedCandidates.length === 0
+                    className={`w-full sm:w-auto flex items-center justify-center space-x-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-medium transition-all shadow-[0_8px_30px_rgba(14,14,39,0.06)] ${selectedCandidates.length === 0
                       ? 'bg-shnoor-light text-shnoor-soft cursor-not-allowed opacity-50'
                       : 'bg-shnoor-indigo hover:bg-shnoor-navy text-white hover:shadow-[0_8px_30px_rgba(14,14,39,0.06)] transform hover:-translate-y-0.5'
                       }`}
@@ -2096,6 +2185,7 @@ const AdminDashboard = () => {
                 const passRate = selectedExamStudents.length > 0 ? (passedCount / selectedExamStudents.length) * 100 : 0;
                 const flaggedCount = selectedExamStudents.filter(s => s.flagged === true).length;
 
+
                 // Filter students based on statusFilter
                 const filteredStudents = selectedExamStudents.filter(s => {
                   if (statusFilter === 'all') return true;
@@ -2106,6 +2196,7 @@ const AdminDashboard = () => {
                   if (statusFilter === 'fail') return !isPassed;
                   return true;
                 });
+
 
                 return (
                   <div className="bg-white border border-shnoor-light rounded-lg p-4 mb-6 shadow-[0_8px_30px_rgba(14,14,39,0.06)]">
@@ -2170,60 +2261,54 @@ const AdminDashboard = () => {
                     }).length;
 
                     return (
-                      <div className="flex items-center justify-between mb-6">
+                      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
                         {/* Filter Tabs matching existing tab style */}
-                        <div className="flex space-x-2">
+                        <div className="flex overflow-x-auto hide-scrollbar space-x-2 pb-2 xl:pb-0 min-w-max w-full">
                           <button
                             onClick={() => setStatusFilter('all')}
-                            className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center space-x-2 ${
-                              statusFilter === 'all'
-                                ? 'bg-shnoor-indigo text-white shadow-[0_8px_30px_rgba(14,14,39,0.06)]'
-                                : 'bg-shnoor-lavender opacity-80 text-shnoor-indigo hover:bg-shnoor-light'
-                            }`}
+                            className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base whitespace-nowrap font-medium transition-all flex items-center space-x-2 shrink-0 ${statusFilter === 'all'
+                              ? 'bg-shnoor-indigo text-white shadow-[0_8px_30px_rgba(14,14,39,0.06)]'
+                              : 'bg-shnoor-lavender opacity-80 text-shnoor-indigo hover:bg-shnoor-light'
+                              }`}
                           >
-                            <Filter size={18} />
+                            <Filter size={18} className="sm:size-5" />
                             <span>All</span>
-                            <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                              statusFilter === 'all' 
-                                ? 'bg-white bg-opacity-20' 
-                                : 'bg-shnoor-indigo bg-opacity-20'
-                            }`}>
+                            <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${statusFilter === 'all'
+                              ? 'bg-white bg-opacity-20'
+                              : 'bg-shnoor-indigo bg-opacity-20'
+                              }`}>
                               {selectedExamStudents.length}
                             </span>
                           </button>
                           <button
                             onClick={() => setStatusFilter('pass')}
-                            className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center space-x-2 ${
-                              statusFilter === 'pass'
-                                ? 'bg-shnoor-success text-white shadow-[0_8px_30px_rgba(14,14,39,0.06)]'
-                                : 'bg-shnoor-successLight opacity-80 text-shnoor-success hover:bg-green-100'
-                            }`}
+                            className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base whitespace-nowrap font-medium transition-all flex items-center space-x-2 shrink-0 ${statusFilter === 'pass'
+                              ? 'bg-shnoor-success text-white shadow-[0_8px_30px_rgba(14,14,39,0.06)]'
+                              : 'bg-shnoor-successLight opacity-80 text-shnoor-success hover:bg-green-100'
+                              }`}
                           >
-                            <CheckCircle size={18} />
+                            <CheckCircle size={18} className="sm:size-5" />
                             <span>Passed</span>
-                            <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                              statusFilter === 'pass' 
-                                ? 'bg-white bg-opacity-20' 
-                                : 'bg-shnoor-success bg-opacity-20'
-                            }`}>
+                            <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${statusFilter === 'pass'
+                              ? 'bg-white bg-opacity-20'
+                              : 'bg-shnoor-success bg-opacity-20'
+                              }`}>
                               {passedCount}
                             </span>
                           </button>
                           <button
                             onClick={() => setStatusFilter('fail')}
-                            className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center space-x-2 ${
-                              statusFilter === 'fail'
-                                ? 'bg-shnoor-danger text-white shadow-[0_8px_30px_rgba(14,14,39,0.06)]'
-                                : 'bg-shnoor-dangerLight opacity-80 text-shnoor-danger hover:bg-red-100'
-                            }`}
+                            className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base whitespace-nowrap font-medium transition-all flex items-center space-x-2 shrink-0 ${statusFilter === 'fail'
+                              ? 'bg-shnoor-danger text-white shadow-[0_8px_30px_rgba(14,14,39,0.06)]'
+                              : 'bg-shnoor-dangerLight opacity-80 text-shnoor-danger hover:bg-red-100'
+                              }`}
                           >
-                            <XCircle size={18} />
+                            <XCircle size={18} className="sm:size-5" />
                             <span>Failed</span>
-                            <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                              statusFilter === 'fail' 
-                                ? 'bg-white bg-opacity-20' 
-                                : 'bg-shnoor-danger bg-opacity-20'
-                            }`}>
+                            <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${statusFilter === 'fail'
+                              ? 'bg-white bg-opacity-20'
+                              : 'bg-shnoor-danger bg-opacity-20'
+                              }`}>
                               {failedCount}
                             </span>
                           </button>
@@ -2254,164 +2339,195 @@ const AdminDashboard = () => {
 
                   <div className="overflow-x-auto rounded-xl border border-shnoor-light shadow-[0_8px_30px_rgba(14,14,39,0.06)]">
                     <table className="w-full">
-                    <thead className="bg-shnoor-indigo text-white">
-                      <tr>
-                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">
-                          <input
-                            type="checkbox"
-                            checked={(() => {
-                              const filteredStudents = selectedExamStudents.filter(s => {
-                                if (statusFilter === 'all') return true;
-                                const percentage = (Number(s.score) / Number(s.total) * 100);
-                                const passingPercentage = s.passingPercentage || 50;
-                                const isPassed = percentage >= passingPercentage;
-                                if (statusFilter === 'pass') return isPassed;
-                                if (statusFilter === 'fail') return !isPassed;
-                                return true;
-                              });
-                              return filteredStudents.length > 0 && filteredStudents.every(s => selectedCandidates.includes(s.student_id || s.id));
-                            })()}
-                            onChange={(e) => {
-                              const filteredStudents = selectedExamStudents.filter(s => {
-                                if (statusFilter === 'all') return true;
-                                const percentage = (Number(s.score) / Number(s.total) * 100);
-                                const passingPercentage = s.passingPercentage || 50;
-                                const isPassed = percentage >= passingPercentage;
-                                if (statusFilter === 'pass') return isPassed;
-                                if (statusFilter === 'fail') return !isPassed;
-                                return true;
-                              });
-                              if (e.target.checked) {
-                                const filteredIds = filteredStudents.map(s => s.student_id || s.id);
-                                setSelectedCandidates(prev => [...new Set([...prev, ...filteredIds])]);
-                              } else {
-                                const filteredIds = filteredStudents.map(s => s.student_id || s.id);
-                                setSelectedCandidates(prev => prev.filter(id => !filteredIds.includes(id)));
-                              }
-                            }}
-                            className="w-4 h-4 cursor-pointer"
-                            title="Select All Visible"
-                          />
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Student ID</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Student Name</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Email</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Date Attempted</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Score</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Shortlisted</th>
-                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">No Face</th>
-                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Multi Faces</th>
-                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Phone</th>
-                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Noise</th>
-                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Voice</th>
-                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Total</th>
-                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Flagged</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-[#E5E7EB]">
-                      {(() => {
-                        // Filter students based on statusFilter
-                        const filteredStudents = selectedExamStudents.filter(s => {
-                          if (statusFilter === 'all') return true;
-                          const percentage = (Number(s.score) / Number(s.total) * 100);
-                          const passingPercentage = s.passingPercentage || 50;
-                          const isPassed = percentage >= passingPercentage;
-                          if (statusFilter === 'pass') return isPassed;
-                          if (statusFilter === 'fail') return !isPassed;
-                          return true;
-                        });
+                      <thead className="bg-shnoor-indigo text-white">
+                        <tr>
+                          <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">
+                            <input
+                              type="checkbox"
+                              checked={(() => {
+                                const filteredStudents = selectedExamStudents.filter(s => {
+                                  if (statusFilter === 'all') return true;
+                                  const percentage = (Number(s.score) / Number(s.total) * 100);
+                                  const passingPercentage = s.passingPercentage || 50;
+                                  const isPassed = percentage >= passingPercentage;
+                                  if (statusFilter === 'pass') return isPassed;
+                                  if (statusFilter === 'fail') return !isPassed;
+                                  return true;
+                                });
+                                return filteredStudents.length > 0 && filteredStudents.every(s => selectedCandidates.includes(s.student_id || s.id));
+                              })()}
+                              onChange={(e) => {
+                                const filteredStudents = selectedExamStudents.filter(s => {
+                                  if (statusFilter === 'all') return true;
+                                  const percentage = (Number(s.score) / Number(s.total) * 100);
+                                  const passingPercentage = s.passingPercentage || 50;
+                                  const isPassed = percentage >= passingPercentage;
+                                  if (statusFilter === 'pass') return isPassed;
+                                  if (statusFilter === 'fail') return !isPassed;
+                                  return true;
+                                });
+                                if (e.target.checked) {
+                                  const filteredIds = filteredStudents.map(s => s.student_id || s.id);
+                                  setSelectedCandidates(prev => [...new Set([...prev, ...filteredIds])]);
+                                } else {
+                                  const filteredIds = filteredStudents.map(s => s.student_id || s.id);
+                                  setSelectedCandidates(prev => prev.filter(id => !filteredIds.includes(id)));
+                                }
+                              }}
+                              className="w-4 h-4 cursor-pointer"
+                              title="Select All Visible"
+                            />
+                          </th>
 
-                        return filteredStudents.length > 0 ? (
-                          filteredStudents.map((student, idx) => {
-                            const percentage = (student.score / student.total * 100);
-                            const passingPercentage = student.passingPercentage || 50;
+                          <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Student ID</th>
+                          <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Student Name</th>
+                          <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Email</th>
+                          <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Date Attempted</th>
+                          <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Score</th>
+                          <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Shortlisted</th>
+                          <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">No Face</th>
+                          <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Multi Faces</th>
+                          <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Phone</th>
+                          <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Noise</th>
+                          <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Voice</th>
+                          <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Total</th>
+                          <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Flagged</th>
+                          <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-[#E5E7EB]">
+                        {/* {selectedExamStudents.length > 0 ? (
+                        selectedExamStudents.map((student, idx) => {
+                          const percentage = (student.score / student.total * 100);
+                          const passingPercentage = student.passingPercentage || 50; */}
+                        {/* const isPassed = percentage >= passingPercentage; */}
+                        {(() => {
+                          // Filter students based on statusFilter
+                          const filteredStudents = selectedExamStudents.filter(s => {
+                            if (statusFilter === 'all') return true;
+                            const percentage = (Number(s.score) / Number(s.total) * 100);
+                            const passingPercentage = s.passingPercentage || 50;
                             const isPassed = percentage >= passingPercentage;
-                            const studentIdentifier = student.student_id || student.id;
-                          return (
-                            <tr key={idx} className="hover:bg-shnoor-lavender">
-                              <td className="px-4 py-4 text-center">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedCandidates.includes(studentIdentifier)}
-                                  onChange={(e) => {
-                                    console.log('Checkbox clicked:', {
-                                      checked: e.target.checked,
-                                      studentIdentifier,
-                                      studentName: student.name,
-                                      currentSelections: selectedCandidates
-                                    });
-                                    if (e.target.checked) {
-                                      setSelectedCandidates(prev => [...prev, studentIdentifier]);
-                                    } else {
-                                      setSelectedCandidates(prev => prev.filter(id => id !== studentIdentifier));
-                                    }
-                                  }}
-                                  className="w-4 h-4 cursor-pointer"
-                                />
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-shnoor-navy">{student.id}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-shnoor-navy">{student.name}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-shnoor-indigoMedium">{student.email || 'N/A'}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-shnoor-indigoMedium">{student.date}</td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center">
-                                  <span className={`font-bold ${isPassed ? 'text-shnoor-success' : 'text-shnoor-danger'}`}>
-                                    {student.score}
-                                  </span>
-                                  <span className="text-shnoor-indigoMedium text-xs ml-1">/ {student.total}</span>
-                                  <span className="text-shnoor-indigoMedium text-xs ml-2">({percentage.toFixed(1)}%)</span>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${isPassed
-                                  ? 'bg-shnoor-successLight text-shnoor-success'
-                                  : 'bg-shnoor-dangerLight text-shnoor-danger'
-                                  }`}>
-                                  {isPassed ? 'Pass' : 'Fail'}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                  isPassed && !student.flagged
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-gray-100 text-gray-600'
-                                  }`}>
-                                  {isPassed && !student.flagged ? 'Shortlisted' : 'Not Shortlisted'}
-                                </span>
-                              </td>
-                              <td className="px-4 py-4 text-center text-sm text-shnoor-indigo">{student.noFace || 0}</td>
-                              <td className="px-4 py-4 text-center text-sm text-shnoor-indigo">{student.multipleFaces || 0}</td>
-                              <td className="px-4 py-4 text-center text-sm text-shnoor-indigo">{student.phoneDetected || 0}</td>
-                              <td className="px-4 py-4 text-center text-sm text-shnoor-indigo">{student.loudNoise || 0}</td>
-                              <td className="px-4 py-4 text-center text-sm text-shnoor-indigo">{student.voiceDetected || 0}</td>
-                              <td className="px-4 py-4 text-center text-sm font-semibold text-shnoor-navy">{student.totalViolations || 0}</td>
-                              <td className="px-4 py-4 text-center">
-                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${student.flagged
-                                  ? 'bg-shnoor-dangerLight text-shnoor-danger'
-                                  : 'bg-shnoor-lavender opacity-80 text-shnoor-indigoMedium'
-                                  }`}>
-                                  {student.flagged ? 'Yes' : 'No'}
-                                </span>
+                            if (statusFilter === 'pass') return isPassed;
+                            if (statusFilter === 'fail') return !isPassed;
+                            return true;
+                          });
+
+                          return filteredStudents.length > 0 ? (
+                            filteredStudents.map((student, idx) => {
+                              const percentage = (student.score / student.total * 100);
+                              const passingPercentage = student.passingPercentage || 50;
+                              const isPassed = percentage >= passingPercentage;
+                              const studentIdentifier = student.student_id || student.id;
+                              return (
+                                <tr key={idx} className="hover:bg-shnoor-lavender">
+                                  <td className="px-4 py-4 text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedCandidates.includes(studentIdentifier)}
+                                      onChange={(e) => {
+                                        console.log('Checkbox clicked:', {
+                                          checked: e.target.checked,
+                                          studentIdentifier,
+                                          studentName: student.name,
+                                          currentSelections: selectedCandidates
+                                        });
+                                        if (e.target.checked) {
+                                          setSelectedCandidates(prev => [...prev, studentIdentifier]);
+                                        } else {
+                                          setSelectedCandidates(prev => prev.filter(id => id !== studentIdentifier));
+                                        }
+                                      }}
+                                      className="w-4 h-4 cursor-pointer"
+                                    />
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-shnoor-navy">{student.id}</td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-shnoor-navy">{student.name}</td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-shnoor-indigoMedium">{student.email || 'N/A'}</td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-shnoor-indigoMedium">{student.date}</td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex items-center">
+                                      <span className={`font-bold ${isPassed ? 'text-shnoor-success' : 'text-shnoor-danger'}`}>
+                                        {student.score}
+                                      </span>
+                                      <span className="text-shnoor-indigoMedium text-xs ml-1">/ {student.total}</span>
+                                      <span className="text-shnoor-indigoMedium text-xs ml-2">({percentage.toFixed(1)}%)</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${isPassed
+                                      ? 'bg-shnoor-successLight text-shnoor-success'
+                                      : 'bg-shnoor-dangerLight text-shnoor-danger'
+                                      }`}>
+                                      {isPassed ? 'Pass' : 'Fail'}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${isPassed && !student.flagged
+                                      ? 'bg-green-100 text-green-700'
+                                      : 'bg-gray-100 text-gray-600'
+                                      }`}>
+                                      {isPassed && !student.flagged ? 'Shortlisted' : 'Not Shortlisted'}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-4 text-center text-sm text-shnoor-indigo">{student.noFace || 0}</td>
+                                  <td className="px-4 py-4 text-center text-sm text-shnoor-indigo">{student.multipleFaces || 0}</td>
+                                  <td className="px-4 py-4 text-center text-sm text-shnoor-indigo">{student.phoneDetected || 0}</td>
+                                  <td className="px-4 py-4 text-center text-sm text-shnoor-indigo">{student.loudNoise || 0}</td>
+                                  <td className="px-4 py-4 text-center text-sm text-shnoor-indigo">{student.voiceDetected || 0}</td>
+                                  <td className="px-4 py-4 text-center text-sm font-semibold text-shnoor-navy">{student.totalViolations || 0}</td>
+                                  <td className="px-4 py-4 text-center">
+                                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${student.flagged
+                                      ? 'bg-shnoor-dangerLight text-shnoor-danger'
+                                      : 'bg-shnoor-lavender opacity-80 text-shnoor-indigoMedium'
+                                      }`}>
+                                      {student.flagged ? 'Yes' : 'No'}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-4 text-center">
+                                    <button
+                                      onClick={() => {
+                                        console.log('=== INTERVIEW BUTTON CLICKED ===');
+                                        console.log('Student object:', student);
+                                        console.log('student.student_id:', student.student_id);
+                                        console.log('student.id:', student.id);
+
+                                        // Prefer the actual database ID; fall back to displayed id if needed
+                                        const resolvedStudentId = student.student_id || student.id || null;
+
+                                        setSelectedStudentForInterview({
+                                          id: resolvedStudentId,
+                                          name: student.name,
+                                          email: student.email
+                                        });
+                                        setShowInterviewScheduleModal(true);
+                                      }}
+                                      className="inline-flex items-center px-3 py-1.5 bg-shnoor-indigo hover:bg-shnoor-navy text-white text-xs font-medium rounded-lg transition-colors"
+                                      title="Schedule Interview"
+                                    >
+                                      <Video size={14} className="mr-1" />
+                                      Interview
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan="16" className="px-6 py-12 text-center text-shnoor-indigoMedium">
+                                {statusFilter !== 'all'
+                                  ? `No ${statusFilter === 'pass' ? 'passed' : 'failed'} students found.`
+                                  : 'No students have attempted this exam yet.'
+                                }
                               </td>
                             </tr>
                           );
-                        })
-                        ) : (
-                          <tr>
-                            <td colSpan="15" className="px-6 py-12 text-center text-shnoor-indigoMedium">
-                              {statusFilter !== 'all' 
-                                ? `No ${statusFilter === 'pass' ? 'passed' : 'failed'} students found.`
-                                : 'No students have attempted this exam yet.'
-                              }
-                            </td>
-                          </tr>
-                        );
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
-              </>
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
 
               {/* Feedback Tab Content */}
@@ -2548,18 +2664,18 @@ const AdminDashboard = () => {
           <>
             {activeTab === 'exams' && (
               <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light overflow-hidden">
-                <div className="p-6">
-                  <div className="flex justify-between items-center mb-6">
+                <div className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
                     <div>
                       <h2 className="text-2xl font-bold text-shnoor-navy flex items-center">
-                        <FileSpreadsheet className="mr-2 text-shnoor-indigo" size={28} />
+                        <FileSpreadsheet className="mr-2 text-shnoor-indigo sm:size-7" size={24} />
                         Exams
                       </h2>
-                      <p className="text-sm text-shnoor-indigoMedium mt-1">Manage all your exams and view results</p>
+                      <p className="text-xs sm:text-sm text-shnoor-indigoMedium mt-1">Manage all your exams and view results</p>
                     </div>
                     <button
                       onClick={() => setShowCreateTest(true)}
-                      className="flex items-center space-x-2 px-4 py-2 bg-shnoor-indigo hover:bg-shnoor-navy text-white rounded-lg transition-colors shadow-[0_8px_30px_rgba(14,14,39,0.06)] font-semibold"
+                      className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-2 bg-shnoor-indigo hover:bg-shnoor-navy text-white rounded-lg transition-colors shadow-[0_8px_30px_rgba(14,14,39,0.06)] font-semibold"
                     >
                       <Plus size={20} />
                       <span>Create Test</span>
@@ -2604,7 +2720,7 @@ const AdminDashboard = () => {
                       ) : (
                         <>
                           {/* Bulk Actions Bar */}
-                          <div className="flex items-center justify-between mb-4 p-4 bg-white rounded-xl border border-shnoor-light">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 p-4 bg-white rounded-xl border border-shnoor-light space-y-3 sm:space-y-0">
                             <label className="flex items-center space-x-3 cursor-pointer">
                               <input
                                 type="checkbox"
@@ -2619,7 +2735,7 @@ const AdminDashboard = () => {
                             {selectedTests.length > 0 && (
                               <button
                                 onClick={handleBulkDeleteTests}
-                                className="px-4 py-2 bg-shnoor-danger hover:bg-shnoor-danger text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
+                                className="w-full sm:w-auto px-4 py-2 bg-shnoor-danger hover:bg-shnoor-danger text-white rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                               >
                                 <Trash2 size={16} />
                                 <span>Delete {selectedTests.length} Test{selectedTests.length !== 1 ? 's' : ''}</span>
@@ -2631,7 +2747,7 @@ const AdminDashboard = () => {
                             {filteredTests.map((test) => (
                               <div
                                 key={test.id}
-                                className="bg-white border border-shnoor-light rounded-xl p-6 hover:shadow-[0_8px_30px_rgba(14,14,39,0.06)] hover:border-shnoor-indigo transition-all group relative"
+                                className="bg-white border border-shnoor-light rounded-xl p-6 hover:shadow-[0_8px_30px_rgba(14,14,39,0.06)] hover:border-shnoor-indigo transition-all group relative min-h-[400px] flex flex-col"
                               >
                                 {/* Checkbox for selection */}
                                 <div className="absolute top-4 left-4 z-10">
@@ -2642,12 +2758,12 @@ const AdminDashboard = () => {
                                       e.stopPropagation();
                                       toggleTestSelection(test.id);
                                     }}
-                                    className="w-5 h-5 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-indigo"
+                                    className="w-5 h-5 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-indigo cursor-pointer"
                                   />
                                 </div>
 
                                 {/* Status Badge and 3-Dot Menu */}
-                                <div className="absolute top-4 right-4 flex items-center space-x-2">
+                                <div className="absolute top-4 right-4 flex items-center space-x-2 z-10">
                                   {test.status === 'published' ? (
                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-shnoor-successLight text-shnoor-success">
                                       <CheckCircle size={12} className="mr-1" />
@@ -2771,40 +2887,40 @@ const AdminDashboard = () => {
                                 </div>
 
                                 {/* Header with Icon */}
-                                <div className="flex justify-between items-start mb-4">
+                                <div className="mt-10 mb-4">
                                   <div className="h-12 w-12 bg-shnoor-lavender rounded-lg flex items-center justify-center text-shnoor-indigo font-bold text-xl group-hover:bg-shnoor-indigo group-hover:text-white transition-colors">
                                     {test.name.charAt(0)}
                                   </div>
                                 </div>
 
                                 {/* Exam Title */}
-                                <h3 className="font-bold text-shnoor-navy text-lg mb-2 line-clamp-2 group-hover:text-shnoor-indigo transition-colors">
+                                <h3 className="font-bold text-shnoor-navy text-base md:text-lg mb-3 line-clamp-2 group-hover:text-shnoor-indigo transition-colors pr-2">
                                   {test.name}
                                 </h3>
 
                                 {/* Exam Details */}
                                 <div className="space-y-2 mb-4">
-                                  <div className="flex items-center text-sm text-shnoor-indigoMedium">
-                                    <FileSpreadsheet size={16} className="mr-2" />
-                                    <span>{test.questions} Questions • {test.duration} mins</span>
+                                  <div className="flex items-center text-sm text-shnoor-indigoMedium flex-wrap">
+                                    <FileSpreadsheet size={16} className="mr-2 flex-shrink-0" />
+                                    <span className="break-words">{test.questions} Questions • {test.duration} mins</span>
                                   </div>
-                                  <div className="flex items-center text-sm text-shnoor-indigoMedium">
-                                    <span className="text-xs">Created: {test.date}</span>
+                                  <div className="flex items-center text-xs text-shnoor-indigoMedium">
+                                    <span>Created: {test.date}</span>
                                   </div>
                                 </div>
 
                                 {/* Stats */}
                                 <div className="grid grid-cols-2 gap-3 pt-4 border-t border-shnoor-light mb-4">
-                                  <div className="text-center">
+                                  <div className="text-center p-2">
                                     <div className="flex items-center justify-center mb-1">
-                                      <Users size={16} className="text-shnoor-indigoMedium mr-1" />
+                                      <Users size={16} className="text-shnoor-indigoMedium mr-1 flex-shrink-0" />
                                       <span className="text-lg font-bold text-shnoor-navy">{test.attempts}</span>
                                     </div>
                                     <p className="text-xs text-shnoor-indigoMedium">Attempted</p>
                                   </div>
-                                  <div className="text-center">
+                                  <div className="text-center p-2">
                                     <div className="flex items-center justify-center mb-1">
-                                      <CheckCircle size={16} className="text-shnoor-success mr-1" />
+                                      <CheckCircle size={16} className="text-shnoor-success mr-1 flex-shrink-0" />
                                       <span className="text-lg font-bold text-shnoor-success">{test.passedCount || 0}</span>
                                     </div>
                                     <p className="text-xs text-shnoor-indigoMedium">Passed ({test.passRate || 0}%)</p>
@@ -2812,7 +2928,7 @@ const AdminDashboard = () => {
                                 </div>
 
                                 {/* Action Buttons */}
-                                <div className="flex items-center space-x-2 pt-4 border-t border-shnoor-light">
+                                <div className="flex items-center space-x-2 pt-4 border-t border-shnoor-light mt-auto">
                                   {test.status === 'draft' ? (
                                     <>
                                       <button
@@ -2821,29 +2937,29 @@ const AdminDashboard = () => {
                                           setEditingTest(test);
                                           setShowCreateTest(true);
                                         }}
-                                        className="flex-1 py-2 px-3 bg-shnoor-lavender text-shnoor-indigo hover:bg-shnoor-navy hover:text-white rounded-lg text-sm font-medium transition-colors"
+                                        className="flex-1 py-2.5 px-3 bg-shnoor-lavender text-shnoor-indigo hover:bg-shnoor-navy hover:text-white rounded-lg text-sm font-medium transition-colors min-h-[44px] flex items-center justify-center"
                                         title="View Test"
                                       >
-                                        <Eye size={18} className="inline mr-1" />
-                                        View
+                                        <Eye size={18} className="mr-1 flex-shrink-0" />
+                                        <span className="truncate">View</span>
                                       </button>
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           handleTogglePublish(test.id, test.status);
                                         }}
-                                        className="flex-1 py-2 px-3 bg-shnoor-successLight text-shnoor-success hover:bg-shnoor-success hover:text-white rounded-lg text-sm font-medium transition-colors"
+                                        className="flex-1 py-2.5 px-3 bg-shnoor-successLight text-shnoor-success hover:bg-shnoor-success hover:text-white rounded-lg text-sm font-medium transition-colors min-h-[44px] flex items-center justify-center"
                                         title="Publish Test"
                                       >
-                                        <CheckCircle size={18} className="inline mr-1" />
-                                        Publish
+                                        <CheckCircle size={18} className="mr-1 flex-shrink-0" />
+                                        <span className="truncate">Publish</span>
                                       </button>
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           handleDeleteTest(test.id);
                                         }}
-                                        className="p-2 text-shnoor-danger hover:bg-shnoor-dangerLight rounded-lg transition-colors"
+                                        className="p-2.5 text-shnoor-danger hover:bg-shnoor-dangerLight rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                                         title="Delete Test"
                                       >
                                         <Trash2 size={18} />
@@ -2856,18 +2972,18 @@ const AdminDashboard = () => {
                                           e.stopPropagation();
                                           setSelectedExamId(test.id);
                                         }}
-                                        className="flex-1 py-2 px-3 bg-shnoor-lavender text-shnoor-indigo hover:bg-shnoor-indigo hover:text-white rounded-lg text-sm font-medium transition-colors"
+                                        className="flex-1 py-2.5 px-3 bg-shnoor-lavender text-shnoor-indigo hover:bg-shnoor-indigo hover:text-white rounded-lg text-sm font-medium transition-colors min-h-[44px] flex items-center justify-center"
                                         title="View Results"
                                       >
-                                        <Eye size={18} className="inline mr-1" />
-                                        View
+                                        <Eye size={18} className="mr-1 flex-shrink-0" />
+                                        <span className="truncate">View</span>
                                       </button>
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           handleDeleteTest(test.id);
                                         }}
-                                        className="p-2 text-shnoor-danger hover:bg-shnoor-dangerLight rounded-lg transition-colors"
+                                        className="p-2.5 text-shnoor-danger hover:bg-shnoor-dangerLight rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                                         title="Delete Test"
                                       >
                                         <Trash2 size={18} />
@@ -2888,22 +3004,22 @@ const AdminDashboard = () => {
 
             {activeTab === 'institutes' && (
               <div className="space-y-6">
-                <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light p-8">
-                  <div className="mb-8">
-                    <h2 className="text-3xl font-bold text-shnoor-navy mb-2 flex items-center">
-                      <Building2 className="mr-3 text-shnoor-indigo" size={32} />
+                <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light p-4 sm:p-8">
+                  <div className="mb-6 sm:mb-8">
+                    <h2 className="text-2xl sm:text-3xl font-bold text-shnoor-navy mb-2 flex items-center">
+                      <Building2 className="mr-2 sm:mr-3 text-shnoor-indigo h-6 w-6 sm:h-8 sm:w-8" />
                       Manage Institutes
                     </h2>
-                    <p className="text-shnoor-indigoMedium ml-11">Add, view, and manage institutes and their students</p>
+                    <p className="text-sm sm:text-base text-shnoor-indigoMedium ml-8 sm:ml-11">Add, view, and manage institutes and their students</p>
                   </div>
 
                   {/* Add Institute Form */}
-                  <div className="mb-8 p-6 bg-white rounded-2xl border border-shnoor-light shadow-[0_8px_30px_rgba(14,14,39,0.06)]">
-                    <label className="flex text-sm font-bold text-shnoor-navy mb-3 items-center">
+                  <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-white rounded-2xl border border-shnoor-light shadow-[0_8px_30px_rgba(14,14,39,0.06)]">
+                    <label className="text-sm font-bold text-shnoor-navy mb-3 flex items-center">
                       <Plus size={18} className="mr-2 text-shnoor-indigo" />
                       Add New Institute
                     </label>
-                    <div className="flex space-x-3">
+                    <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
                       <input
                         type="text"
                         value={newInstituteName}
@@ -2919,7 +3035,7 @@ const AdminDashboard = () => {
                       <button
                         onClick={handleAddInstitute}
                         disabled={isAddingInstitute || !newInstituteName.trim()}
-                        className={`px-6 py-4 rounded-xl font-bold transition-all flex items-center space-x-2 shadow-[0_8px_30px_rgba(14,14,39,0.06)] ${!isAddingInstitute && newInstituteName.trim()
+                        className={`w-full sm:w-auto px-6 py-4 rounded-xl font-bold transition-all flex items-center justify-center space-x-2 shadow-[0_8px_30px_rgba(14,14,39,0.06)] ${!isAddingInstitute && newInstituteName.trim()
                           ? 'bg-shnoor-indigo hover:bg-shnoor-navy text-white hover:shadow-[0_8px_30px_rgba(14,14,39,0.06)] transform hover:-translate-y-0.5'
                           : 'bg-shnoor-light text-shnoor-soft cursor-not-allowed'
                           }`}
@@ -2937,15 +3053,15 @@ const AdminDashboard = () => {
                   <div className="space-y-4">
                     {/* Bulk Test Assignment Section - shown when institutes are selected */}
                     {selectedInstitutes.length > 0 && (
-                      <div className="mb-6 p-6 bg-shnoor-lavender rounded-2xl border-2 border-shnoor-indigo">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-lg font-bold text-shnoor-navy flex items-center">
-                            <FileSpreadsheet className="mr-2 text-shnoor-indigo" size={22} />
-                            Assign Test to Selected Institutes
+                      <div className="mb-6 p-4 sm:p-6 bg-shnoor-lavender rounded-2xl border-2 border-shnoor-indigo">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 space-y-2 sm:space-y-0">
+                          <h3 className="text-base sm:text-lg font-bold text-shnoor-navy flex items-center">
+                            <FileSpreadsheet className="mr-2 text-shnoor-indigo shrink-0" size={22} />
+                            <span>Assign Test to Selected Institutes</span>
                           </h3>
                           <button
                             onClick={() => setSelectedInstitutes([])}
-                            className="text-sm text-shnoor-indigoMedium hover:text-shnoor-navy font-medium"
+                            className="text-sm text-shnoor-indigoMedium hover:text-shnoor-navy font-medium self-end sm:self-auto"
                           >
                             Clear Selection
                           </button>
@@ -2968,30 +3084,77 @@ const AdminDashboard = () => {
                             </div>
                           </div>
 
-                          <div>
+                          <div className="relative">
                             <label className="block text-sm font-bold text-shnoor-navy mb-2">
                               Select Test to Assign
                             </label>
-                            <select
-                              value={selectedTestForMultipleInstitutes}
-                              onChange={(e) => setSelectedTestForMultipleInstitutes(e.target.value)}
-                              className="w-full px-4 py-3 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-shnoor-mist focus:border-shnoor-indigo bg-white text-shnoor-navy font-medium"
+
+                            {/* Custom Dropdown Button */}
+                            <button
+                              type="button"
+                              onClick={() => setIsTestDropdownOpen(!isTestDropdownOpen)}
+                              className="w-full px-4 py-3 border border-shnoor-light rounded-xl bg-white text-shnoor-navy font-medium transition-all flex items-center justify-between hover:border-shnoor-indigo focus:ring-4 focus:ring-shnoor-lavender focus:border-shnoor-indigo"
                             >
-                              <option value="">-- Select a test --</option>
-                              {tests.map((test) => (
-                                <option key={test.id} value={test.id}>
-                                  {test.name}
-                                </option>
-                              ))}
-                            </select>
+                              <span className={selectedTestsForMultipleInstitutes.length === 0 ? 'text-shnoor-indigoMedium' : 'text-shnoor-navy'}>
+                                {selectedTestsForMultipleInstitutes.length === 0
+                                  ? '-- Select a test --'
+                                  : `${selectedTestsForMultipleInstitutes.length} test${selectedTestsForMultipleInstitutes.length !== 1 ? 's' : ''} selected`
+                                }
+                              </span>
+                              <ChevronDown size={20} className={`transition-transform ${isTestDropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {/* Dropdown Menu with Checkboxes */}
+                            {isTestDropdownOpen && (
+                              <div className="absolute z-50 w-full mt-2 bg-white border border-shnoor-light rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                                {tests.filter(test => test.status === 'published').length === 0 ? (
+                                  <div className="p-4 text-center text-shnoor-indigoMedium text-sm">
+                                    No published tests available
+                                  </div>
+                                ) : (
+                                  <div className="py-2">
+                                    {tests.filter(test => test.status === 'published').map((test) => (
+                                      <label
+                                        key={test.id}
+                                        className="flex items-center space-x-3 px-4 py-3 hover:bg-shnoor-lavender cursor-pointer transition-colors"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedTestsForMultipleInstitutes.includes(test.id)}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              setSelectedTestsForMultipleInstitutes([...selectedTestsForMultipleInstitutes, test.id]);
+                                            } else {
+                                              setSelectedTestsForMultipleInstitutes(selectedTestsForMultipleInstitutes.filter(id => id !== test.id));
+                                            }
+                                          }}
+                                          className="w-4 h-4 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-indigo"
+                                        />
+                                        <span className="text-sm font-medium text-shnoor-navy flex-1">
+                                          {test.name}
+                                        </span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Selected tests count */}
+                            {selectedTestsForMultipleInstitutes.length > 0 && (
+                              <p className="text-xs text-shnoor-indigo mt-2 font-medium">
+                                {selectedTestsForMultipleInstitutes.length} test{selectedTestsForMultipleInstitutes.length !== 1 ? 's' : ''} selected
+                              </p>
+                            )}
                           </div>
 
                           <button
                             onClick={handleAssignTestToMultipleInstitutes}
-                            disabled={!selectedTestForMultipleInstitutes || isAssigningTestToMultipleInstitutes}
-                            className={`w-full px-6 py-4 rounded-xl font-bold transition-all flex items-center justify-center space-x-2 ${selectedTestForMultipleInstitutes && !isAssigningTestToMultipleInstitutes
-                                ? 'bg-shnoor-indigo hover:bg-shnoor-navy text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
-                                : 'bg-shnoor-light text-shnoor-soft cursor-not-allowed'
+                            disabled={selectedTestsForMultipleInstitutes.length === 0 || isAssigningTestToMultipleInstitutes}
+                            className={`w-full px-6 py-4 rounded-xl font-bold transition-all flex items-center justify-center space-x-2 ${selectedTestsForMultipleInstitutes.length > 0 && !isAssigningTestToMultipleInstitutes
+                              ? 'bg-shnoor-indigo hover:bg-shnoor-navy text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                              : 'bg-shnoor-light text-shnoor-soft cursor-not-allowed'
                               }`}
                           >
                             {isAssigningTestToMultipleInstitutes && (
@@ -3001,7 +3164,7 @@ const AdminDashboard = () => {
                             <span>
                               {isAssigningTestToMultipleInstitutes
                                 ? 'Assigning...'
-                                : `Assign to ${selectedInstitutes.length} Institute${selectedInstitutes.length !== 1 ? 's' : ''}`
+                                : `Assign ${selectedTestsForMultipleInstitutes.length} Test${selectedTestsForMultipleInstitutes.length !== 1 ? 's' : ''} to ${selectedInstitutes.length} Institute${selectedInstitutes.length !== 1 ? 's' : ''}`
                               }
                             </span>
                           </button>
@@ -3009,7 +3172,7 @@ const AdminDashboard = () => {
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 space-y-3 sm:space-y-0">
                       <div className="flex items-center space-x-4">
                         <h3 className="text-xl font-bold text-shnoor-navy flex items-center">
                           <Building2 size={22} className="mr-2 text-shnoor-indigo" />
@@ -3191,19 +3354,19 @@ const AdminDashboard = () => {
             {activeTab === 'violations' && (
               <div className="space-y-6">
                 {/* Header */}
-                <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light p-8">
-                  <div className="flex items-center justify-between mb-6">
+                <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light p-4 sm:p-8 flex flex-col">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 space-y-4 sm:space-y-0">
                     <div>
-                      <h2 className="text-2xl font-bold text-shnoor-navy flex items-center">
-                        <AlertCircle className="mr-2 text-shnoor-indigo" size={28} />
+                      <h2 className="text-2xl sm:text-3xl font-bold text-shnoor-navy flex items-center">
+                        <AlertCircle className="mr-2 sm:mr-3 text-shnoor-indigo h-6 w-6 sm:h-8 sm:w-8" />
                         Violations
                       </h2>
-                      <p className="text-sm text-shnoor-indigoMedium mt-1">Monitor detected suspicious activities during exams</p>
+                      <p className="text-sm sm:text-base text-shnoor-indigoMedium mt-1">Monitor detected suspicious activities during exams</p>
                     </div>
                     {selectedTestForViolations && violationsByStudent.length > 0 && (
                       <button
                         onClick={exportViolationsToExcel}
-                        className="flex items-center space-x-2 px-5 py-3 bg-shnoor-indigo hover:bg-shnoor-navy text-white rounded-xl transition-all shadow-[0_8px_30px_rgba(14,14,39,0.06)] hover:shadow-[0_8px_30px_rgba(14,14,39,0.12)] transform hover:-translate-y-0.5 font-semibold"
+                        className="w-full sm:w-auto flex items-center justify-center space-x-2 px-5 py-3 bg-shnoor-indigo hover:bg-shnoor-navy text-white rounded-xl transition-all shadow-[0_8px_30px_rgba(14,14,39,0.06)] hover:shadow-[0_8px_30px_rgba(14,14,39,0.12)] transform hover:-translate-y-0.5 font-semibold"
                         title="Export Violations Report"
                       >
                         <Download size={20} />
@@ -3365,6 +3528,13 @@ const AdminDashboard = () => {
                     </>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Interviews Tab */}
+            {activeTab === 'interviews' && (
+              <div className="space-y-6">
+                <InterviewsList />
               </div>
             )}
           </>
@@ -3691,23 +3861,74 @@ const AdminDashboard = () => {
                   <label className="block text-sm font-bold text-shnoor-navy mb-3">
                     Assign New Test to Institute
                   </label>
-                  <div className="flex space-x-3">
-                    <select
-                      value={selectedTestForInstitute}
-                      onChange={(e) => setSelectedTestForInstitute(e.target.value)}
-                      className="flex-1 px-4 py-3 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-shnoor-lavender focus:border-shnoor-indigo bg-white text-shnoor-navy font-medium transition-all"
-                    >
-                      <option value="">-- Select a test --</option>
-                      {tests.filter(test => test.status === 'published').map((test) => (
-                        <option key={test.id} value={test.id}>
-                          {test.name} ({test.questions} questions)
-                        </option>
-                      ))}
-                    </select>
+                  <div className="relative space-y-3">
+                    {/* Custom Dropdown Button */}
                     <button
-                      onClick={handleAssignTestToInstitute}
-                      disabled={!selectedTestForInstitute || isAssigningTestToInstitute}
-                      className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center space-x-2 ${selectedTestForInstitute && !isAssigningTestToInstitute
+                      type="button"
+                      onClick={() => setIsInstituteTestDropdownOpen(!isInstituteTestDropdownOpen)}
+                      className="w-full px-4 py-3 border border-shnoor-light rounded-xl bg-white text-shnoor-navy font-medium transition-all flex items-center justify-between hover:border-shnoor-indigo focus:ring-4 focus:ring-shnoor-lavender focus:border-shnoor-indigo"
+                    >
+                      <span className={selectedTestsForInstitute.length === 0 ? 'text-shnoor-indigoMedium' : 'text-shnoor-navy'}>
+                        {selectedTestsForInstitute.length === 0
+                          ? '-- Select a test --'
+                          : `${selectedTestsForInstitute.length} test${selectedTestsForInstitute.length !== 1 ? 's' : ''} selected`
+                        }
+                      </span>
+                      <ChevronDown size={20} className={`transition-transform ${isInstituteTestDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* Dropdown Menu with Checkboxes */}
+                    {isInstituteTestDropdownOpen && (
+                      <div className="absolute z-50 w-full mt-2 bg-white border border-shnoor-light rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                        {tests.filter(test => test.status === 'published').length === 0 ? (
+                          <div className="p-4 text-center text-shnoor-indigoMedium text-sm flex items-center justify-center">
+                            <AlertCircle size={16} className="mr-1" />
+                            No published tests available. Please publish a test first.
+                          </div>
+                        ) : (
+                          <div className="py-2">
+                            {tests.filter(test => test.status === 'published').map((test) => (
+                              <label
+                                key={test.id}
+                                className="flex items-center space-x-3 px-4 py-3 hover:bg-shnoor-lavender cursor-pointer transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedTestsForInstitute.includes(test.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedTestsForInstitute([...selectedTestsForInstitute, test.id]);
+                                    } else {
+                                      setSelectedTestsForInstitute(selectedTestsForInstitute.filter(id => id !== test.id));
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-indigo"
+                                />
+                                <span className="text-sm font-medium text-shnoor-navy flex-1">
+                                  {test.name} <span className="text-shnoor-indigoMedium">({test.questions} questions)</span>
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Selected tests count */}
+                    {selectedTestsForInstitute.length > 0 && (
+                      <p className="text-xs text-shnoor-indigo mt-2 font-medium">
+                        {selectedTestsForInstitute.length} test{selectedTestsForInstitute.length !== 1 ? 's' : ''} selected
+                      </p>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        handleAssignTestToInstitute();
+                        setIsInstituteTestDropdownOpen(false);
+                      }}
+                      disabled={selectedTestsForInstitute.length === 0 || isAssigningTestToInstitute}
+                      className={`w-full px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center space-x-2 ${selectedTestsForInstitute.length > 0 && !isAssigningTestToInstitute
                         ? 'bg-shnoor-indigo hover:bg-shnoor-navy text-white shadow-lg hover:-translate-y-0.5'
                         : 'bg-shnoor-light text-shnoor-soft cursor-not-allowed'
                         }`}
@@ -3715,15 +3936,16 @@ const AdminDashboard = () => {
                       {isAssigningTestToInstitute && (
                         <Loader2 className="animate-spin" size={16} />
                       )}
-                      <span>{isAssigningTestToInstitute ? 'Assigning...' : 'Assign Test'}</span>
+                      <span>
+                        {isAssigningTestToInstitute
+                          ? 'Assigning...'
+                          : selectedTestsForInstitute.length > 0
+                            ? `Assign ${selectedTestsForInstitute.length} Test${selectedTestsForInstitute.length !== 1 ? 's' : ''}`
+                            : 'Select Tests to Assign'
+                        }
+                      </span>
                     </button>
                   </div>
-                  {tests.filter(test => test.status === 'published').length === 0 && (
-                    <p className="mt-2 text-sm text-shnoor-indigoMedium flex items-center">
-                      <AlertCircle size={16} className="mr-1" />
-                      No published tests available. Please publish a test first.
-                    </p>
-                  )}
                 </div>
 
                 {/* Assigned Tests List */}
@@ -3796,7 +4018,7 @@ const AdminDashboard = () => {
                   onClick={() => {
                     setShowStudentManagementModal(false);
                     setSelectedStudentsForDelete([]);
-                    setSelectedTestForStudentModal('');
+                    setSelectedTestsForStudentModal([]);
                   }}
                   className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
                 >
@@ -3907,23 +4129,74 @@ const AdminDashboard = () => {
                         <h5 className="text-sm font-bold text-shnoor-navy mb-3">
                           Assign Test to {selectedStudentsForDelete.length} Selected Student{selectedStudentsForDelete.length !== 1 ? 's' : ''}
                         </h5>
-                        <div className="flex space-x-3">
-                          <select
-                            value={selectedTestForStudentModal}
-                            onChange={(e) => setSelectedTestForStudentModal(e.target.value)}
-                            className="flex-1 px-4 py-3 border border-shnoor-light rounded-xl focus:ring-4 focus:ring-shnoor-lavender focus:border-shnoor-indigo bg-white text-shnoor-navy font-medium transition-all"
-                          >
-                            <option value="">-- Select a test --</option>
-                            {tests.filter(test => test.status === 'published').map((test) => (
-                              <option key={test.id} value={test.id}>
-                                {test.name} ({test.questions} questions • {test.duration} mins)
-                              </option>
-                            ))}
-                          </select>
+                        <div className="relative space-y-3">
+                          {/* Custom Dropdown Button */}
                           <button
-                            onClick={handleAssignTestInModal}
-                            disabled={!selectedTestForStudentModal || isAssigningTestInModal}
-                            className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center space-x-2 ${selectedTestForStudentModal && !isAssigningTestInModal
+                            type="button"
+                            onClick={() => setIsStudentTestDropdownOpen(!isStudentTestDropdownOpen)}
+                            className="w-full px-4 py-3 border border-shnoor-light rounded-xl bg-white text-shnoor-navy font-medium transition-all flex items-center justify-between hover:border-shnoor-indigo focus:ring-4 focus:ring-shnoor-lavender focus:border-shnoor-indigo"
+                          >
+                            <span className={selectedTestsForStudentModal.length === 0 ? 'text-shnoor-indigoMedium' : 'text-shnoor-navy'}>
+                              {selectedTestsForStudentModal.length === 0
+                                ? '-- Select a test --'
+                                : `${selectedTestsForStudentModal.length} test${selectedTestsForStudentModal.length !== 1 ? 's' : ''} selected`
+                              }
+                            </span>
+                            <ChevronDown size={20} className={`transition-transform ${isStudentTestDropdownOpen ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          {/* Dropdown Menu with Checkboxes */}
+                          {isStudentTestDropdownOpen && (
+                            <div className="absolute z-50 w-full mt-2 bg-white border border-shnoor-light rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                              {tests.filter(test => test.status === 'published').length === 0 ? (
+                                <div className="p-4 text-center text-shnoor-indigoMedium text-sm flex items-center justify-center">
+                                  <AlertCircle size={16} className="mr-1" />
+                                  No published tests available. Please publish a test first.
+                                </div>
+                              ) : (
+                                <div className="py-2">
+                                  {tests.filter(test => test.status === 'published').map((test) => (
+                                    <label
+                                      key={test.id}
+                                      className="flex items-center space-x-3 px-4 py-3 hover:bg-shnoor-lavender cursor-pointer transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedTestsForStudentModal.includes(test.id)}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setSelectedTestsForStudentModal([...selectedTestsForStudentModal, test.id]);
+                                          } else {
+                                            setSelectedTestsForStudentModal(selectedTestsForStudentModal.filter(id => id !== test.id));
+                                          }
+                                        }}
+                                        className="w-4 h-4 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-indigo"
+                                      />
+                                      <span className="text-sm font-medium text-shnoor-navy flex-1">
+                                        {test.name} <span className="text-shnoor-indigoMedium">({test.questions} questions • {test.duration} mins)</span>
+                                      </span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Selected tests count */}
+                          {selectedTestsForStudentModal.length > 0 && (
+                            <p className="text-xs text-shnoor-indigo mt-2 font-medium">
+                              {selectedTestsForStudentModal.length} test{selectedTestsForStudentModal.length !== 1 ? 's' : ''} selected
+                            </p>
+                          )}
+
+                          <button
+                            onClick={() => {
+                              handleAssignTestInModal();
+                              setIsStudentTestDropdownOpen(false);
+                            }}
+                            disabled={selectedTestsForStudentModal.length === 0 || isAssigningTestInModal}
+                            className={`w-full px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center space-x-2 ${selectedTestsForStudentModal.length > 0 && !isAssigningTestInModal
                               ? 'bg-shnoor-indigo hover:bg-shnoor-navy text-white shadow-lg hover:-translate-y-0.5'
                               : 'bg-shnoor-light text-shnoor-soft cursor-not-allowed'
                               }`}
@@ -3932,7 +4205,14 @@ const AdminDashboard = () => {
                               <Loader2 className="animate-spin" size={16} />
                             )}
                             <UserCheck size={18} />
-                            <span>{isAssigningTestInModal ? 'Assigning...' : 'Assign'}</span>
+                            <span>
+                              {isAssigningTestInModal
+                                ? 'Assigning...'
+                                : selectedTestsForStudentModal.length > 0
+                                  ? `Assign ${selectedTestsForStudentModal.length} Test${selectedTestsForStudentModal.length !== 1 ? 's' : ''}`
+                                  : 'Select Tests to Assign'
+                              }
+                            </span>
                           </button>
                         </div>
                       </div>
@@ -4013,7 +4293,7 @@ const AdminDashboard = () => {
                   onClick={() => {
                     setShowStudentManagementModal(false);
                     setSelectedStudentsForDelete([]);
-                    setSelectedTestForStudentModal('');
+                    setSelectedTestsForStudentModal([]);
                   }}
                   className="px-6 py-3 bg-shnoor-light hover:bg-shnoor-mist text-shnoor-navy rounded-xl font-medium transition-colors"
                 >
@@ -4223,6 +4503,22 @@ const AdminDashboard = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Interview Schedule Modal */}
+        {showInterviewScheduleModal && selectedStudentForInterview && (
+          <InterviewSchedule
+            student={selectedStudentForInterview}
+            testId={selectedExamId}
+            onClose={() => {
+              setShowInterviewScheduleModal(false);
+              setSelectedStudentForInterview(null);
+            }}
+            onScheduled={() => {
+              setShowInterviewScheduleModal(false);
+              setSelectedStudentForInterview(null);
+            }}
+          />
         )}
       </div>
     </div>

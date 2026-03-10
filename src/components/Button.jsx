@@ -9,7 +9,7 @@ const Button = ({
   onClick
 }) => {
   // Define our branded color styles based on the variant
-  const baseStyles = "h-[50px] px-6 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2";
+  const baseStyles = "h-[50px] min-h-[44px] px-6 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 touch-manipulation";
 
   const variants = {
     primary: "bg-shnoor-indigo text-white hover:bg-shnoor-navy shadow-[0_4px_14px_rgba(68,68,142,0.3)]",

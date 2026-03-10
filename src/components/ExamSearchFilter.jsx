@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { Search, Filter, X, ChevronDown } from 'lucide-react';
 import InputField from './InputField';
 
-const ExamSearchFilter = ({ 
-  onSearchChange, 
-  onFilterChange, 
+const ExamSearchFilter = ({
+  onSearchChange,
+  onFilterChange,
   onSortChange,
   sortOptions = [],
   showPublishedFilter = false,
@@ -90,13 +90,13 @@ const ExamSearchFilter = ({
         </div>
 
         {/* Controls */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           {/* Sort Dropdown */}
-          <div className="relative flex items-center">
+          <div className="relative flex items-center w-full sm:w-auto flex-1 sm:flex-none">
             <select
               value={sortBy}
               onChange={(e) => handleSortChange(e.target.value)}
-              className="appearance-none px-3 py-2 pr-8 text-sm border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-shnoor-indigo bg-white min-w-[140px] cursor-pointer hover:border-shnoor-indigo transition-all shadow-sm font-bold text-shnoor-navy"
+              className="appearance-none px-3 py-2 pr-8 w-full text-sm border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-shnoor-indigo bg-white min-w-[140px] cursor-pointer hover:border-shnoor-indigo transition-all shadow-sm font-bold text-shnoor-navy"
             >
               {sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -110,11 +110,10 @@ const ExamSearchFilter = ({
           {/* Filter Toggle Button */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg font-bold transition-all whitespace-nowrap shadow-sm ${
-              showFilters 
-                ? 'bg-shnoor-indigo text-white shadow-md' 
-                : 'bg-white text-shnoor-navy hover:bg-shnoor-lavender border border-shnoor-mist hover:border-shnoor-indigo'
-            }`}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg font-bold transition-all whitespace-nowrap shadow-sm ${showFilters
+              ? 'bg-shnoor-indigo text-white shadow-md'
+              : 'bg-white text-shnoor-navy hover:bg-shnoor-lavender border border-shnoor-mist hover:border-shnoor-indigo'
+              }`}
           >
             <Filter size={16} />
             <span className="hidden sm:inline">Filter</span>
@@ -158,11 +157,11 @@ const ExamSearchFilter = ({
         <div className="flex flex-wrap gap-2 pt-3 mt-3 border-t border-shnoor-mist animate-in slide-in-from-top-2 duration-200">
           {/* Published/Draft Filter */}
           {showPublishedFilter && (
-            <div className="relative flex items-center">
+            <div className="relative flex items-center w-full sm:w-auto flex-1 sm:flex-none">
               <select
                 value={filters.published}
                 onChange={(e) => handleFilterChange('published', e.target.value)}
-                className="appearance-none px-3 py-1.5 pr-8 text-sm border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-shnoor-indigo bg-white cursor-pointer hover:border-shnoor-indigo transition-all shadow-sm font-bold text-shnoor-navy"
+                className="appearance-none px-3 py-1.5 pr-8 w-full text-sm border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-shnoor-indigo bg-white cursor-pointer hover:border-shnoor-indigo transition-all shadow-sm font-bold text-shnoor-navy"
               >
                 <option value="all">All Status</option>
                 <option value="published">Published</option>
@@ -174,11 +173,11 @@ const ExamSearchFilter = ({
 
           {/* Attempted Filter */}
           {showAttemptedFilter && (
-            <div className="relative flex items-center">
+            <div className="relative flex items-center w-full sm:w-auto flex-1 sm:flex-none">
               <select
                 value={filters.attempted}
                 onChange={(e) => handleFilterChange('attempted', e.target.value)}
-                className="appearance-none px-3 py-1.5 pr-8 text-sm border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-shnoor-indigo bg-white cursor-pointer hover:border-shnoor-indigo transition-all shadow-sm font-bold text-shnoor-navy"
+                className="appearance-none px-3 py-1.5 pr-8 w-full text-sm border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-shnoor-indigo bg-white cursor-pointer hover:border-shnoor-indigo transition-all shadow-sm font-bold text-shnoor-navy"
               >
                 <option value="all">All Attempts</option>
                 <option value="attempted">Attempted</option>
@@ -190,11 +189,11 @@ const ExamSearchFilter = ({
           )}
 
           {/* Date Filter */}
-          <div className="relative flex items-center">
+          <div className="relative flex items-center w-full sm:w-auto flex-1 sm:flex-none">
             <select
               value={filters.dateRange}
               onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-              className="appearance-none px-3 py-1.5 pr-8 text-sm border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-shnoor-indigo bg-white cursor-pointer hover:border-shnoor-indigo transition-all shadow-sm font-bold text-shnoor-navy"
+              className="appearance-none px-3 py-1.5 pr-8 w-full text-sm border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-shnoor-indigo bg-white cursor-pointer hover:border-shnoor-indigo transition-all shadow-sm font-bold text-shnoor-navy"
             >
               <option value="all">All Time</option>
               <option value="today">Today</option>

@@ -39,56 +39,64 @@ const LandingPage = () => (
 
     {/* ── 1. NAVBAR ──────────────────────────────────────────────────────── */}
     <nav className="bg-white border-b border-shnoor-mist sticky top-0 z-50 shadow-sm">
-      <div className="max-w-[1280px] mx-auto px-8 flex items-center justify-between h-[72px]">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-8 flex flex-col sm:flex-row items-center justify-between h-auto py-4 sm:py-0 sm:h-[72px] gap-4 sm:gap-0">
         <div className="flex items-center gap-4">
-          <img src={shnoorlogo1} alt="Shnoor" className="h-12 w-12 object-contain" />
+          <img 
+            src={shnoorlogo1} 
+            alt="Shnoor" 
+            className="h-10 w-10 sm:h-12 sm:w-12 object-contain" 
+            width="48" 
+            height="48"
+            loading="eager"
+            fetchpriority="high"
+          />
           <div>
-            <p className="font-bold text-shnoor-navy text-xl leading-tight">SHNOOR Assessments</p>
-            <p className="text-[11px] text-shnoor-soft font-semibold uppercase tracking-widest">Secure Examination Portal</p>
+            <p className="font-bold text-shnoor-navy text-lg sm:text-xl leading-tight">SHNOOR Assessments</p>
+            <p className="text-[10px] sm:text-[11px] text-shnoor-soft font-semibold uppercase tracking-widest">Secure Examination Portal</p>
           </div>
         </div>
-        <div className="flex items-center gap-6">
-          <Link to="/login" className="text-base font-semibold text-shnoor-navy hover:text-shnoor-indigo transition-colors px-4 py-2">
+        <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6">
+          <Link to="/login" className="text-sm sm:text-base font-semibold text-shnoor-navy hover:text-shnoor-indigo transition-colors px-2 sm:px-4 py-2">
             Sign In
           </Link>
           <Link to="/register">
-            <Button variant="primary">Register Now</Button>
+            <Button variant="primary" className="text-sm sm:text-base">Register Now</Button>
           </Link>
         </div>
       </div>
     </nav>
 
     {/* ── 2. HERO ────────────────────────────────────────────────────────── */}
-    <section className="bg-white py-16 px-8">
-      <div className="max-w-[1280px] mx-auto grid lg:grid-cols-2 gap-16 items-center">
+    <section className="bg-white py-10 sm:py-16 px-4 sm:px-8">
+      <div className="max-w-[1280px] mx-auto grid lg:grid-cols-2 gap-10 sm:gap-16 items-center">
         {/* Left */}
-        <div className="flex flex-col gap-6">
-          <div className="inline-flex items-center gap-2 bg-[#6B6BAE]/20 text-shnoor-indigo text-sm font-semibold px-4 py-2 rounded-full w-fit border border-shnoor-indigo/30">
+        <div className="flex flex-col gap-5 sm:gap-6 items-center lg:items-start text-center lg:text-left">
+          <div className="inline-flex items-center gap-2 bg-[#6B6BAE]/20 text-shnoor-indigo text-xs sm:text-sm font-semibold px-4 py-2 rounded-full w-fit border border-shnoor-indigo/30">
             <span className="w-2 h-2 bg-shnoor-indigo rounded-full animate-pulse"></span>
             Student Assessment Portal
           </div>
 
-          <h1 className="text-5xl font-extrabold leading-[1.1]">
+          <h1 className="text-4xl sm:text-5xl font-extrabold leading-[1.1]">
             <span className="text-shnoor-navy">SHNOOR </span>
-            <span className="text-shnoor-indigo">Recruitment Portal</span>
+            <span className="text-shnoor-indigo block sm:inline mt-2 sm:mt-0">Recruitment Portal</span>
           </h1>
 
-          <p className="text-lg text-shnoor-soft leading-[1.7] max-w-lg">
+          <p className="text-base sm:text-lg text-shnoor-soft leading-[1.7] max-w-lg">
             Complete your placement assessment for SHNOOR recruitment drives. Access assigned tests, take secure exams, and track your results all in one place.
           </p>
 
-          <div className="flex flex-wrap gap-4">
-            <Link to="/register">
-              <Button variant="primary" className="!px-8">Start Your Assessment</Button>
+          <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center lg:justify-start w-full sm:w-auto">
+            <Link to="/register" className="w-full sm:w-auto">
+              <Button variant="primary" className="w-full sm:w-auto !px-8">Start Your Assessment</Button>
             </Link>
-            <Link to="/login">
-              <Button className="h-[50px] px-8 rounded-xl font-bold text-shnoor-navy border-2 border-shnoor-mist hover:border-shnoor-indigo hover:bg-shnoor-lavender transition-all">
+            <Link to="/login" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto h-[50px] px-8 rounded-xl font-bold text-shnoor-navy border-2 border-shnoor-mist hover:border-shnoor-indigo hover:bg-shnoor-lavender transition-all">
                 Already Registered?
               </Button>
             </Link>
           </div>
 
-          <div className="flex items-center gap-8">
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8 mt-4 sm:mt-0">
             {['Secure Proctored Exams', 'Easy Submission'].map(t => (
               <div key={t} className="flex items-center gap-2 text-sm text-shnoor-indigoMedium font-semibold">
                 <Icon d={CHECK} cls="w-5 h-5 text-shnoor-indigo" />
@@ -144,11 +152,11 @@ const LandingPage = () => (
     </section>
 
     {/* ── 3. HOW IT WORKS ────────────────────────────────────────────────── */}
-    <section className="bg-white py-24 px-8 border-t border-shnoor-lavender">
+    <section className="bg-white py-16 sm:py-24 px-4 sm:px-8 border-t border-shnoor-lavender">
       <div className="max-w-[1280px] mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl font-extrabold text-shnoor-navy mb-4">How It Works</h2>
-          <p className="text-lg text-shnoor-soft max-w-xl mx-auto">Complete your placement assessment in three simple steps</p>
+        <div className="text-center mb-12 sm:mb-16">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-shnoor-navy mb-4">How It Works</h2>
+          <p className="text-base sm:text-lg text-shnoor-soft max-w-xl mx-auto">Complete your placement assessment in three simple steps</p>
         </div>
         <div className="grid md:grid-cols-3 gap-12">
           {[
@@ -169,11 +177,11 @@ const LandingPage = () => (
     </section>
 
     {/* ── 4. PLATFORM FEATURES ───────────────────────────────────────────── */}
-    <section className="bg-shnoor-lavender py-24 px-8">
+    <section className="bg-shnoor-lavender py-16 sm:py-24 px-4 sm:px-8">
       <div className="max-w-[1280px] mx-auto">
-        <div className="text-center mb-14">
-          <h2 className="text-4xl font-extrabold text-shnoor-navy mb-4">Platform Features</h2>
-          <p className="text-lg text-shnoor-soft">Secure and reliable assessment experience</p>
+        <div className="text-center mb-10 sm:mb-14">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-shnoor-navy mb-4">Platform Features</h2>
+          <p className="text-base sm:text-lg text-shnoor-soft">Secure and reliable assessment experience</p>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {FEATURES.map(f => (
@@ -190,14 +198,14 @@ const LandingPage = () => (
     </section>
 
     {/* ── 5. SECURE EXAMINATION ENV ──────────────────────────────────────── */}
-    <section className="bg-shnoor-navy py-24 px-8">
-      <div className="max-w-[1280px] mx-auto grid lg:grid-cols-2 gap-16 items-center">
+    <section className="bg-shnoor-navy py-16 sm:py-24 px-4 sm:px-8">
+      <div className="max-w-[1280px] mx-auto grid lg:grid-cols-2 gap-12 sm:gap-16 items-center">
         {/* Left */}
-        <div>
-          <h2 className="text-4xl font-extrabold text-white leading-tight mb-4">
-            Secure Examination<br />Environment
+        <div className="text-center lg:text-left">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight mb-4">
+            Secure Examination<br className="hidden sm:block" />Environment
           </h2>
-          <p className="text-lg text-shnoor-soft mb-10 leading-[1.7]">
+          <p className="text-base sm:text-lg text-shnoor-soft mb-8 sm:mb-10 leading-[1.7]">
             Proctored assessments ensure fair evaluation for all candidates.
           </p>
           <div className="flex flex-col gap-8">
@@ -250,11 +258,11 @@ const LandingPage = () => (
     </section>
 
     {/* ── 6. WHAT TO EXPECT ─────────────────────────────────────────────── */}
-    <section className="bg-white py-24 px-8">
+    <section className="bg-white py-16 sm:py-24 px-4 sm:px-8">
       <div className="max-w-[1280px] mx-auto">
-        <div className="text-center mb-14">
-          <h2 className="text-4xl font-extrabold text-shnoor-navy mb-4">What to Expect</h2>
-          <p className="text-lg text-shnoor-soft">Understand the assessment process before you begin</p>
+        <div className="text-center mb-10 sm:mb-14">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-shnoor-navy mb-4">What to Expect</h2>
+          <p className="text-base sm:text-lg text-shnoor-soft">Understand the assessment process before you begin</p>
         </div>
         <div className="grid md:grid-cols-3 gap-8 items-stretch">
           {/* Card 1 */}
@@ -308,10 +316,10 @@ const LandingPage = () => (
     </section>
 
     {/* ── 7. CTA ─────────────────────────────────────────────────────────── */}
-    <section className="bg-shnoor-indigo py-24 px-8">
+    <section className="bg-shnoor-indigo py-16 sm:py-24 px-4 sm:px-8">
       <div className="max-w-2xl mx-auto text-center">
-        <h2 className="text-4xl font-extrabold text-white mb-5">Ready to Start?</h2>
-        <p className="text-lg text-white/70 mb-10 leading-relaxed">
+        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4 sm:mb-5">Ready to Start?</h2>
+        <p className="text-base sm:text-lg text-white/70 mb-8 sm:mb-10 leading-relaxed">
           Register with your institute details to access your assigned assessment for the SHNOOR recruitment drive.
         </p>
         <div className="flex flex-wrap justify-center gap-4 mb-6">
@@ -331,12 +339,12 @@ const LandingPage = () => (
     </section>
 
     {/* ── 8. FOOTER ──────────────────────────────────────────────────────── */}
-    <footer className="bg-shnoor-navy pt-16 pb-8 px-8">
+    <footer className="bg-shnoor-navy pt-12 sm:pt-16 pb-6 sm:pb-8 px-4 sm:px-8">
       <div className="max-w-[1280px] mx-auto">
-        <div className="grid md:grid-cols-3 gap-12 mb-12">
+        <div className="grid md:grid-cols-3 gap-8 sm:gap-12 mb-10 sm:mb-12 text-center md:text-left">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <img src={shnoorLogo} alt="Shnoor" className="h-9 w-9 object-contain" loading="lazy" />
+              <img src={shnoorLogo} alt="Shnoor" className="h-9 w-9 object-contain" loading="lazy" width="36" height="36" decoding="async" />
               <span className="font-extrabold text-white text-lg">SHNOOR Assessments</span>
             </div>
             <p className="text-shnoor-soft mb-6 leading-relaxed text-sm">Secure examination platform for campus recruitment drives.</p>

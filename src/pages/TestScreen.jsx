@@ -12,7 +12,8 @@ import remarkGfm from 'remark-gfm';
 import StudentMessageAlert from '../components/student/StudentMessageAlert';
 import StudentWarningsSidebar from '../components/student/StudentWarningsSidebar';
 
-import Editor from '@monaco-editor/react';
+// Lazy load Monaco Editor to reduce initial bundle size
+import LazyMonacoEditor from '../components/LazyMonacoEditor';
 import {
   Clock,
   AlertTriangle,
@@ -36,8 +37,8 @@ const TestScreen = () => {
   // DISABLED: Coding console output
   // const [codingConsoleOutput, setCodingConsoleOutput] = useState({}); // Store console output per question
   const [markedForReview, setMarkedForReview] = useState(new Set());
-  
- // Warnings sidebar state
+
+  // Warnings sidebar state
   const [warningsSidebarCollapsed, setWarningsSidebarCollapsed] = useState(true);
 
 
@@ -90,7 +91,7 @@ int main() {
   // Helper function to format errors for display
   const formatErrorForDisplay = (error) => {
     if (!error) return '';
-    
+
     // Clean up Docker noise for display only
     return error
       .replace(/docker run --rm --memory=256m.*$/gm, '')
@@ -114,7 +115,7 @@ int main() {
   }, []);
 
   const { timeLeft, formattedTime, stopTimer } = useTimer(
-    initialTimeRemaining, 
+    initialTimeRemaining,
     handleTimeUp
   );
 
@@ -122,14 +123,14 @@ int main() {
   const handleCameraLost = useCallback((reason) => {
     alert(`⚠️ ${reason}\n\nYour exam has been terminated.`);
     stopTimer();
-    
+
     // Clear test data
     localStorage.removeItem('selectedTestId');
-    
+
     // Navigate back to dashboard
-    navigate('/dashboard', { 
+    navigate('/dashboard', {
       replace: true,
-      state: { 
+      state: {
         message: 'Exam terminated due to camera issue',
         type: 'error'
       }
@@ -139,20 +140,20 @@ int main() {
   // Handle AI violations
   const handleAIViolation = useCallback((violation) => {
     console.log('[AI Violation Detected]', violation);
-    
+
     // Show alert to student
     setCurrentAIViolation(violation);
     setAiViolationCount(prev => prev + 1);
-    
+
     // Auto-dismiss after 5 seconds
     setTimeout(() => {
       setCurrentAIViolation(null);
     }, 5000);
-    
+
     // If too many high-severity violations, terminate exam
     if (violation.severity === 'high') {
       const highSeverityCount = aiViolationCount + 1;
-      
+
       if (highSeverityCount >= 5) {
         alert('⚠️ EXAM TERMINATED\n\nMultiple cheating attempts detected by AI monitoring system.\n\nYour exam has been flagged and submitted automatically.');
         submitTest('ai_violation_limit');
@@ -181,18 +182,18 @@ int main() {
     // Simply return the stored JWT session token
     // No need to refresh - JWT tokens are valid for 7 days
     const token = localStorage.getItem('studentAuthToken');
-    
+
     if (!token) {
       console.warn('[Token] No token found in localStorage');
     }
-    
+
     return token;
   }, []);
 
   // Submit test function - defined early so it can be used by other callbacks
   const submitTest = useCallback(async (reason = 'manual') => {
     stopTimer();
-    
+
     // IMPORTANT: Stop proctoring immediately when test ends
     stopProctoring();
 
@@ -213,7 +214,7 @@ int main() {
       const headers = {
         'Content-Type': 'application/json'
       };
-      
+
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
@@ -239,17 +240,17 @@ int main() {
       if (data.success) {
         // Store testId for feedback submission
         localStorage.setItem('lastTestId', testId);
-        
+
         // Clear test-specific data
         localStorage.removeItem('selectedTestId');
 
         // Navigate to results with backend response, testId, and studentId
         navigate('/result', {
           state: {
-            result: { 
-              ...data.result, 
-              testId: parseInt(testId), 
-              studentId: studentId 
+            result: {
+              ...data.result,
+              testId: parseInt(testId),
+              studentId: studentId
             },
             submissionReason: reason
           }
@@ -284,7 +285,7 @@ int main() {
     if (count >= max) {
       // Final warning - auto submit
       alert(`[FINAL WARNING] ${count}/${max}\n\nYou have exceeded the maximum number of tab switches!\n\nYour test will be submitted automatically now.`);
-      
+
       // Auto-submit the test immediately
       setTimeout(() => {
         submitTest('tab_switch_violation');
@@ -292,7 +293,7 @@ int main() {
     } else {
       // Regular warning
       alert(`[WARNING] ${count}/${max}\n\nDo not switch tabs during the examination!\n\nPlease return to the test immediately.`);
-      
+
       // Hide warning modal after 3 seconds
       setTimeout(() => setShowTabWarning(false), 3000);
     }
@@ -303,7 +304,7 @@ int main() {
   // Handle start exam - triggers fullscreen and proctoring
   const handleStartExam = async () => {
     console.log('[Start Exam] User clicked start button');
-    
+
     const testId = localStorage.getItem('selectedTestId');
     const studentId = localStorage.getItem('studentId') || 'unknown';
     const studentName = localStorage.getItem('studentName') || 'Student';
@@ -365,9 +366,9 @@ int main() {
         timeRemaining: timeLeft,
         warningCount: warningCount
       };
-      
+
       console.log('💾 Saving progress manually');
-      
+
       const response = await apiFetch('api/student/save-progress', {
         method: 'POST',
         headers: {
@@ -376,7 +377,7 @@ int main() {
         },
         body: JSON.stringify(payload)
       });
-      
+
       if (response.ok) {
         console.log('✅ Progress saved');
         return true;
@@ -445,11 +446,11 @@ int main() {
           console.log('MCQ Questions:', data.test.questions.length);
           // DISABLED: Coding questions
           // console.log('Coding Questions:', data.test.codingQuestions);
-          
+
           setQuestions(data.test.questions);
           // DISABLED: Coding questions
           // setCodingQuestions(data.test.codingQuestions || []);
-          
+
           // Store test details for instruction screen
           setTestDetails({
             title: data.test.title || 'Assessment',
@@ -477,10 +478,10 @@ int main() {
             } else {
               setInitialTimeRemaining(duration * 60); // Convert minutes to seconds
             }
-            
+
             // If there's saved progress, user has already started
             setHasStarted(true);
-            
+
             // Resume proctoring and fullscreen for resumed exams
             const studentId = localStorage.getItem('studentId') || 'unknown';
             const studentName = localStorage.getItem('studentName') || 'Student';
@@ -540,21 +541,21 @@ int main() {
     const blockBackButton = (e) => {
       e.preventDefault();
       window.history.pushState(null, '', window.location.href);
-      
+
       // Confirm if user really wants to exit
       const confirmExit = window.confirm(
         '⚠️ Warning: Going back will exit the exam!\n\n' +
         'Your progress will be saved, but you will need to resume the exam.\n\n' +
         'Are you sure you want to exit?'
       );
-      
+
       if (confirmExit) {
         // Stop proctoring and save progress before exiting
         stopProctoring();
         navigate('/dashboard', { replace: true });
       }
     };
-    
+
     // Push initial state and listen for popstate
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', blockBackButton);
@@ -582,7 +583,7 @@ int main() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', blockBackButton);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      
+
       // Stop proctoring when leaving test
       stopProctoring();
     };
@@ -636,13 +637,13 @@ int main() {
   useEffect(() => {
     const handleHorizontalMouseMove = (e) => {
       if (!isResizingHorizontal) return;
-      
+
       const container = document.querySelector('.coding-container');
       if (!container) return;
-      
+
       const containerRect = container.getBoundingClientRect();
       const newWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
-      
+
       // Limit between 20% and 50%
       if (newWidth >= 20 && newWidth <= 50) {
         setLeftPanelWidth(newWidth);
@@ -673,13 +674,13 @@ int main() {
   useEffect(() => {
     const handleVerticalMouseMove = (e) => {
       if (!isResizingVertical) return;
-      
+
       const container = document.querySelector('.code-editor-container');
       if (!container) return;
-      
+
       const containerRect = container.getBoundingClientRect();
       const newHeight = containerRect.bottom - e.clientY;
-      
+
       // Limit between 100px and 500px
       if (newHeight >= 100 && newHeight <= 500) {
         setConsolePanelHeight(newHeight);
@@ -704,7 +705,7 @@ int main() {
   const getQuestionStatus = (index) => {
     const isAnswered = answers[index] !== undefined;
     const isMarked = markedForReview.has(index);
-    
+
     // If marked for review, always show yellow regardless of answer status
     if (isMarked) return 'review';
     // Only show green if answered AND not marked
@@ -767,7 +768,7 @@ int main() {
 
       {/* AI Violation Alert */}
       {currentAIViolation && (
-        <AIViolationAlert 
+        <AIViolationAlert
           violation={currentAIViolation}
           onDismiss={() => setCurrentAIViolation(null)}
         />
@@ -786,51 +787,53 @@ int main() {
       {/* Top Bar */}
       <header className="bg-white border-b border-shnoor-light shadow-lg flex-shrink-0">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex flex-wrap sm:flex-nowrap justify-between items-center h-auto sm:h-16 py-3 sm:py-0 gap-3 sm:gap-0">
             {/* Left: Logo and Title */}
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-shnoor-navy to-shnoor-indigo rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold">EX</span>
+            <div className="flex items-center space-x-3 sm:space-x-4 w-full sm:w-auto">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-shnoor-navy to-shnoor-indigo rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
+                <span className="text-white font-bold text-xs sm:text-base">EX</span>
               </div>
-              <div>
-                <h1 className="text-lg font-bold text-shnoor-navy">{testDetails?.title || 'Assessment'}</h1>
-                <p className="text-xs text-shnoor-indigoMedium">Question {currentQuestion + 1} of {totalQuestions}</p>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-sm sm:text-lg font-bold text-shnoor-navy truncate max-w-full">{testDetails?.title || 'Assessment'}</h1>
+                <p className="text-[10px] sm:text-xs text-shnoor-indigoMedium truncate">Question {currentQuestion + 1} of {totalQuestions}</p>
               </div>
             </div>
 
             {/* Center: Timer */}
-            <div className="flex items-center space-x-2 bg-shnoor-lavender px-4 py-2 rounded-xl shadow-inner border border-shnoor-light">
-              <Clock className="w-5 h-5 text-shnoor-indigo" />
-              <span className="text-xl font-mono font-bold text-shnoor-navy">{formattedTime}</span>
+            <div className="flex items-center space-x-1.5 sm:space-x-2 bg-shnoor-lavender px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl shadow-inner border border-shnoor-light flex-shrink-0">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-shnoor-indigo" />
+              <span className="text-sm sm:text-xl font-mono font-bold text-shnoor-navy">{formattedTime}</span>
             </div>
 
             {/* Right: Finish Test Button */}
-            <button
-              onClick={() => {
-                if (window.confirm('Are you sure you want to finish and submit the test? This action cannot be undone.')) {
-                  submitTest('manual');
-                }
-              }}
-              className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-shnoor-danger to-shnoor-danger hover:from-shnoor-danger hover:to-shnoor-danger text-white font-bold rounded-xl shadow-lg transition-all duration-200 hover:scale-105 border-2 border-shnoor-danger"
-            >
-              <CheckCircle size={20} />
-              <span>Finish Test</span>
-            </button>
+            <div className="flex justify-end lg:flex-none">
+              <button
+                onClick={() => {
+                  if (window.confirm('Are you sure you want to finish and submit the test? This action cannot be undone.')) {
+                    submitTest('manual');
+                  }
+                }}
+                className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-shnoor-danger to-shnoor-danger hover:from-shnoor-danger hover:to-shnoor-danger text-white font-bold rounded-xl shadow-lg transition-all duration-200 hover:scale-105 border-2 border-shnoor-danger text-xs sm:text-base flex-shrink-0"
+              >
+                <CheckCircle size={16} className="sm:w-5 sm:h-5" />
+                <span>Finish<span className="hidden sm:inline"> Test</span></span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Left Sidebar - Question Palette */}
-        <aside className="w-64 bg-white border-r border-shnoor-mist flex flex-col flex-shrink-0">
+        <aside className="w-full lg:w-64 bg-white border-b lg:border-b-0 lg:border-r border-shnoor-mist flex flex-col flex-shrink-0 order-2 lg:order-1 h-40 sm:h-48 lg:h-auto overflow-y-auto">
           <div className="p-4 border-b border-shnoor-mist">
             <h3 className="font-bold text-shnoor-navy mb-3">Question Palette</h3>
-            
+
             {/* MCQ Questions */}
             {questions.length > 0 && (
               <>
                 <p className="text-xs text-shnoor-indigoMedium mb-2 font-medium">MCQ Questions</p>
-                <div className="grid grid-cols-5 gap-2 mb-4">
+                <div className="grid grid-cols-5 sm:grid-cols-6 lg:grid-cols-5 gap-2 mb-4">
                   {questions.map((_, index) => {
                     const status = getQuestionStatus(index);
                     let bgClass = 'bg-[#F8F8FB] text-shnoor-indigoMedium border border-shnoor-mist/50'; // not-visited
@@ -916,7 +919,7 @@ int main() {
                   {warningCount > 0 && "Avoid switching tabs!"}
                 </p>
               </div>
-              
+
               {/* AI Violation Summary */}
               {(violations.multipleFaces > 0 || violations.noFace > 0 || violations.phoneDetected > 0) && (
                 <div className="pt-2 border-t border-shnoor-mist/50">
@@ -938,40 +941,42 @@ int main() {
 
         {/* Main Question Area - MCQ */}
         {!isCodingQuestion && (
-          <main className="flex-1 flex flex-col bg-shnoor-lavender p-6 overflow-hidden">
+          <main className="flex-1 flex flex-col bg-shnoor-lavender p-3 sm:p-6 overflow-hidden order-1 lg:order-2">
             {/* Question Card - Fixed Height with Internal Scrolling */}
-            <div className="flex-1 bg-white rounded-2xl shadow-xl border border-shnoor-light p-8 flex flex-col overflow-hidden">
+            <div className="flex-1 bg-white rounded-xl sm:rounded-2xl shadow-xl border border-shnoor-light p-4 sm:p-8 flex flex-col overflow-hidden min-h-0">
               {/* Question Header */}
-              <div className="flex items-start justify-between mb-6 flex-shrink-0">
-                <div className="flex items-center space-x-3">
-                  <span className="w-10 h-10 bg-gradient-to-br from-shnoor-indigo to-shnoor-navy text-white rounded-xl flex items-center justify-center font-bold shadow-lg">
+              <div className="flex items-center justify-between mb-4 sm:mb-6 flex-shrink-0 gap-2">
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <span className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-shnoor-indigo to-shnoor-navy text-white rounded-lg sm:rounded-xl flex items-center justify-center font-bold shadow-lg text-sm sm:text-base flex-shrink-0">
                     Q{currentQuestion + 1}
                   </span>
                   {markedForReview.has(currentQuestion) && (
-                    <span className="flex items-center space-x-1 text-shnoor-warning bg-shnoor-warningLight px-3 py-1 rounded-full text-sm font-medium border border-shnoor-warningLight shadow-sm">
-                      <Flag size={14} />
-                      <span>Marked for Review</span>
+                    <span className="flex items-center space-x-1 text-shnoor-warning bg-shnoor-warningLight px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-medium border border-shnoor-warningLight shadow-sm">
+                      <Flag size={12} className="sm:w-[14px] sm:h-[14px]" />
+                      <span className="hidden sm:inline">Marked for Review</span>
+                      <span className="sm:hidden">Marked</span>
                     </span>
                   )}
                 </div>
                 <button
                   onClick={toggleMarkForReview}
                   className={`
-                    flex items-center space-x-2 px-4 py-2 rounded-xl font-medium transition-all duration-200 shadow-sm
+                    flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 shadow-sm flex-shrink-0
                     ${markedForReview.has(currentQuestion)
                       ? 'bg-shnoor-warningLight text-shnoor-warning hover:bg-shnoor-warningLight border border-shnoor-warningLight'
                       : 'bg-shnoor-lavender text-shnoor-indigo hover:bg-shnoor-mist border border-shnoor-light'}
                   `}
                 >
-                  <Flag size={18} />
-                  <span>{markedForReview.has(currentQuestion) ? 'Unmark' : 'Mark for Review'}</span>
+                  <Flag size={14} className="sm:w-[18px] sm:h-[18px]" />
+                  <span className="hidden sm:inline">{markedForReview.has(currentQuestion) ? 'Unmark' : 'Mark for Review'}</span>
+                  <span className="sm:hidden">{markedForReview.has(currentQuestion) ? 'Unmark' : 'Review'}</span>
                 </button>
               </div>
 
-              {/* Split Screen Layout: Question on Left (60%), Options on Right (40%) */}
-              <div className="grid grid-cols-5 gap-6 flex-1 overflow-hidden">
-                {/* Left Side: Question Text (60% = 3 columns) */}
-                <div className="col-span-3 bg-shnoor-lavender/30 rounded-xl p-6 border-2 border-shnoor-mist overflow-y-auto">
+              {/* Layout: Question & Options */}
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-6 flex-1 overflow-y-auto lg:overflow-hidden min-h-0">
+                {/* Left Side: Question Text */}
+                <div className="col-span-1 lg:col-span-3 bg-shnoor-lavender/30 rounded-xl p-4 sm:p-6 border-2 border-shnoor-mist overflow-y-visible lg:overflow-y-auto h-auto lg:h-full">
                   <h3 className="text-sm font-semibold text-shnoor-indigoMedium mb-4 uppercase tracking-wide">Question</h3>
                   {currentQ.format === 'paragraph' ? (
                     <div className="text-lg text-shnoor-navy leading-relaxed prose prose-lg max-w-none">
@@ -990,8 +995,8 @@ int main() {
                   )}
                 </div>
 
-                {/* Right Side: Options (40% = 2 columns) */}
-                <div className="col-span-2 bg-shnoor-lavender/30 rounded-xl p-6 border-2 border-shnoor-mist overflow-y-auto">
+                {/* Right Side: Options */}
+                <div className="col-span-1 lg:col-span-2 bg-shnoor-lavender/30 rounded-xl p-4 sm:p-6 border-2 border-shnoor-mist overflow-y-visible lg:overflow-y-auto h-auto lg:h-full">
                   <h3 className="text-sm font-semibold text-shnoor-indigoMedium mb-4 uppercase tracking-wide">Choose Your Answer</h3>
                   <div className="space-y-3">
                     {currentQ.options.map((option, index) => (
@@ -1023,28 +1028,29 @@ int main() {
             </div>
 
             {/* Floating Navigation Buttons - Fixed at Bottom */}
-            <div className="flex justify-between items-center mt-6 flex-shrink-0">
+            <div className="flex justify-between items-center mt-4 sm:mt-6 flex-shrink-0 gap-2">
               <button
                 onClick={handlePrevious}
                 disabled={currentQuestion === 0}
                 className={`
-                  flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg
+                  flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl font-semibold transition-all duration-200 shadow-lg text-sm sm:text-base flex-1 sm:flex-none
                   ${currentQuestion === 0
                     ? 'bg-shnoor-mist text-shnoor-soft cursor-not-allowed'
                     : 'bg-white border-2 border-shnoor-light text-shnoor-navy hover:border-shnoor-soft hover:bg-shnoor-mist/30 hover:shadow-xl'}
                 `}
               >
-                <ChevronLeft size={20} />
-                <span>Previous</span>
+                <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">Previous</span>
+                <span className="sm:hidden">Prev</span>
               </button>
 
-              <div className="flex space-x-3">
+              <div className="flex space-x-2 sm:space-x-3 flex-1 sm:flex-none justify-end">
                 <button
                   onClick={() => {
                     saveProgressNow(); // Save in background without blocking
                     handleNext();
                   }}
-                  className="px-6 py-3 bg-white border-2 border-shnoor-light text-shnoor-indigoMedium rounded-xl font-semibold hover:border-shnoor-soft hover:bg-shnoor-mist/30 transition-all duration-200 shadow-lg hover:shadow-xl"
+                  className="px-4 sm:px-6 py-2 sm:py-3 bg-white border-2 border-shnoor-light text-shnoor-indigoMedium rounded-lg sm:rounded-xl font-semibold hover:border-shnoor-soft hover:bg-shnoor-mist/30 transition-all duration-200 shadow-lg hover:shadow-xl text-sm sm:text-base"
                 >
                   Skip
                 </button>
@@ -1058,10 +1064,11 @@ int main() {
                       alert('Please select an answer or click Skip');
                     }
                   }}
-                  className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-shnoor-indigo to-shnoor-navy hover:from-shnoor-navy hover:to-shnoor-indigo text-white rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+                  className="flex items-center justify-center space-x-1 sm:space-x-2 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-shnoor-indigo to-shnoor-navy hover:from-shnoor-navy hover:to-shnoor-indigo text-white rounded-lg sm:rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl text-sm sm:text-base flex-shrink-0"
                 >
-                  <span>Save & Next</span>
-                  <ChevronRight size={20} />
+                  <span className="hidden sm:inline">Save & Next</span>
+                  <span className="sm:hidden">Next</span>
+                  <ChevronRight size={16} className="sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
@@ -1070,11 +1077,11 @@ int main() {
         {/* Coding Question - Split Screen Layout */}
         {/* Coding Question - Split Screen Layout */}
         {isCodingQuestion && (
-          <main className="flex-1 flex bg-shnoor-lavender overflow-hidden coding-container">
+          <main className="flex-1 flex flex-col lg:flex-row bg-shnoor-lavender overflow-hidden coding-container">
             {/* Left Panel - Problem Description */}
-            <div 
-              className="bg-white border-r border-shnoor-light overflow-y-auto flex-shrink-0 shadow-lg"
-              style={{ width: `${leftPanelWidth}%`, minWidth: '20%', maxWidth: '50%' }}
+            <div
+              className="bg-white lg:border-r border-shnoor-light overflow-y-auto flex-shrink-0 shadow-lg w-full lg:w-auto"
+              style={{ width: window.innerWidth >= 1024 ? `${leftPanelWidth}%` : '100%', minWidth: window.innerWidth >= 1024 ? '20%' : 'auto', maxWidth: window.innerWidth >= 1024 ? '50%' : '100%' }}
             >
               <div className="p-6">
                 {/* Title */}
@@ -1090,586 +1097,585 @@ int main() {
                   </div>
                 </div>
 
-                    {/* Description */}
-                    <div className="mb-6">
-                      <h4 className="text-sm font-semibold text-shnoor-indigoMedium uppercase mb-2">Description</h4>
-                      <div className="text-shnoor-navy text-sm leading-relaxed">
-                        <pre className="whitespace-pre-wrap font-sans">{currentQ.description}</pre>
-                      </div>
-                    </div>
-
-                    {/* Examples */}
-                    <div>
-                      <h4 className="text-sm font-semibold text-shnoor-indigoMedium uppercase mb-3">Examples</h4>
-                      <div className="space-y-4">
-                        {currentQ.testCases && currentQ.testCases.map((testCase, index) => (
-                          <div key={index} className="bg-shnoor-mist rounded-xl p-4 border border-shnoor-light shadow-sm">
-                            <div className="mb-3">
-                              <p className="text-xs font-semibold text-shnoor-indigoMedium uppercase mb-1">Input</p>
-                              <div className="bg-shnoor-navy text-shnoor-lavender p-3 rounded-lg font-mono text-sm shadow-inner">
-                                {testCase.input}
-                              </div>
-                            </div>
-                            <div className="mb-3">
-                              <p className="text-xs font-semibold text-shnoor-indigoMedium uppercase mb-1">Output</p>
-                              <div className="bg-shnoor-navy text-shnoor-lavender p-3 rounded-lg font-mono text-sm shadow-inner">
-                                {testCase.output}
-                              </div>
-                            </div>
-                            {testCase.explanation && (
-                              <div>
-                                <p className="text-xs font-semibold text-shnoor-indigoMedium uppercase mb-1">Explanation</p>
-                                <p className="text-sm text-shnoor-navy">{testCase.explanation}</p>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                {/* Description */}
+                <div className="mb-6">
+                  <h4 className="text-sm font-semibold text-shnoor-indigoMedium uppercase mb-2">Description</h4>
+                  <div className="text-shnoor-navy text-sm leading-relaxed">
+                    <pre className="whitespace-pre-wrap font-sans">{currentQ.description}</pre>
                   </div>
                 </div>
 
-                {/* Horizontal Resize Handle */}
-                <div
-                  className="w-1 bg-shnoor-light hover:bg-shnoor-indigo cursor-col-resize flex-shrink-0 transition-colors duration-200"
-                  onMouseDown={handleHorizontalMouseDown}
-                  style={{ cursor: 'col-resize' }}
-                />
+                {/* Examples */}
+                <div>
+                  <h4 className="text-sm font-semibold text-shnoor-indigoMedium uppercase mb-3">Examples</h4>
+                  <div className="space-y-4">
+                    {currentQ.testCases && currentQ.testCases.map((testCase, index) => (
+                      <div key={index} className="bg-shnoor-mist rounded-xl p-4 border border-shnoor-light shadow-sm">
+                        <div className="mb-3">
+                          <p className="text-xs font-semibold text-shnoor-indigoMedium uppercase mb-1">Input</p>
+                          <div className="bg-shnoor-navy text-shnoor-lavender p-3 rounded-lg font-mono text-sm shadow-inner">
+                            {testCase.input}
+                          </div>
+                        </div>
+                        <div className="mb-3">
+                          <p className="text-xs font-semibold text-shnoor-indigoMedium uppercase mb-1">Output</p>
+                          <div className="bg-shnoor-navy text-shnoor-lavender p-3 rounded-lg font-mono text-sm shadow-inner">
+                            {testCase.output}
+                          </div>
+                        </div>
+                        {testCase.explanation && (
+                          <div>
+                            <p className="text-xs font-semibold text-shnoor-indigoMedium uppercase mb-1">Explanation</p>
+                            <p className="text-sm text-shnoor-navy">{testCase.explanation}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
 
-                {/* Right Panel - Code Editor */}
-                <div className="flex-1 flex flex-col bg-shnoor-navy code-editor-container min-w-0 shadow-xl">
-                  {/* Editor Header */}
-                  <div className="flex items-center justify-between px-4 py-2 bg-shnoor-navy border-b border-shnoor-indigo/30">
-                    <select
-                      value={answers[currentQuestion]?.language || 'java'}
-                      onChange={(e) => {
-                        const newLanguage = e.target.value;
-                        setAnswers(prev => {
-                          const currentAnswer = prev[currentQuestion] || {};
-                          const currentLang = currentAnswer.language || 'java';
-                          
-                          const updatedCodes = {
-                            ...currentAnswer.codes,
-                            [currentLang]: currentAnswer.code || currentAnswer.codes?.[currentLang] || getStarterCode(currentLang)
-                          };
-                          
-                          const newCode = updatedCodes[newLanguage] || getStarterCode(newLanguage);
-                          
-                          return {
-                            ...prev,
-                            [currentQuestion]: {
-                              language: newLanguage,
-                              code: newCode,
-                              codes: updatedCodes
-                            }
-                          };
-                        });
-                      }}
-                      className="px-3 py-1.5 bg-shnoor-indigo text-shnoor-lavender text-sm rounded-lg border border-shnoor-indigo/50 focus:ring-2 focus:ring-shnoor-lavender focus:border-transparent shadow-sm"
-                    >
-                      <option value="java">Java</option>
-                      <option value="python">Python</option>
-                      <option value="cpp">C++</option>
-                    </select>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={async () => {
-                          const currentAnswer = answers[currentQuestion];
-                          const currentLang = currentAnswer?.language || 'java';
-                          const currentCode = currentAnswer?.code || currentAnswer?.codes?.[currentLang] || getStarterCode(currentLang);
-                          
-                          if (!currentCode.trim()) {
-                            alert('Please write some code first!');
-                            return;
-                          }
+            {/* Horizontal Resize Handle */}
+            <div
+              className="w-1 bg-shnoor-light hover:bg-shnoor-indigo cursor-col-resize flex-shrink-0 transition-colors duration-200"
+              onMouseDown={handleHorizontalMouseDown}
+              style={{ cursor: 'col-resize' }}
+            />
+
+            {/* Right Panel - Code Editor */}
+            <div className="flex-1 flex flex-col bg-shnoor-navy code-editor-container min-w-0 shadow-xl">
+              {/* Editor Header */}
+              <div className="flex items-center justify-between px-4 py-2 bg-shnoor-navy border-b border-shnoor-indigo/30">
+                <select
+                  value={answers[currentQuestion]?.language || 'java'}
+                  onChange={(e) => {
+                    const newLanguage = e.target.value;
+                    setAnswers(prev => {
+                      const currentAnswer = prev[currentQuestion] || {};
+                      const currentLang = currentAnswer.language || 'java';
+
+                      const updatedCodes = {
+                        ...currentAnswer.codes,
+                        [currentLang]: currentAnswer.code || currentAnswer.codes?.[currentLang] || getStarterCode(currentLang)
+                      };
+
+                      const newCode = updatedCodes[newLanguage] || getStarterCode(newLanguage);
+
+                      return {
+                        ...prev,
+                        [currentQuestion]: {
+                          language: newLanguage,
+                          code: newCode,
+                          codes: updatedCodes
+                        }
+                      };
+                    });
+                  }}
+                  className="px-3 py-1.5 bg-shnoor-indigo text-shnoor-lavender text-sm rounded-lg border border-shnoor-indigo/50 focus:ring-2 focus:ring-shnoor-lavender focus:border-transparent shadow-sm"
+                >
+                  <option value="java">Java</option>
+                  <option value="python">Python</option>
+                  <option value="cpp">C++</option>
+                </select>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={async () => {
+                      const currentAnswer = answers[currentQuestion];
+                      const currentLang = currentAnswer?.language || 'java';
+                      const currentCode = currentAnswer?.code || currentAnswer?.codes?.[currentLang] || getStarterCode(currentLang);
+
+                      if (!currentCode.trim()) {
+                        alert('Please write some code first!');
+                        return;
+                      }
+
+                      setCodingConsoleOutput(prev => ({
+                        ...prev,
+                        [currentQuestion]: {
+                          running: true,
+                          results: []
+                        }
+                      }));
+
+                      try {
+                        // Get test cases for this question
+                        const testCases = currentQ.testCases || currentQ.publicTestCases || [];
+
+                        if (testCases.length === 0) {
+                          // No test cases, just run the code
+                          const result = await codeExecutionAPI.executeCode(currentCode, currentLang);
 
                           setCodingConsoleOutput(prev => ({
                             ...prev,
                             [currentQuestion]: {
-                              running: true,
-                              results: []
-                            }
-                          }));
-                          
-                          try {
-                            // Get test cases for this question
-                            const testCases = currentQ.testCases || currentQ.publicTestCases || [];
-                            
-                            if (testCases.length === 0) {
-                              // No test cases, just run the code
-                              const result = await codeExecutionAPI.executeCode(currentCode, currentLang);
-                              
-                              setCodingConsoleOutput(prev => ({
-                                ...prev,
-                                [currentQuestion]: {
-                                  running: false,
-                                  results: [{
-                                    testCase: 1,
-                                    input: 'No input',
-                                    expectedOutput: 'N/A',
-                                    actualOutput: result.output || result.error,
-                                    passed: result.success,
-                                    executionTime: result.executionTime + 'ms',
-                                    error: result.error
-                                  }],
-                                  timestamp: new Date().toLocaleTimeString()
-                                }
-                              }));
-                            } else {
-                              // Run against test cases
-                              const evaluation = await codeExecutionAPI.evaluateWithTestCases(
-                                currentCode, 
-                                currentLang, 
-                                testCases.map(tc => ({
-                                  input: tc.input,
-                                  expected_output: tc.output || tc.expectedOutput,
-                                  is_hidden: tc.isHidden || false
-                                }))
-                              );
-                              
-                              const results = evaluation.testResults.map((result, idx) => ({
-                                testCase: idx + 1,
-                                input: result.input,
-                                expectedOutput: result.expectedOutput,
-                                actualOutput: result.actualOutput,
-                                passed: result.passed,
+                              running: false,
+                              results: [{
+                                testCase: 1,
+                                input: 'No input',
+                                expectedOutput: 'N/A',
+                                actualOutput: result.output || result.error,
+                                passed: result.success,
                                 executionTime: result.executionTime + 'ms',
                                 error: result.error
-                              }));
-                              
-                              setCodingConsoleOutput(prev => ({
-                                ...prev,
-                                [currentQuestion]: {
-                                  running: false,
-                                  results: results,
-                                  summary: evaluation.summary,
-                                  timestamp: new Date().toLocaleTimeString()
-                                }
-                              }));
+                              }],
+                              timestamp: new Date().toLocaleTimeString()
                             }
-                          } catch (error) {
-                            console.error('Code execution error:', error);
-                            setCodingConsoleOutput(prev => ({
-                              ...prev,
-                              [currentQuestion]: {
-                                running: false,
-                                results: [{
-                                  testCase: 1,
-                                  input: 'Error',
-                                  expectedOutput: 'N/A',
-                                  actualOutput: error.message,
-                                  passed: false,
-                                  executionTime: '0ms',
-                                  error: error.message
-                                }],
-                                timestamp: new Date().toLocaleTimeString()
-                              }
-                            }));
-                          }
-                        }}
-                        disabled={codingConsoleOutput[currentQuestion]?.running}
-                        className="px-4 py-1.5 bg-shnoor-success hover:bg-shnoor-success text-white text-sm rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-sm"
-                      >
-                        <span>▶</span>
-                        <span>{codingConsoleOutput[currentQuestion]?.running ? 'Running...' : 'Run'}</span>
-                      </button>
-                      <button 
-                        onClick={async () => {
-                          const currentAnswer = answers[currentQuestion];
-                          const currentLang = currentAnswer?.language || 'java';
-                          const currentCode = currentAnswer?.code || currentAnswer?.codes?.[currentLang] || getStarterCode(currentLang);
-                          
-                          if (!currentCode.trim()) {
-                            alert('Please write some code first!');
-                            return;
-                          }
+                          }));
+                        } else {
+                          // Run against test cases
+                          const evaluation = await codeExecutionAPI.evaluateWithTestCases(
+                            currentCode,
+                            currentLang,
+                            testCases.map(tc => ({
+                              input: tc.input,
+                              expected_output: tc.output || tc.expectedOutput,
+                              is_hidden: tc.isHidden || false
+                            }))
+                          );
 
-                          // Get student and test IDs
-                          const studentId = localStorage.getItem('studentId');
-                          const testId = localStorage.getItem('selectedTestId');
-                          const codingQuestionId = currentQ.id;
+                          const results = evaluation.testResults.map((result, idx) => ({
+                            testCase: idx + 1,
+                            input: result.input,
+                            expectedOutput: result.expectedOutput,
+                            actualOutput: result.actualOutput,
+                            passed: result.passed,
+                            executionTime: result.executionTime + 'ms',
+                            error: result.error
+                          }));
 
-                          // Show loading state
                           setCodingConsoleOutput(prev => ({
                             ...prev,
                             [currentQuestion]: {
-                              running: true
+                              running: false,
+                              results: results,
+                              summary: evaluation.summary,
+                              timestamp: new Date().toLocaleTimeString()
+                            }
+                          }));
+                        }
+                      } catch (error) {
+                        console.error('Code execution error:', error);
+                        setCodingConsoleOutput(prev => ({
+                          ...prev,
+                          [currentQuestion]: {
+                            running: false,
+                            results: [{
+                              testCase: 1,
+                              input: 'Error',
+                              expectedOutput: 'N/A',
+                              actualOutput: error.message,
+                              passed: false,
+                              executionTime: '0ms',
+                              error: error.message
+                            }],
+                            timestamp: new Date().toLocaleTimeString()
+                          }
+                        }));
+                      }
+                    }}
+                    disabled={codingConsoleOutput[currentQuestion]?.running}
+                    className="px-4 py-1.5 bg-shnoor-success hover:bg-shnoor-success text-white text-sm rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-sm"
+                  >
+                    <span>▶</span>
+                    <span>{codingConsoleOutput[currentQuestion]?.running ? 'Running...' : 'Run'}</span>
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const currentAnswer = answers[currentQuestion];
+                      const currentLang = currentAnswer?.language || 'java';
+                      const currentCode = currentAnswer?.code || currentAnswer?.codes?.[currentLang] || getStarterCode(currentLang);
+
+                      if (!currentCode.trim()) {
+                        alert('Please write some code first!');
+                        return;
+                      }
+
+                      // Get student and test IDs
+                      const studentId = localStorage.getItem('studentId');
+                      const testId = localStorage.getItem('selectedTestId');
+                      const codingQuestionId = currentQ.id;
+
+                      // Show loading state
+                      setCodingConsoleOutput(prev => ({
+                        ...prev,
+                        [currentQuestion]: {
+                          running: true
+                        }
+                      }));
+
+                      try {
+                        // Submit code - runs against all test cases and saves to DB
+                        const result = await codeExecutionAPI.submitCodingSolution(
+                          studentId,
+                          codingQuestionId,
+                          testId,
+                          currentCode,
+                          currentLang
+                        );
+
+                        if (result.success) {
+                          const {
+                            passed,
+                            testCasesPassed,
+                            totalTestCases,
+                            percentage,
+                            publicTestResults,
+                            hiddenTestResults,
+                            publicTestCasesPassed,
+                            hiddenTestCasesPassed
+                          } = result.result;
+
+                          // Format results for console display
+                          const formattedResults = [];
+
+                          // Add public test cases with full details
+                          if (publicTestResults && publicTestResults.length > 0) {
+                            publicTestResults.forEach((tc, idx) => {
+                              formattedResults.push({
+                                testCase: idx + 1,
+                                passed: tc.passed,
+                                input: tc.input || '(no input)',
+                                expectedOutput: tc.expectedOutput,
+                                actualOutput: tc.actual || tc.output || '(no output)',
+                                error: tc.error || null,
+                                executionTime: tc.executionTime || 'N/A',
+                                isHidden: false,
+                                explanation: tc.explanation || null
+                              });
+                            });
+                          }
+
+                          // Add hidden test cases (only pass/fail)
+                          if (hiddenTestResults && hiddenTestResults.length > 0) {
+                            hiddenTestResults.forEach((tc) => {
+                              formattedResults.push({
+                                testCase: publicTestResults.length + tc.testNumber,
+                                passed: tc.passed,
+                                isHidden: true,
+                                input: '🔒 Hidden',
+                                expectedOutput: '🔒 Hidden',
+                                actualOutput: '🔒 Hidden',
+                                error: null,
+                                executionTime: 'N/A'
+                              });
+                            });
+                          }
+
+                          setCodingConsoleOutput(prev => ({
+                            ...prev,
+                            [currentQuestion]: {
+                              results: formattedResults,
+                              summary: {
+                                passedTestCases: testCasesPassed,
+                                failedTestCases: totalTestCases - testCasesPassed,
+                                totalTestCases: totalTestCases,
+                                percentage: percentage.toFixed(1)
+                              },
+                              timestamp: new Date().toLocaleTimeString(),
+                              isLoading: false
                             }
                           }));
 
-                          try {
-                            // Submit code - runs against all test cases and saves to DB
-                            const result = await codeExecutionAPI.submitCodingSolution(
-                              studentId,
-                              codingQuestionId,
-                              testId,
-                              currentCode,
-                              currentLang
-                            );
-
-                            if (result.success) {
-                              const { 
-                                passed, 
-                                testCasesPassed, 
-                                totalTestCases, 
-                                percentage, 
-                                publicTestResults, 
-                                hiddenTestResults,
-                                publicTestCasesPassed,
-                                hiddenTestCasesPassed
-                              } = result.result;
-                              
-                              // Format results for console display
-                              const formattedResults = [];
-                              
-                              // Add public test cases with full details
-                              if (publicTestResults && publicTestResults.length > 0) {
-                                publicTestResults.forEach((tc, idx) => {
-                                  formattedResults.push({
-                                    testCase: idx + 1,
-                                    passed: tc.passed,
-                                    input: tc.input || '(no input)',
-                                    expectedOutput: tc.expectedOutput,
-                                    actualOutput: tc.actual || tc.output || '(no output)',
-                                    error: tc.error || null,
-                                    executionTime: tc.executionTime || 'N/A',
-                                    isHidden: false,
-                                    explanation: tc.explanation || null
-                                  });
-                                });
-                              }
-                              
-                              // Add hidden test cases (only pass/fail)
-                              if (hiddenTestResults && hiddenTestResults.length > 0) {
-                                hiddenTestResults.forEach((tc) => {
-                                  formattedResults.push({
-                                    testCase: publicTestResults.length + tc.testNumber,
-                                    passed: tc.passed,
-                                    isHidden: true,
-                                    input: '🔒 Hidden',
-                                    expectedOutput: '🔒 Hidden',
-                                    actualOutput: '🔒 Hidden',
-                                    error: null,
-                                    executionTime: 'N/A'
-                                  });
-                                });
-                              }
-
-                              setCodingConsoleOutput(prev => ({
-                                ...prev,
-                                [currentQuestion]: {
-                                  results: formattedResults,
-                                  summary: {
-                                    passedTestCases: testCasesPassed,
-                                    failedTestCases: totalTestCases - testCasesPassed,
-                                    totalTestCases: totalTestCases,
-                                    percentage: percentage.toFixed(1)
-                                  },
-                                  timestamp: new Date().toLocaleTimeString(),
-                                  isLoading: false
-                                }
-                              }));
-
-                              // Save the coding answer with submission status
-                              setAnswers(prev => ({
-                                ...prev,
-                                [currentQuestion]: {
-                                  ...currentAnswer,
-                                  language: currentLang,
-                                  code: currentCode,
-                                  codes: {
-                                    ...currentAnswer?.codes,
-                                    [currentLang]: currentCode
-                                  },
-                                  submitted: true,
-                                  submittedAt: new Date().toISOString(),
-                                  testCasesPassed,
-                                  totalTestCases,
-                                  passed
-                                }
-                              }));
-
-                              // Save progress to backend
-                              await saveProgressNow();
-                            } else {
-                              setCodingConsoleOutput(prev => ({
-                                ...prev,
-                                [currentQuestion]: {
-                                  results: [{
-                                    testCase: 1,
-                                    passed: false,
-                                    input: 'N/A',
-                                    expectedOutput: 'N/A',
-                                    actualOutput: 'N/A',
-                                    error: `Submission failed: ${result.message}`,
-                                    executionTime: 'N/A',
-                                    isHidden: false
-                                  }],
-                                  summary: {
-                                    passedTestCases: 0,
-                                    failedTestCases: 1,
-                                    totalTestCases: 1,
-                                    percentage: '0.0'
-                                  },
-                                  timestamp: new Date().toLocaleTimeString(),
-                                  running: false
-                                }
-                              }));
-                            }
-                          } catch (error) {
-                            console.error('Submit error:', error);
-                            setCodingConsoleOutput(prev => ({
-                              ...prev,
-                              [currentQuestion]: {
-                                results: [{
-                                  testCase: 1,
-                                  passed: false,
-                                  input: 'N/A',
-                                  expectedOutput: 'N/A',
-                                  actualOutput: 'N/A',
-                                  error: `Error: ${error.message}`,
-                                  executionTime: 'N/A',
-                                  isHidden: false
-                                }],
-                                summary: {
-                                  passedTestCases: 0,
-                                  failedTestCases: 1,
-                                  totalTestCases: 1,
-                                  percentage: '0.0'
-                                },
-                                timestamp: new Date().toLocaleTimeString(),
-                                running: false
-                              }
-                            }));
-                          }
-                        }}
-                        className="px-4 py-1.5 bg-gradient-to-r from-shnoor-indigo to-shnoor-navy hover:from-shnoor-navy hover:to-shnoor-indigo text-white text-sm rounded-lg font-medium transition-all duration-200 shadow-sm"
-                      >
-                        Submit
-                      </button>
-                    </div>
-                  </div>
-                  {/* Code Editor */}
-                  <div className="flex-1 overflow-hidden">
-                    <Editor
-                      height="100%"
-                      language={(() => {
-                        const currentAnswer = answers[currentQuestion];
-                        const lang = currentAnswer?.language || 'java';
-                        // Map to Monaco language identifiers
-                        return lang === 'cpp' ? 'cpp' : lang;
-                      })()}
-                      value={(() => {
-                        const currentAnswer = answers[currentQuestion];
-                        if (!currentAnswer) {
-                          return getStarterCode('java');
-                        }
-                        const currentLang = currentAnswer.language || 'java';
-                        return currentAnswer.code || currentAnswer.codes?.[currentLang] || getStarterCode(currentLang);
-                      })()}
-                      onChange={(value) => {
-                        setAnswers(prev => {
-                          const currentAnswer = prev[currentQuestion] || {};
-                          const currentLang = currentAnswer.language || 'java';
-                          
-                          return {
+                          // Save the coding answer with submission status
+                          setAnswers(prev => ({
                             ...prev,
                             [currentQuestion]: {
                               ...currentAnswer,
                               language: currentLang,
-                              code: value,
+                              code: currentCode,
                               codes: {
-                                ...currentAnswer.codes,
-                                [currentLang]: value
-                              }
+                                ...currentAnswer?.codes,
+                                [currentLang]: currentCode
+                              },
+                              submitted: true,
+                              submittedAt: new Date().toISOString(),
+                              testCasesPassed,
+                              totalTestCases,
+                              passed
                             }
-                          };
-                        });
-                      }}
-                      theme="vs-dark"
-                      options={{
-                        minimap: { enabled: false },
-                        fontSize: 14,
-                        lineNumbers: 'on',
-                        roundedSelection: false,
-                        scrollBeyondLastLine: false,
-                        automaticLayout: true,
-                        tabSize: 4,
-                        wordWrap: 'off',
-                        autoClosingBrackets: 'always',
-                        autoClosingQuotes: 'always',
-                        formatOnPaste: true,
-                        formatOnType: true,
-                        suggestOnTriggerCharacters: true,
-                        acceptSuggestionOnEnter: 'on',
-                        quickSuggestions: true,
-                        parameterHints: { enabled: true },
-                        bracketPairColorization: { enabled: true },
-                        guides: {
-                          bracketPairs: true,
-                          indentation: true
+                          }));
+
+                          // Save progress to backend
+                          await saveProgressNow();
+                        } else {
+                          setCodingConsoleOutput(prev => ({
+                            ...prev,
+                            [currentQuestion]: {
+                              results: [{
+                                testCase: 1,
+                                passed: false,
+                                input: 'N/A',
+                                expectedOutput: 'N/A',
+                                actualOutput: 'N/A',
+                                error: `Submission failed: ${result.message}`,
+                                executionTime: 'N/A',
+                                isHidden: false
+                              }],
+                              summary: {
+                                passedTestCases: 0,
+                                failedTestCases: 1,
+                                totalTestCases: 1,
+                                percentage: '0.0'
+                              },
+                              timestamp: new Date().toLocaleTimeString(),
+                              running: false
+                            }
+                          }));
                         }
-                      }}
-                    />
-                  </div>
-
-                  {/* Vertical Resize Handle */}
-                  {/* Vertical Resize Handle */}
-                  <div
-                    className="h-1 bg-shnoor-indigo/30 hover:bg-shnoor-indigo cursor-row-resize flex-shrink-0 transition-colors duration-200"
-                    onMouseDown={handleVerticalMouseDown}
-                    style={{ cursor: 'row-resize' }}
-                  />
-
-                  {/* Test Cases / Console Tabs */}
-                  <div 
-                    className="border-t border-shnoor-indigo/30 flex flex-col"
-                    style={{ height: `${consolePanelHeight}px` }}
+                      } catch (error) {
+                        console.error('Submit error:', error);
+                        setCodingConsoleOutput(prev => ({
+                          ...prev,
+                          [currentQuestion]: {
+                            results: [{
+                              testCase: 1,
+                              passed: false,
+                              input: 'N/A',
+                              expectedOutput: 'N/A',
+                              actualOutput: 'N/A',
+                              error: `Error: ${error.message}`,
+                              executionTime: 'N/A',
+                              isHidden: false
+                            }],
+                            summary: {
+                              passedTestCases: 0,
+                              failedTestCases: 1,
+                              totalTestCases: 1,
+                              percentage: '0.0'
+                            },
+                            timestamp: new Date().toLocaleTimeString(),
+                            running: false
+                          }
+                        }));
+                      }
+                    }}
+                    className="px-4 py-1.5 bg-gradient-to-r from-shnoor-indigo to-shnoor-navy hover:from-shnoor-navy hover:to-shnoor-indigo text-white text-sm rounded-lg font-medium transition-all duration-200 shadow-sm"
                   >
-                    <div className="flex items-center space-x-4 px-4 py-2 bg-shnoor-navy border-b border-shnoor-indigo/30">
-                      <button className="text-sm font-medium text-shnoor-lavender border-b-2 border-shnoor-lavender pb-2">
-                        Test Cases
-                      </button>
-                      <button className="text-sm font-medium text-shnoor-soft hover:text-shnoor-lavender pb-2 transition-colors">
-                        Console
-                      </button>
+                    Submit
+                  </button>
+                </div>
+              </div>
+              {/* Code Editor */}
+              <div className="flex-1 overflow-hidden">
+                <LazyMonacoEditor
+                  height="100%"
+                  language={(() => {
+                    const currentAnswer = answers[currentQuestion];
+                    const lang = currentAnswer?.language || 'java';
+                    // Map to Monaco language identifiers
+                    return lang === 'cpp' ? 'cpp' : lang;
+                  })()}
+                  value={(() => {
+                    const currentAnswer = answers[currentQuestion];
+                    if (!currentAnswer) {
+                      return getStarterCode('java');
+                    }
+                    const currentLang = currentAnswer.language || 'java';
+                    return currentAnswer.code || currentAnswer.codes?.[currentLang] || getStarterCode(currentLang);
+                  })()}
+                  onChange={(value) => {
+                    setAnswers(prev => {
+                      const currentAnswer = prev[currentQuestion] || {};
+                      const currentLang = currentAnswer.language || 'java';
+
+                      return {
+                        ...prev,
+                        [currentQuestion]: {
+                          ...currentAnswer,
+                          language: currentLang,
+                          code: value,
+                          codes: {
+                            ...currentAnswer.codes,
+                            [currentLang]: value
+                          }
+                        }
+                      };
+                    });
+                  }}
+                  theme="vs-dark"
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    lineNumbers: 'on',
+                    roundedSelection: false,
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                    tabSize: 4,
+                    wordWrap: 'off',
+                    autoClosingBrackets: 'always',
+                    autoClosingQuotes: 'always',
+                    formatOnPaste: true,
+                    formatOnType: true,
+                    suggestOnTriggerCharacters: true,
+                    acceptSuggestionOnEnter: 'on',
+                    quickSuggestions: true,
+                    parameterHints: { enabled: true },
+                    bracketPairColorization: { enabled: true },
+                    guides: {
+                      bracketPairs: true,
+                      indentation: true
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Vertical Resize Handle */}
+              {/* Vertical Resize Handle */}
+              <div
+                className="h-1 bg-shnoor-indigo/30 hover:bg-shnoor-indigo cursor-row-resize flex-shrink-0 transition-colors duration-200"
+                onMouseDown={handleVerticalMouseDown}
+                style={{ cursor: 'row-resize' }}
+              />
+
+              {/* Test Cases / Console Tabs */}
+              <div
+                className="border-t border-shnoor-indigo/30 flex flex-col"
+                style={{ height: window.innerWidth >= 1024 ? `${consolePanelHeight}px` : 'auto', minHeight: window.innerWidth < 1024 ? '200px' : 'auto', maxHeight: window.innerWidth < 1024 ? '300px' : 'none' }}
+              >
+                <div className="flex items-center space-x-4 px-4 py-2 bg-shnoor-navy border-b border-shnoor-indigo/30">
+                  <button className="text-sm font-medium text-shnoor-lavender border-b-2 border-shnoor-lavender pb-2">
+                    Test Cases
+                  </button>
+                  <button className="text-sm font-medium text-shnoor-soft hover:text-shnoor-lavender pb-2 transition-colors">
+                    Console
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 bg-shnoor-navy">
+                  {codingConsoleOutput[currentQuestion]?.running ? (
+                    <div className="flex items-center space-x-2 text-shnoor-warning">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-shnoor-warning"></div>
+                      <span className="text-sm">Running test cases...</span>
                     </div>
-                    
-                    <div className="flex-1 overflow-y-auto p-4 bg-shnoor-navy">
-                      {codingConsoleOutput[currentQuestion]?.running ? (
-                        <div className="flex items-center space-x-2 text-shnoor-warning">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-shnoor-warning"></div>
-                          <span className="text-sm">Running test cases...</span>
-                        </div>
-                      ) : codingConsoleOutput[currentQuestion]?.results ? (
-                        <div className="space-y-3">
-                          {/* Summary */}
-                          {codingConsoleOutput[currentQuestion]?.summary && (
-                            <div className="mb-4 p-3 bg-shnoor-indigo/20 rounded-lg border border-shnoor-indigo/30">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-semibold text-shnoor-lavender">Test Results Summary</span>
-                                <span className="text-xs text-shnoor-soft">
-                                  {codingConsoleOutput[currentQuestion].timestamp}
-                                </span>
+                  ) : codingConsoleOutput[currentQuestion]?.results ? (
+                    <div className="space-y-3">
+                      {/* Summary */}
+                      {codingConsoleOutput[currentQuestion]?.summary && (
+                        <div className="mb-4 p-3 bg-shnoor-indigo/20 rounded-lg border border-shnoor-indigo/30">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-semibold text-shnoor-lavender">Test Results Summary</span>
+                            <span className="text-xs text-shnoor-soft">
+                              {codingConsoleOutput[currentQuestion].timestamp}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-4 text-sm">
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-shnoor-success">
+                                {codingConsoleOutput[currentQuestion].summary.passedTestCases}
                               </div>
-                              <div className="grid grid-cols-3 gap-4 text-sm">
-                                <div className="text-center">
-                                  <div className="text-lg font-bold text-shnoor-success">
-                                    {codingConsoleOutput[currentQuestion].summary.passedTestCases}
-                                  </div>
-                                  <div className="text-shnoor-soft">Passed</div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="text-lg font-bold text-shnoor-danger">
-                                    {codingConsoleOutput[currentQuestion].summary.failedTestCases}
-                                  </div>
-                                  <div className="text-shnoor-soft">Failed</div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="text-lg font-bold text-shnoor-lavender">
-                                    {codingConsoleOutput[currentQuestion].summary.percentage}%
-                                  </div>
-                                  <div className="text-shnoor-soft">Score</div>
-                                </div>
-                              </div>
+                              <div className="text-shnoor-soft">Passed</div>
                             </div>
-                          )}
-                          
-                          {/* Individual Test Results */}
-                          {codingConsoleOutput[currentQuestion].results.map((result, idx) => (
-                            <div
-                              key={idx}
-                              className={`p-3 rounded-lg border shadow-sm ${
-                                result.passed
-                                  ? 'bg-shnoor-success/20 border-shnoor-success/50'
-                                  : 'bg-shnoor-danger/20 border-shnoor-danger/50'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between mb-2">
-                                <span className={`text-sm font-semibold ${result.passed ? 'text-shnoor-success' : 'text-shnoor-danger'}`}>
-                                  TEST CASE {result.testCase}: {result.passed ? '✓ PASSED' : '✗ FAILED'}
-                                </span>
-                                <span className="text-xs text-shnoor-soft">{result.executionTime}</span>
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-shnoor-danger">
+                                {codingConsoleOutput[currentQuestion].summary.failedTestCases}
                               </div>
-                              <div className="text-xs font-mono space-y-1">
-                                <div>
-                                  <span className="text-shnoor-soft">Input: </span>
-                                  <span className="text-shnoor-lavender">{result.input}</span>
-                                </div>
-                                <div>
-                                  <span className="text-shnoor-soft">Expected: </span>
-                                  <span className="text-shnoor-lavender">{result.expectedOutput}</span>
-                                </div>
-                                <div>
-                                  <span className="text-shnoor-soft">Got: </span>
-                                  <div className={`mt-1 ${result.passed ? 'text-shnoor-success' : 'text-shnoor-danger'}`}>
-                                    {result.actualOutput && (result.actualOutput.includes('🐍') || result.actualOutput.includes('☕') || result.actualOutput.includes('🔧') || result.actualOutput.includes('🟨') || result.actualOutput.includes('Error:')) ? (
-                                      <pre className="text-sm font-mono whitespace-pre-wrap leading-relaxed bg-gray-900/30 p-2 rounded border border-gray-600/30">
-                                        {formatErrorForDisplay(result.actualOutput)}
-                                      </pre>
-                                    ) : (
-                                      <span className="font-mono text-sm">
-                                        {result.actualOutput}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                {result.error && (
-                                  <div className="mt-2">
-                                    <span className="text-shnoor-soft text-xs uppercase tracking-wide">Error Details:</span>
-                                    <div className="mt-1 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
-                                      <pre className="text-shnoor-danger text-sm font-mono whitespace-pre-wrap leading-relaxed">
-                                        {formatErrorForDisplay(result.error)}
-                                      </pre>
-                                    </div>
-                                  </div>
+                              <div className="text-shnoor-soft">Failed</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-shnoor-lavender">
+                                {codingConsoleOutput[currentQuestion].summary.percentage}%
+                              </div>
+                              <div className="text-shnoor-soft">Score</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Individual Test Results */}
+                      {codingConsoleOutput[currentQuestion].results.map((result, idx) => (
+                        <div
+                          key={idx}
+                          className={`p-3 rounded-lg border shadow-sm ${result.passed
+                            ? 'bg-shnoor-success/20 border-shnoor-success/50'
+                            : 'bg-shnoor-danger/20 border-shnoor-danger/50'
+                            }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={`text-sm font-semibold ${result.passed ? 'text-shnoor-success' : 'text-shnoor-danger'}`}>
+                              TEST CASE {result.testCase}: {result.passed ? '✓ PASSED' : '✗ FAILED'}
+                            </span>
+                            <span className="text-xs text-shnoor-soft">{result.executionTime}</span>
+                          </div>
+                          <div className="text-xs font-mono space-y-1">
+                            <div>
+                              <span className="text-shnoor-soft">Input: </span>
+                              <span className="text-shnoor-lavender">{result.input}</span>
+                            </div>
+                            <div>
+                              <span className="text-shnoor-soft">Expected: </span>
+                              <span className="text-shnoor-lavender">{result.expectedOutput}</span>
+                            </div>
+                            <div>
+                              <span className="text-shnoor-soft">Got: </span>
+                              <div className={`mt-1 ${result.passed ? 'text-shnoor-success' : 'text-shnoor-danger'}`}>
+                                {result.actualOutput && (result.actualOutput.includes('🐍') || result.actualOutput.includes('☕') || result.actualOutput.includes('🔧') || result.actualOutput.includes('🟨') || result.actualOutput.includes('Error:')) ? (
+                                  <pre className="text-sm font-mono whitespace-pre-wrap leading-relaxed bg-gray-900/30 p-2 rounded border border-gray-600/30">
+                                    {formatErrorForDisplay(result.actualOutput)}
+                                  </pre>
+                                ) : (
+                                  <span className="font-mono text-sm">
+                                    {result.actualOutput}
+                                  </span>
                                 )}
                               </div>
                             </div>
-                          ))}
+                            {result.error && (
+                              <div className="mt-2">
+                                <span className="text-shnoor-soft text-xs uppercase tracking-wide">Error Details:</span>
+                                <div className="mt-1 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+                                  <pre className="text-shnoor-danger text-sm font-mono whitespace-pre-wrap leading-relaxed">
+                                    {formatErrorForDisplay(result.error)}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      ) : (
-                        <div className="text-center text-shnoor-soft text-sm py-8">
-                          Click "Run" to test your code
-                        </div>
-                      )}
+                      ))}
                     </div>
-                  </div>
+                  ) : (
+                    <div className="text-center text-shnoor-soft text-sm py-8">
+                      Click "Run" to test your code
+                    </div>
+                  )}
+                </div>
+              </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex items-center justify-between px-4 py-3 bg-shnoor-navy border-t border-shnoor-indigo/30">
-                    <div className="flex items-center space-x-3">
-                      <button
-                        onClick={handlePrevious}
-                        disabled={currentQuestion === 0}
-                        className={`
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between px-4 py-3 bg-shnoor-navy border-t border-shnoor-indigo/30">
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={handlePrevious}
+                    disabled={currentQuestion === 0}
+                    className={`
                           flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200
                           ${currentQuestion === 0
-                            ? 'bg-shnoor-indigo/20 text-shnoor-soft cursor-not-allowed'
-                            : 'bg-shnoor-indigo/30 hover:bg-shnoor-indigo/50 text-shnoor-lavender'}
+                        ? 'bg-shnoor-indigo/20 text-shnoor-soft cursor-not-allowed'
+                        : 'bg-shnoor-indigo/30 hover:bg-shnoor-indigo/50 text-shnoor-lavender'}
                         `}
-                      >
-                        <ChevronLeft size={18} />
-                        <span>Previous</span>
-                      </button>
-                      <button
-                        onClick={handleNext}
-                        disabled={currentQuestion >= totalQuestions - 1}
-                        className={`
+                  >
+                    <ChevronLeft size={18} />
+                    <span>Previous</span>
+                  </button>
+                  <button
+                    onClick={handleNext}
+                    disabled={currentQuestion >= totalQuestions - 1}
+                    className={`
                           flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200
                           ${currentQuestion >= totalQuestions - 1
-                            ? 'bg-shnoor-indigo/20 text-shnoor-soft cursor-not-allowed'
-                            : 'bg-shnoor-indigo/30 hover:bg-shnoor-indigo/50 text-shnoor-lavender'}
+                        ? 'bg-shnoor-indigo/20 text-shnoor-soft cursor-not-allowed'
+                        : 'bg-shnoor-indigo/30 hover:bg-shnoor-indigo/50 text-shnoor-lavender'}
                         `}
-                      >
-                        <span>Next</span>
-                        <ChevronRight size={18} />
-                      </button>
-                    </div>
-                  </div>
+                  >
+                    <span>Next</span>
+                    <ChevronRight size={18} />
+                  </button>
                 </div>
-              </main>
-            )}
+              </div>
+            </div>
+          </main>
+        )}
 
         {/* Warnings Sidebar */}
         <StudentWarningsSidebar

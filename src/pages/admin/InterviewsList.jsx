@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Video, Calendar, Clock, Users } from 'lucide-react';
+import { Video, Calendar, Clock, Users, Trash2 } from 'lucide-react';
 import { apiFetch } from '../../config/api';
 
 const InterviewsList = () => {
@@ -22,7 +22,7 @@ const InterviewsList = () => {
       const params = new URLSearchParams();
       if (filter.status) params.append('status', filter.status);
       if (!showAllDates && filter.date) params.append('date', filter.date);
-      
+
       const response = await apiFetch(`api/interviews/list?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
@@ -44,10 +44,43 @@ const InterviewsList = () => {
     navigate(`/admin/interview-room/${interviewId}`);
   };
 
-  const formatTime = (datetime) => {
-    return new Date(datetime).toLocaleTimeString('en-US', {
+  const deleteInterview = async (interviewId, studentName) => {
+    if (!confirm(`Are you sure you want to delete the interview with ${studentName}?`)) {
+      return;
+    }
+
+    try {
+      const response = await apiFetch(`api/interviews/${interviewId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Interview deleted successfully');
+        fetchInterviews(); // Refresh the list
+      } else {
+        alert(data.message || 'Failed to delete interview');
+      }
+    } catch (error) {
+      console.error('Delete interview error:', error);
+      alert('Failed to delete interview');
+    }
+  };
+
+  const formatDateTime = (datetime) => {
+    // Format date and time in IST timezone (same as test scheduling)
+    return new Date(datetime).toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: true
     });
   };
 
@@ -73,38 +106,37 @@ const InterviewsList = () => {
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-4">Interviews</h1>
-        
-        <div className="flex space-x-4 items-end">
-          <div>
+
+        <div className="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0 md:items-end">
+          <div className="w-full md:w-auto">
             <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
             <input
               type="date"
               value={filter.date}
               onChange={(e) => setFilter({ ...filter, date: e.target.value })}
               disabled={showAllDates}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
-          
-          <div>
+
+          <div className="w-full md:w-auto">
             <button
               onClick={() => setShowAllDates(!showAllDates)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                showAllDates
+              className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${showAllDates
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+                }`}
             >
               {showAllDates ? 'Show Today Only' : 'Show All Dates'}
             </button>
           </div>
-          
-          <div>
+
+          <div className="w-full md:w-auto">
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
               value={filter.status}
               onChange={(e) => setFilter({ ...filter, status: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All</option>
               <option value="scheduled">Scheduled</option>
@@ -127,39 +159,49 @@ const InterviewsList = () => {
               key={interview.id}
               className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
             >
-              <div className="flex justify-between items-start">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-start space-y-4 sm:space-y-0">
                 <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-800">
+                  <div className="flex items-center space-x-3 mb-2 flex-wrap gap-y-2">
+                    <h3 className="text-lg font-semibold text-gray-800 break-words">
                       {interview.student_name}
                     </h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(interview.status)}`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium shrink-0 ${getStatusColor(interview.status)}`}>
                       {interview.status.replace('_', ' ').toUpperCase()}
                     </span>
                   </div>
-                  
+
                   <div className="space-y-1 text-sm text-gray-600">
                     <p className="flex items-center">
-                      <Users className="w-4 h-4 mr-2" />
-                      {interview.institute_name || 'No Institute'}
+                      <Users className="w-4 h-4 mr-2 shrink-0" />
+                      <span className="truncate">{interview.institute_name || 'No Institute'}</span>
                     </p>
                     <p className="flex items-center">
-                      <Clock className="w-4 h-4 mr-2" />
-                      {formatTime(interview.scheduled_time)} ({interview.duration} min)
+                      <Clock className="w-4 h-4 mr-2 shrink-0" />
+                      {formatDateTime(interview.scheduled_time)} ({interview.duration} min)
                     </p>
-                    <p className="text-gray-500">{interview.student_email}</p>
+                    <p className="text-gray-500 truncate">{interview.student_email}</p>
                   </div>
                 </div>
 
-                {(interview.status === 'scheduled' || interview.status === 'in_progress') && (
+                <div className="flex items-center sm:justify-end space-x-2 w-full sm:w-auto mt-4 sm:mt-0">
+                  {(interview.status === 'scheduled' || interview.status === 'in_progress') && (
+                    <button
+                      onClick={() => joinInterview(interview.id)}
+                      className="flex-1 sm:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      <Video size={18} />
+                      <span className="whitespace-nowrap">{interview.status === 'in_progress' ? 'Resume Call' : 'Call'}</span>
+                    </button>
+                  )}
+
                   <button
-                    onClick={() => joinInterview(interview.id)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    onClick={() => deleteInterview(interview.id, interview.student_name)}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                    title="Delete interview"
                   >
-                    <Video size={18} />
-                    <span>{interview.status === 'in_progress' ? 'Resume Call' : 'Call'}</span>
+                    <Trash2 size={18} />
                   </button>
-                )}
+                </div>
               </div>
             </div>
           ))}

@@ -665,7 +665,7 @@ const Register = () => {
 
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-12">
-            <img src={shnoorLogo} alt="Shnoor" className="h-11 w-11 object-contain" />
+            <img src={shnoorLogo} alt="Shnoor" className="h-11 w-11 object-contain" width="44" height="44" loading="eager" fetchpriority="high" />
             <div>
               <p className="font-extrabold text-white text-lg leading-tight">SHNOOR Assessments</p>
               <p className="text-[11px] text-[#8F8FC4] uppercase tracking-widest font-semibold">Secure Examination Portal</p>
@@ -722,7 +722,7 @@ const Register = () => {
         <div className="w-full max-w-[500px]">
           {/* Mobile brand */}
           <div className="flex items-center gap-3 mb-6 lg:hidden">
-            <img src={shnoorLogo} alt="Shnoor" className="h-9 w-9 object-contain" />
+            <img src={shnoorLogo} alt="Shnoor" className="h-9 w-9 object-contain" width="36" height="36" loading="lazy" decoding="async" />
             <div>
               <p className="font-extrabold text-shnoor-navy text-base">SHNOOR Assessments</p>
               <p className="text-[10px] text-shnoor-soft uppercase tracking-widest">Secure Examination Portal</p>

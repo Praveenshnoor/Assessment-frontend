@@ -15,7 +15,7 @@ const StudentInterviews = () => {
   useEffect(() => {
     fetchInterviews();
     initializeSocket();
-    
+
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -35,7 +35,7 @@ const StudentInterviews = () => {
 
     socket.on('connect', () => {
       console.log('Student dashboard socket connected');
-      
+
       // Join student-specific room if we have student ID
       if (studentIdRef.current) {
         socket.emit('student:join-dashboard', { studentId: studentIdRef.current });
@@ -46,13 +46,13 @@ const StudentInterviews = () => {
     socket.on('interview:incoming-call', (data) => {
       console.log('Incoming call notification:', data);
       const { interviewId, testTitle, instituteName } = data;
-      
-      setIncomingBanner({ 
-        id: interviewId, 
+
+      setIncomingBanner({
+        id: interviewId,
         test_title: testTitle,
         institute_name: instituteName
       });
-      
+
       // Play notification sound
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -74,7 +74,7 @@ const StudentInterviews = () => {
       } catch (e) {
         console.error('Audio error:', e);
       }
-      
+
       // Refresh interviews list
       fetchInterviews();
     });
@@ -95,15 +95,15 @@ const StudentInterviews = () => {
       const data = await response.json();
       if (data.success) {
         setInterviews(data.interviews);
-        
+
         // Store student ID for socket room joining
         if (data.student_id && !studentIdRef.current) {
           studentIdRef.current = data.student_id;
-          
+
           // Join student room if socket is already connected
           if (socketRef.current && socketRef.current.connected) {
-            socketRef.current.emit('student:join-dashboard', { 
-              studentId: studentIdRef.current 
+            socketRef.current.emit('student:join-dashboard', {
+              studentId: studentIdRef.current
             });
           }
         }
@@ -120,16 +120,22 @@ const StudentInterviews = () => {
   };
 
   const formatDateTime = (datetime) => {
+    // Convert UTC datetime to IST for display
     const date = new Date(datetime);
+
+    // Format in IST timezone
     return {
-      date: date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
+      date: date.toLocaleDateString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
       }),
-      time: date.toLocaleTimeString('en-US', {
+      time: date.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        hour12: true
       })
     };
   };
@@ -177,11 +183,11 @@ const StudentInterviews = () => {
   return (
     <div className="space-y-6">
       {incomingBanner && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between animate-pulse">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 animate-pulse">
           <div className="flex-1">
             <p className="text-sm font-bold text-emerald-800">📞 Incoming Interview Call</p>
             <p className="text-xs text-emerald-700/80 mt-1">
-              {incomingBanner.test_title || 'Interview'} 
+              {incomingBanner.test_title || 'Interview'}
               {incomingBanner.institute_name && ` • ${incomingBanner.institute_name}`}
             </p>
           </div>
@@ -220,22 +226,22 @@ const StudentInterviews = () => {
                   key={interview.id}
                   className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light p-6 hover:shadow-[0_8px_30px_rgba(14,14,39,0.12)] transition-shadow"
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-3">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4 sm:gap-0">
+                    <div className="flex-1 w-full">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3">
                         <h3 className="text-lg font-bold text-shnoor-navy">
                           {interview.test_title}
                         </h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(interview.status)}`}>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${getStatusColor(interview.status)}`}>
                           {interview.status.replace('_', ' ').toUpperCase()}
                         </span>
                         {interview.status === 'in_progress' && (
-                          <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200">
+                          <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200 whitespace-nowrap">
                             LIVE CALL
                           </span>
                         )}
                       </div>
-                      
+
                       <div className="space-y-2 text-sm text-shnoor-indigoMedium">
                         <p className="flex items-center">
                           <Calendar className="w-4 h-4 mr-2 text-shnoor-indigo" />
@@ -261,15 +267,14 @@ const StudentInterviews = () => {
                       )}
                     </div>
 
-                    <div className="ml-4">
+                    <div className="w-full sm:w-auto sm:ml-4 flex-shrink-0">
                       <button
                         onClick={() => canJoin && joinInterview(interview.id)}
                         disabled={!canJoin}
-                        className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-colors shadow-[0_8px_30px_rgba(14,14,39,0.06)] ${
-                          canJoin
+                        className={`w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-colors shadow-[0_8px_30px_rgba(14,14,39,0.06)] ${canJoin
                             ? 'bg-shnoor-indigo hover:bg-shnoor-navy text-white hover:shadow-[0_8px_30px_rgba(14,14,39,0.12)]'
                             : 'bg-shnoor-mist/40 text-shnoor-indigoMedium cursor-not-allowed'
-                        }`}
+                          }`}
                       >
                         <Video size={20} />
                         <span>
@@ -312,7 +317,7 @@ const StudentInterviews = () => {
                           COMPLETED
                         </span>
                       </div>
-                      
+
                       <div className="space-y-2 text-sm text-shnoor-indigoMedium">
                         <p className="flex items-center">
                           <Calendar className="w-4 h-4 mr-2 text-shnoor-indigo" />
