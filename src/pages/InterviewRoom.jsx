@@ -5,9 +5,9 @@ import Peer from 'peerjs';
 import { io } from 'socket.io-client';
 import { apiFetch } from '../config/api';
 
-// Backend currently does not implement the required interview Socket.IO events.
-// Disable socket-driven signaling/chat to avoid infinite "Socket not connected" retries.
-const SOCKET_ENABLED = false;
+// Backend Socket.IO implementation is now complete
+// Enable socket-driven signaling/chat for full functionality
+const SOCKET_ENABLED = true;
 
 const InterviewRoom = () => {
   const { interviewId } = useParams();
@@ -23,41 +23,74 @@ const InterviewRoom = () => {
   const [connectionStatus, setConnectionStatus] = useState('Connecting...');
   const [notes, setNotes] = useState('');
   const [adminJoined, setAdminJoined] = useState(false);
-  const [incomingCall, setIncomingCall] = useState(false); // Track if admin is calling
-  const [chatMessages, setChatMessages] = useState([]); // Chat messages
-  const [chatInput, setChatInput] = useState(''); // Current chat input
-  const [isInterviewTimeValid, setIsInterviewTimeValid] = useState(false); // Check if interview time is valid
-  const chatEndRef = useRef(null); // For auto-scrolling chat
+  const [incomingCall, setIncomingCall] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isInterviewTimeValid, setIsInterviewTimeValid] = useState(false);
   
+  // New state for improved UX
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [callState, setCallState] = useState('idle'); // 'idle', 'calling', 'ringing', 'connected', 'ended'
+  const [reconnecting, setReconnecting] = useState(false);
+  const [participants, setParticipants] = useState(new Map());
+  
+  const chatEndRef = useRef(null);
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const localStreamRef = useRef(null);
   const screenStreamRef = useRef(null);
   const socketRef = useRef(null);
   const pollRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
 
   const isAdmin = !!localStorage.getItem('adminToken');
   const isStudent = !!localStorage.getItem('studentAuthToken') && !isAdmin;
   const role = isAdmin ? 'admin' : 'student';
 
   useEffect(() => {
-    fetchInterviewDetails();
-    initializeSocketAndPeer();
-
-    // Fallback: Enable admin call button after 5 seconds even if socket fails
-    if (isAdmin) {
-      const fallbackTimer = setTimeout(() => {
-        console.log('Fallback: Enabling admin call button');
-        setAdminJoined(true);
-      }, 5000);
+    let isMounted = true; // Prevent duplicate initialization in StrictMode
+    
+    const initializeInterview = async () => {
+      if (!isMounted) return;
       
-      return () => {
-        cleanup();
-        clearTimeout(fallbackTimer);
-      };
-    }
+      try {
+        setLoading(true);
+        setError(null);
+        
+        await fetchInterviewDetails();
+        await initializeSocketAndPeer();
+        
+        // Fallback: Enable admin call button after 5 seconds even if socket fails
+        if (isAdmin && isMounted) {
+          const fallbackTimer = setTimeout(() => {
+            if (isMounted) {
+              console.log('Fallback: Enabling admin call button');
+              setAdminJoined(true);
+            }
+          }, 5000);
+          
+          return () => {
+            clearTimeout(fallbackTimer);
+          };
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Interview initialization error:', err);
+          setError('Failed to initialize interview room. Please refresh and try again.');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeInterview();
 
     return () => {
+      isMounted = false;
       cleanup();
     };
   }, []);
@@ -69,31 +102,45 @@ const InterviewRoom = () => {
     }
   }, [chatMessages]);
 
+  // Handle reconnection logic
+  useEffect(() => {
+    const handleReconnection = () => {
+      if (reconnecting && socketRef.current && socketRef.current.connected && peerId) {
+        console.log('Attempting to reconnect to interview room');
+        socketRef.current.emit('interview:reconnect', {
+          interviewId,
+          peerId,
+          role
+        });
+        setReconnecting(false);
+      }
+    };
+
+    if (reconnecting) {
+      const timeout = setTimeout(handleReconnection, 2000);
+      reconnectTimeoutRef.current = timeout;
+      return () => clearTimeout(timeout);
+    }
+  }, [reconnecting, peerId, role, interviewId]);
+
   const checkInterviewTimeValidity = (scheduledTime, duration) => {
     const now = new Date();
     const interviewStart = new Date(scheduledTime);
-    const interviewEnd = new Date(interviewStart.getTime() + (duration * 60 * 1000)); // duration in minutes
     
-    // Allow joining 15 minutes before scheduled time and during the interview duration
-    const allowedStartTime = new Date(interviewStart.getTime() - (15 * 60 * 1000)); // 15 minutes before
-    
-    const isValid = now >= allowedStartTime && now <= interviewEnd;
+    // Enable button at scheduled time and keep it enabled indefinitely
+    const isValid = now >= interviewStart;
     setIsInterviewTimeValid(isValid);
     
     // Update connection status based on time validity
     if (!isValid) {
-      if (now < allowedStartTime) {
-        const timeUntilValid = allowedStartTime.getTime() - now.getTime();
-        const minutesUntil = Math.ceil(timeUntilValid / (1000 * 60));
-        setConnectionStatus(`Interview starts in ${minutesUntil} minutes`);
-        
-        // Set up a timer to check again when it becomes valid
-        setTimeout(() => {
-          checkInterviewTimeValidity(scheduledTime, duration);
-        }, Math.min(timeUntilValid, 60000)); // Check every minute or when valid
-      } else if (now > interviewEnd) {
-        setConnectionStatus('Interview time has ended');
-      }
+      const timeUntilValid = interviewStart.getTime() - now.getTime();
+      const minutesUntil = Math.ceil(timeUntilValid / (1000 * 60));
+      setConnectionStatus(`Interview starts in ${minutesUntil} minutes`);
+      
+      // Set up a timer to check again when it becomes valid
+      setTimeout(() => {
+        checkInterviewTimeValidity(scheduledTime, duration);
+      }, Math.min(timeUntilValid, 60000)); // Check every minute or when valid
     } else {
       setConnectionStatus(isStudent ? 'Ready - waiting for interviewer...' : 'Ready');
     }
@@ -110,9 +157,11 @@ const InterviewRoom = () => {
       if (response.ok && data.success) {
         setInterview(data.interview);
         
-        // Check if current time is within interview schedule
-        if (data.interview?.scheduled_time) {
+        // Check if current time is within interview schedule (only for students)
+        if (data.interview?.scheduled_time && isStudent) {
           checkInterviewTimeValidity(data.interview.scheduled_time, data.interview.duration);
+        } else if (isStudent) {
+          setIsInterviewTimeValid(true); // If no scheduled time, allow interview
         }
       }
     } catch (error) {
@@ -122,6 +171,15 @@ const InterviewRoom = () => {
 
   const initializeSocketAndPeer = async () => {
     try {
+      setIsConnecting(true);
+      
+      // Prevent duplicate connections
+      if (socketRef.current && socketRef.current.connected) {
+        console.log('Socket already connected, skipping initialization');
+        setIsConnecting(false);
+        return;
+      }
+      
       // Fallback path: PeerJS only + DB polling for peer_id.
       if (!SOCKET_ENABLED) {
         if (isAdmin) setAdminJoined(true);
@@ -146,6 +204,7 @@ const InterviewRoom = () => {
               });
             } catch (e) {
               console.error('Failed to register peer id:', e);
+              setError('Failed to register for interview. Please refresh and try again.');
             }
           }
         });
@@ -158,12 +217,14 @@ const InterviewRoom = () => {
           }
           console.log('Receiving call...');
           setConnectionStatus('Incoming call...');
+          setCallState('ringing');
           answerCall(incoming);
         });
 
         newPeer.on('error', (err) => {
           console.error('Peer error:', err);
           setConnectionStatus('Connection error - ' + err.type);
+          setError('WebRTC connection failed. Please check your network and try again.');
         });
 
         setPeer(newPeer);
@@ -181,11 +242,12 @@ const InterviewRoom = () => {
                 setRemotePeerId(String(data.interview.peer_id));
               }
             } catch (e) {
-              // ignore
+              // ignore polling errors
             }
           }, 1500);
         }
 
+        setIsConnecting(false);
         return;
       }
 
@@ -194,15 +256,15 @@ const InterviewRoom = () => {
       console.log('Connecting to socket URL:', socketUrl);
       
       const socket = io(socketUrl, {
-        transports: ['polling', 'websocket'], // Try polling first to avoid WebSocket warning
+        transports: ['polling', 'websocket'],
         reconnection: true,
         reconnectionDelay: 1000,
-        reconnectionAttempts: 5,
+        reconnectionAttempts: 10,
         withCredentials: false,
         upgrade: true,
         rememberUpgrade: true,
-        timeout: 20000, // Connection timeout
-        forceNew: true // Force new connection
+        timeout: 20000,
+        forceNew: false
       });
 
       socketRef.current = socket;
@@ -210,6 +272,7 @@ const InterviewRoom = () => {
       socket.on('connect', () => {
         console.log('Socket connected:', socket.id);
         setConnectionStatus('Connected to server');
+        setReconnecting(false);
         
         // If admin, mark as joined immediately since they don't need to wait for themselves
         if (isAdmin) {
@@ -221,6 +284,7 @@ const InterviewRoom = () => {
       socket.on('connect_error', (error) => {
         console.error('Socket connection error:', error);
         setConnectionStatus('Connection error');
+        setError('Failed to connect to interview server. Please check your internet connection.');
       });
 
       socket.on('disconnect', (reason) => {
@@ -230,8 +294,15 @@ const InterviewRoom = () => {
         // Auto-reconnect if server disconnected us
         if (reason === 'io server disconnect') {
           console.log('Server disconnected, attempting to reconnect...');
+          setReconnecting(true);
           socket.connect();
         }
+      });
+      
+      socket.on('reconnect', () => {
+        console.log('Socket reconnected successfully');
+        setConnectionStatus('Reconnected');
+        setReconnecting(true); // Trigger interview room reconnection
       });
       
       socket.on('connection-timeout', (data) => {
@@ -277,148 +348,252 @@ const InterviewRoom = () => {
           } else {
             console.error('Socket connection failed after max retries');
             setConnectionStatus('Connection failed - please refresh');
+            setError('Failed to join interview room. Please refresh and try again.');
           }
         };
         
         emitPeerInfo();
       });
 
-      // Listen for other participant's peer ID
-      socket.on('interview:peer-available', (data) => {
-        console.log('Peer available event received:', data);
-        const peerIdString = typeof data.peerId === 'string' ? data.peerId : String(data.peerId);
-        console.log('Setting remote peer ID to:', peerIdString);
-        setRemotePeerId(peerIdString);
-        setConnectionStatus(`${data.role === 'admin' ? 'Interviewer' : 'Student'} is ready`);
-        
-        // Track if admin joined
-        if (data.role === 'admin') {
-          setAdminJoined(true);
-          console.log('Admin joined - adminJoined set to true');
-        }
-      });
-
-      // Listen for peer joining
-      socket.on('interview:peer-joined', (data) => {
-        console.log('Peer joined:', data);
-        const peerIdString = typeof data.peerId === 'string' ? data.peerId : String(data.peerId);
-        console.log('Setting remotePeerId to:', peerIdString);
-        setRemotePeerId(peerIdString);
-        setConnectionStatus(`${data.role === 'admin' ? 'Interviewer' : 'Student'} joined`);
-        
-        // Track if admin joined
-        if (data.role === 'admin') {
-          setAdminJoined(true);
-        }
-      });
-
-      // Listen for peer leaving
-      socket.on('interview:peer-left', (data) => {
-        console.log('Peer left:', data);
-        setRemotePeerId('');
-        setConnectionStatus(`${data.role === 'admin' ? 'Interviewer' : 'Student'} left`);
-        
-        // Track if admin left
-        if (data.role === 'admin') {
-          setAdminJoined(false);
-        }
-        
-        if (call) {
-          call.close();
-          setCall(null);
-        }
-      });
-      
-      // Listen for admin starting call (student notification)
-      socket.on('interview:call-started', (data) => {
-        console.log('Admin started call:', data);
-        if (isStudent) {
-          // Show "Answer Call" button for student
-          setIncomingCall(true);
-          setConnectionStatus('Interviewer is calling...');
-          
-          // Play notification sound
-          try {
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            if (AudioCtx) {
-              const ctx = new AudioCtx();
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.type = 'sine';
-              osc.frequency.value = 880;
-              gain.gain.value = 0.1;
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-              osc.start();
-              setTimeout(() => {
-                osc.stop();
-                ctx.close();
-              }, 1000);
-            }
-          } catch (e) {
-            console.error('Audio error:', e);
-          }
-        }
-      });
-
-      // Listen for student ready to receive call (admin side)
-      socket.on('interview:student-ready', async (data) => {
-        console.log('Student ready to receive call:', data);
-        if (isAdmin && data.peerId && peer && localStreamRef.current) {
-          // Initiate PeerJS call to student
-          try {
-            const outgoingCall = peer.call(data.peerId, localStreamRef.current);
-            setCall(outgoingCall);
-            setConnectionStatus('Connecting...');
-
-            outgoingCall.on('stream', (remoteStream) => {
-              console.log('Received remote stream from student');
-              if (remoteVideoRef.current) {
-                remoteVideoRef.current.srcObject = remoteStream;
-              }
-              setConnectionStatus('Connected');
-            });
-
-            outgoingCall.on('close', () => {
-              setConnectionStatus('Call ended');
-              setCall(null);
-            });
-          } catch (error) {
-            console.error('Error calling student:', error);
-            setConnectionStatus('Failed to connect');
-          }
-        }
-      });
-
-      // Listen for chat messages
-      socket.on('interview:chat-message', (data) => {
-        console.log('Received chat message from server:', data);
-        setChatMessages(prev => {
-          console.log('Adding message to chat, current count:', prev.length);
-          return [...prev, data];
-        });
-      });
-
-      // Listen for chat sent confirmation
-      socket.on('interview:chat-sent', (data) => {
-        console.log('Chat message sent confirmation:', data);
-      });
-
-      newPeer.on('call', (incoming) => {
-        console.log('Receiving call...');
-        setConnectionStatus('Incoming call...');
-        answerCall(incoming);
-      });
+      // Enhanced socket event handlers
+      setupSocketEventHandlers(socket, newPeer);
 
       newPeer.on('error', (err) => {
         console.error('Peer error:', err);
         setConnectionStatus('Connection error - ' + err.type);
+        setError('WebRTC connection failed: ' + err.message);
       });
 
       setPeer(newPeer);
+      setIsConnecting(false);
     } catch (error) {
       console.error('Initialize error:', error);
+      setError('Failed to initialize interview room: ' + error.message);
+      setIsConnecting(false);
     }
+  };
+
+  const setupSocketEventHandlers = (socket, peer) => {
+    // Handle incoming PeerJS calls
+    peer.on('call', (incoming) => {
+      console.log('Receiving call...');
+      setConnectionStatus('Incoming call...');
+      setCallState('ringing');
+      answerCall(incoming);
+    });
+
+    // Listen for existing participants when joining
+    socket.on('interview:existing-participants', (data) => {
+      console.log('Existing participants:', data.participants);
+      data.participants.forEach(participant => {
+        setParticipants(prev => new Map(prev.set(participant.socketId, participant)));
+        if (participant.role !== role) {
+          setRemotePeerId(participant.peerId);
+          setConnectionStatus(`${participant.role === 'admin' ? 'Interviewer' : 'Student'} is ready`);
+          if (participant.role === 'admin') {
+            setAdminJoined(true);
+          }
+        }
+      });
+    });
+
+    // Listen for other participant's peer ID
+    socket.on('interview:peer-available', (data) => {
+      console.log('Peer available event received:', data);
+      const peerIdString = typeof data.peerId === 'string' ? data.peerId : String(data.peerId);
+      console.log('Setting remote peer ID to:', peerIdString);
+      setRemotePeerId(peerIdString);
+      setConnectionStatus(`${data.role === 'admin' ? 'Interviewer' : 'Student'} is ready`);
+      
+      // Track if admin joined
+      if (data.role === 'admin') {
+        setAdminJoined(true);
+        console.log('Admin joined - adminJoined set to true');
+      }
+    });
+
+    // Listen for peer joining
+    socket.on('interview:peer-joined', (data) => {
+      console.log('Peer joined:', data);
+      const peerIdString = typeof data.peerId === 'string' ? data.peerId : String(data.peerId);
+      console.log('Setting remotePeerId to:', peerIdString);
+      setRemotePeerId(peerIdString);
+      setConnectionStatus(`${data.role === 'admin' ? 'Interviewer' : 'Student'} joined`);
+      
+      // Track participants
+      setParticipants(prev => new Map(prev.set(data.socketId, data)));
+      
+      // Track if admin joined
+      if (data.role === 'admin') {
+        setAdminJoined(true);
+      }
+    });
+
+    // Listen for peer reconnection
+    socket.on('interview:peer-reconnected', (data) => {
+      console.log('Peer reconnected:', data);
+      const peerIdString = typeof data.peerId === 'string' ? data.peerId : String(data.peerId);
+      setRemotePeerId(peerIdString);
+      setConnectionStatus(`${data.role === 'admin' ? 'Interviewer' : 'Student'} reconnected`);
+      
+      // Update participants
+      setParticipants(prev => new Map(prev.set(data.socketId, data)));
+      
+      if (data.role === 'admin') {
+        setAdminJoined(true);
+      }
+    });
+
+    // Listen for peer leaving
+    socket.on('interview:peer-left', (data) => {
+      console.log('Peer left:', data);
+      setRemotePeerId('');
+      setConnectionStatus(`${data.role === 'admin' ? 'Interviewer' : 'Student'} left`);
+      
+      // Remove from participants
+      setParticipants(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(data.socketId);
+        return newMap;
+      });
+      
+      // Track if admin left
+      if (data.role === 'admin') {
+        setAdminJoined(false);
+      }
+      
+      if (call) {
+        call.close();
+        setCall(null);
+        setCallState('ended');
+      }
+    });
+    
+    // Listen for admin starting call (student notification)
+    socket.on('interview:call-started', (data) => {
+      console.log('Admin started call:', data);
+      if (isStudent) {
+        // Show "Answer Call" button for student
+        setIncomingCall(true);
+        setCallState('ringing');
+        setConnectionStatus('Interviewer is calling...');
+        
+        // Play notification sound
+        try {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) {
+            const ctx = new AudioCtx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = 880;
+            gain.gain.value = 0.1;
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            setTimeout(() => {
+              osc.stop();
+              ctx.close();
+            }, 1000);
+          }
+        } catch (e) {
+          console.error('Audio error:', e);
+        }
+      }
+    });
+
+    // Listen for call initiation confirmation (admin side)
+    socket.on('interview:call-initiated', (data) => {
+      console.log('Call initiated successfully:', data);
+      if (isAdmin) {
+        setCallState('calling');
+        setConnectionStatus('Calling student...');
+      }
+    });
+
+    // Listen for call failure (admin side)
+    socket.on('interview:call-failed', (data) => {
+      console.error('Call failed:', data);
+      if (isAdmin) {
+        setCallState('idle');
+        setConnectionStatus('Call failed - please try again');
+        setError('Failed to start call: ' + data.error);
+      }
+    });
+
+    // Listen for student ready to receive call (admin side)
+    socket.on('interview:student-ready', async (data) => {
+      console.log('Student ready to receive call:', data);
+      if (isAdmin && data.peerId && peer && localStreamRef.current) {
+        // Initiate PeerJS call to student
+        try {
+          setCallState('connecting');
+          const outgoingCall = peer.call(data.peerId, localStreamRef.current);
+          setCall(outgoingCall);
+          setConnectionStatus('Connecting...');
+
+          outgoingCall.on('stream', (remoteStream) => {
+            console.log('Received remote stream from student');
+            if (remoteVideoRef.current) {
+              remoteVideoRef.current.srcObject = remoteStream;
+            }
+            setConnectionStatus('Connected');
+            setCallState('connected');
+          });
+
+          outgoingCall.on('close', () => {
+            setConnectionStatus('Call ended');
+            setCall(null);
+            setCallState('ended');
+          });
+
+          outgoingCall.on('error', (error) => {
+            console.error('Call error:', error);
+            setConnectionStatus('Call failed');
+            setCallState('idle');
+            setError('Call connection failed: ' + error.message);
+          });
+        } catch (error) {
+          console.error('Error calling student:', error);
+          setConnectionStatus('Failed to connect');
+          setCallState('idle');
+          setError('Failed to establish call: ' + error.message);
+        }
+      }
+    });
+
+    // Listen for chat messages
+    socket.on('interview:chat-message', (data) => {
+      console.log('Received chat message from server:', data);
+      setChatMessages(prev => {
+        console.log('Adding message to chat, current count:', prev.length);
+        return [...prev, data];
+      });
+    });
+
+    // Listen for chat history
+    socket.on('interview:chat-history', (data) => {
+      console.log('Received chat history:', data);
+      if (data.success && data.messages) {
+        setChatMessages(data.messages.map(msg => ({
+          sender: msg.sender_type,
+          senderName: msg.sender_name,
+          text: msg.message,
+          timestamp: msg.created_at
+        })));
+      }
+    });
+
+    // Listen for chat sent confirmation
+    socket.on('interview:chat-sent', (data) => {
+      console.log('Chat message sent confirmation:', data);
+      if (!data.success) {
+        setError('Failed to send message: ' + data.error);
+      }
+    });
+
+    // Request chat history when joining
+    socket.emit('interview:get-chat-history', { interviewId });
   };
 
   const answerCall = async (incoming) => {
@@ -490,24 +665,16 @@ const InterviewRoom = () => {
 
   const startCall = async () => {
     try {
-      console.log('Starting call...');
+      console.log('=== STARTING CALL ===');
+      console.log('Admin joined:', adminJoined);
+      console.log('Socket connected:', socketRef.current?.connected);
+      console.log('Interview data:', interview);
       console.log('Remote peer ID:', remotePeerId);
       console.log('Peer object:', peer);
       
-      // Mark interview as started and trigger dashboard notification
-      if (isAdmin) {
-        try {
-          await apiFetch(`api/interviews/${interviewId}/start`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
-            }
-          });
-        } catch (e) {
-          console.error('Failed to start interview via API:', e);
-        }
-      }
-
+      setCallState('calling');
+      setConnectionStatus('Starting call...');
+      
       // Get media access first
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       localStreamRef.current = stream;
@@ -516,38 +683,80 @@ const InterviewRoom = () => {
         localVideoRef.current.srcObject = stream;
       }
       
-      // If student is already in the room (remotePeerId exists), start PeerJS call immediately
-      if (remotePeerId && peer) {
-        console.log('Calling remote peer:', remotePeerId);
-        const outgoingCall = peer.call(remotePeerId, stream);
-        setCall(outgoingCall);
-        setConnectionStatus('Calling...');
+      // Enhanced call flow: Admin calls → Student notification → Student answers → Admin sees student → Admin calls again → Connection
+      if (isAdmin) {
+        // Step 1: Notify student via Socket.io that admin wants to start call
+        if (socketRef.current && SOCKET_ENABLED) {
+          console.log('Emitting interview:start-call event...');
+          console.log('Event data:', {
+            interviewId,
+            studentId: interview?.student_id
+          });
+          
+          socketRef.current.emit('interview:start-call', {
+            interviewId,
+            studentId: interview?.student_id
+          });
+          setConnectionStatus('Notifying student...');
+        } else {
+          console.log('Socket not available, using fallback...');
+          // Fallback: Direct PeerJS call if socket disabled
+          if (remotePeerId && peer) {
+            console.log('Direct PeerJS call to:', remotePeerId);
+            const outgoingCall = peer.call(remotePeerId, stream);
+            setCall(outgoingCall);
+            setConnectionStatus('Calling...');
 
-        outgoingCall.on('stream', (remoteStream) => {
-          console.log('Received remote stream');
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = remoteStream;
+            outgoingCall.on('stream', (remoteStream) => {
+              console.log('Received remote stream');
+              if (remoteVideoRef.current) {
+                remoteVideoRef.current.srcObject = remoteStream;
+              }
+              setConnectionStatus('Connected');
+              setCallState('connected');
+            });
+
+            outgoingCall.on('close', () => {
+              setConnectionStatus('Call ended');
+              setCall(null);
+              setCallState('ended');
+            });
+
+            outgoingCall.on('error', (error) => {
+              console.error('Call error:', error);
+              setConnectionStatus('Call failed');
+              setCallState('idle');
+              setError('Call connection failed: ' + error.message);
+            });
+          } else {
+            setConnectionStatus('Waiting for student to join...');
           }
-          setConnectionStatus('Connected');
-        });
-
-        outgoingCall.on('close', () => {
-          setConnectionStatus('Call ended');
-          setCall(null);
-        });
-      } else {
-        // Student not in room yet, just wait for them to join and answer
-        console.log('No remote peer ID yet, waiting for student...');
-        setConnectionStatus('Waiting for student to answer...');
+        }
+        
+        // Mark interview as started in database
+        try {
+          console.log('Marking interview as started in database...');
+          await apiFetch(`api/interviews/${interviewId}/start`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+            }
+          });
+          console.log('Interview marked as started successfully');
+        } catch (e) {
+          console.error('Failed to start interview via API:', e);
+        }
       }
     } catch (error) {
       console.error('Start call error:', error);
+      setCallState('idle');
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-        alert('Please allow camera and microphone access to start the call');
+        setError('Please allow camera and microphone access to start the call');
+        setConnectionStatus('Media access denied');
       } else {
-        alert('Failed to access camera/microphone');
+        setError('Failed to access camera/microphone: ' + error.message);
+        setConnectionStatus('Media access failed');
       }
-      setConnectionStatus('Ready');
     }
   };
 
@@ -712,6 +921,9 @@ const InterviewRoom = () => {
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
     // Student leaving: clear their peer_id so admin never calls a stale ID
     if (isStudent) {
       const token = localStorage.getItem('studentAuthToken');
@@ -809,15 +1021,13 @@ const InterviewRoom = () => {
               {!call && isAdmin && (
                 <button
                   onClick={startCall}
-                  disabled={!adminJoined || !isInterviewTimeValid}
+                  disabled={!adminJoined}
                   className="px-6 py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold flex items-center space-x-2 shadow-lg shadow-emerald-500/30"
                 >
                   <Video size={20} />
                   <span>
                     {!adminJoined 
                       ? 'Connecting...' 
-                      : !isInterviewTimeValid
-                      ? 'Interview Not Available'
                       : 'Call Student'}
                   </span>
                 </button>
