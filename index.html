@@ -6,12 +6,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SHNOOR Assessments - Secure Examination Portal</title>
     <meta name="description" content="Secure Examination Portal for Shnoor Assessments. Sign in to access assigned assessments and track progress." />
+    
+    <!-- DNS prefetch for external domains -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+    
+    <!-- Preconnect to external domains for faster font loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+    
+    <!-- Preload critical assets to improve LCP -->
+    <link rel="preload" as="image" href="/assets/shnoor-logo1.png" type="image/png" fetchpriority="high">
+    
+    <!-- Load fonts asynchronously to prevent render blocking -->
+    <link 
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" 
+      rel="stylesheet" 
+      media="print" 
+      onload="this.media='all'"
+    >
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+    </noscript>
+    
+    <!-- Fallback font while custom font loads + layout shift prevention -->
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      /* Prevent layout shift by reserving space for images */
+      img {
+        max-width: 100%;
+        height: auto;
+      }
+      /* Critical CSS to prevent flash of unstyled content */
+      #root {
+        min-height: 100vh;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <main id="root"></main>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

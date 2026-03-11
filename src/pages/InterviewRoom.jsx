@@ -944,31 +944,31 @@ const InterviewRoom = () => {
 
   return (
     <div className="h-screen bg-gradient-to-b from-shnoor-navy via-gray-900 to-black flex flex-col overflow-hidden">
-      <div className="px-6 py-4 flex items-center justify-between bg-black/40 border-b border-white/10 flex-shrink-0">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-white/60">
+      <div className="px-4 py-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-black/40 border-b border-white/10 flex-shrink-0 gap-3 sm:gap-0">
+        <div className="w-full sm:w-auto">
+          <p className="text-[10px] sm:text-xs uppercase tracking-widest text-white/60">
             {isAdmin ? 'Interviewer View' : 'Candidate View'}
           </p>
-          <h1 className="text-white text-lg font-semibold">
+          <h1 className="text-white text-sm sm:text-lg font-semibold truncate max-w-full sm:max-w-md">
             {interview.test_title || 'Interview'} • {interview.student_name}
           </h1>
-          <p className="text-sm text-white/70">{connectionStatus}</p>
+          <p className="text-xs sm:text-sm text-white/70">{connectionStatus}</p>
         </div>
-        <div className="flex items-center space-x-3">
-          <span className="text-xs text-white/50 hidden sm:inline">
+        <div className="flex items-center space-x-2 sm:space-x-3 self-end sm:self-auto">
+          <span className="text-[10px] sm:text-xs text-white/50 hidden sm:inline">
             {remotePeerId ? 'Other participant ready' : 'Waiting...'}
           </span>
           {isAdmin && (
             <button
               onClick={endInterview}
-              className="px-3 py-1.5 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors"
+              className="px-2 py-1.5 sm:px-3 sm:py-1.5 text-xs sm:text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors whitespace-nowrap"
             >
-              End Interview
+              End<span className="hidden sm:inline"> Interview</span>
             </button>
           )}
           <button
             onClick={leaveRoom}
-            className="px-3 py-1.5 text-sm rounded-lg border border-white/20 text-white/90 hover:bg-white/10 transition-colors"
+            className="px-2 py-1.5 sm:px-3 sm:py-1.5 text-xs sm:text-sm rounded-lg border border-white/20 text-white/90 hover:bg-white/10 transition-colors"
           >
             Back
           </button>
@@ -1044,7 +1044,7 @@ const InterviewRoom = () => {
               )}
 
               {call && (
-                <div className="flex items-center justify-center space-x-3">
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                   <button
                     onClick={toggleVideo}
                     className={`p-3 rounded-full ${
@@ -1102,8 +1102,8 @@ const InterviewRoom = () => {
           </div>
         </div>
 
-        {SOCKET_ENABLED && (isAdmin || isStudent) && (
-          <div className="w-full lg:w-80 border-l border-white/10 bg-black/40 flex flex-col h-full">
+        {(isAdmin || isStudent) && (
+          <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-white/10 bg-black/40 flex flex-col h-1/2 lg:h-full flex-shrink-0 lg:flex-shrink">
             <div className="px-5 py-4 border-b border-white/10 flex items-center space-x-2 flex-shrink-0">
               <MessageSquare className="text-white/70" size={18} />
               <span className="text-sm font-semibold text-white">Chat</span>

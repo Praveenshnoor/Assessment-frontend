@@ -55,8 +55,7 @@ const AIViolationAlert = ({ violation, onDismiss }) => {
   };
 
   return (
-    <div className={`fixed top-4 right-4 z-50 ${getSeverityColor()} text-white px-6 py-4 rounded-lg shadow-2xl border-2 animate-pulse`}>
-      <div className="flex items-center space-x-3">
+    <div className={`fixed top-4 right-4 left-4 sm:left-auto z-50 ${getSeverityColor()} text-white px-4 sm:px-6 py-3 sm:py-4 rounded-lg shadow-2xl border-2 animate-pulse`}>      <div className="flex items-center space-x-3">
         <div className="flex-shrink-0">
           {getIcon()}
         </div>

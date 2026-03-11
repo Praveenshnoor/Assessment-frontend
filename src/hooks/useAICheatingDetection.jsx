@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { FaceDetector, FilesetResolver, ObjectDetector } from '@mediapipe/tasks-vision';
 
 export const useAICheatingDetection = (onViolation) => {
   const [isModelLoaded, setIsModelLoaded] = useState(false);
@@ -34,6 +33,9 @@ export const useAICheatingDetection = (onViolation) => {
     while (retryCount < maxRetries) {
       try {
         console.log(`[AI Detection] Loading models... (Attempt ${retryCount + 1}/${maxRetries})`);
+        
+        // Dynamically import MediaPipe to reduce initial bundle size
+        const { FaceDetector, FilesetResolver, ObjectDetector } = await import('@mediapipe/tasks-vision');
         
         const vision = await FilesetResolver.forVisionTasks(
           'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'

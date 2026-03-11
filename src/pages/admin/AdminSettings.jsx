@@ -41,20 +41,19 @@ const AdminSettings = () => {
             {/* Tab Navigation */}
             <div className="bg-white border border-shnoor-light shadow-[0_8px_30px_rgba(14,14,39,0.06)] rounded-xl mb-6">
                 <div className="border-b border-shnoor-light">
-                    <nav className="flex space-x-8 px-8 pt-6">
+                    <nav className="flex overflow-x-auto hide-scrollbar space-x-4 sm:space-x-8 px-4 sm:px-8 pt-4 sm:pt-6">
                         {tabs.map((tab) => {
                             const Icon = tab.icon;
                             return (
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center space-x-2 pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                                        activeTab === tab.id
+                                    className={`flex items-center space-x-2 pb-3 sm:pb-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap shrink-0 ${activeTab === tab.id
                                             ? 'border-shnoor-indigo text-shnoor-indigo'
                                             : 'border-transparent text-shnoor-soft hover:text-shnoor-navy hover:border-shnoor-mist'
-                                    }`}
+                                        }`}
                                 >
-                                    <Icon size={18} />
+                                    <Icon size={18} className="sm:size-5" />
                                     <span>{tab.label}</span>
                                 </button>
                             );
@@ -63,7 +62,7 @@ const AdminSettings = () => {
                 </div>
 
                 {/* Tab Content */}
-                <div className="p-8">
+                <div className="p-4 sm:p-8">
                     <ActiveComponent />
                 </div>
             </div>

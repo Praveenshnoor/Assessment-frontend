@@ -14,15 +14,15 @@ function BulkStudentUpload() {
         if (selectedFile) {
             // Validate file type
             const validTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-            const isValid = validTypes.includes(selectedFile.type) || 
-                           selectedFile.name.endsWith('.csv') || 
-                           selectedFile.name.endsWith('.xlsx');
-            
+            const isValid = validTypes.includes(selectedFile.type) ||
+                selectedFile.name.endsWith('.csv') ||
+                selectedFile.name.endsWith('.xlsx');
+
             if (!isValid) {
                 alert('Please select a valid CSV or Excel file');
                 return;
             }
-            
+
             setFile(selectedFile);
             setResult(null);
         }
@@ -42,7 +42,7 @@ function BulkStudentUpload() {
             formData.append('file', file);
 
             const token = localStorage.getItem('adminToken');
-            
+
             const response = await fetch(`${API_URL}/api/upload/students`, {
                 method: 'POST',
                 headers: {
@@ -59,11 +59,11 @@ function BulkStudentUpload() {
 
             setResult(data);
             setShowResults(true);
-            
+
             // Clear file input
             setFile(null);
             document.getElementById('fileInput').value = '';
-            
+
         } catch (error) {
             console.error('Upload error:', error);
             alert(error.message || 'Failed to upload students. Please try again.');
@@ -77,7 +77,7 @@ function BulkStudentUpload() {
 John Doe,john.doe@example.com,1234567890,MIT University
 Jane Smith,jane.smith@example.com,9876543210,Stanford University
 Robert Johnson,robert.johnson@example.com,5551234567,Harvard University`;
-        
+
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -118,7 +118,7 @@ Robert Johnson,robert.johnson@example.com,5551234567,Harvard University`;
                 <label className="block text-sm font-bold text-shnoor-navy mb-3">
                     Select CSV or Excel File
                 </label>
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                     <input
                         id="fileInput"
                         type="file"
@@ -174,9 +174,9 @@ Robert Johnson,robert.johnson@example.com,5551234567,Harvard University`;
                             ✕ Close
                         </Button>
                     </div>
-                    
+
                     {/* Summary */}
-                    <div className="grid grid-cols-3 gap-4 mb-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                         <div className="bg-white border border-shnoor-light p-4 rounded-xl text-center">
                             <p className="text-3xl font-bold text-shnoor-navy">{result.results.total}</p>
                             <p className="text-sm text-shnoor-indigoMedium font-medium mt-1">Total Rows</p>
@@ -244,7 +244,7 @@ Robert Johnson,robert.johnson@example.com,5551234567,Harvard University`;
                     {result.results.success.length > 0 && (
                         <div className="mt-6 bg-shnoor-warningLight border-l-4 border-shnoor-warning p-4">
                             <p className="text-sm text-shnoor-warning">
-                                📧 <strong>Note:</strong> Credential emails are being sent to all successfully created students. 
+                                📧 <strong>Note:</strong> Credential emails are being sent to all successfully created students.
                                 Please check your email service configuration if students don't receive their credentials.
                             </p>
                         </div>

@@ -88,7 +88,7 @@ const SystemSettingsTab = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0 mb-6">
                 <div>
                     <h2 className="text-2xl font-bold text-shnoor-navy">System Settings</h2>
                     <p className="text-shnoor-soft mt-1">Configure global application behaviors and maintenance modes.</p>
@@ -96,7 +96,7 @@ const SystemSettingsTab = () => {
                 <Button
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="flex items-center space-x-2 bg-shnoor-indigo hover:bg-shnoor-navy text-white px-6 py-2.5 rounded-lg shadow-md transition-all"
+                    className="flex items-center space-x-2 bg-shnoor-indigo hover:bg-shnoor-navy text-white px-6 py-2.5 rounded-lg shadow-md transition-all w-full sm:w-auto justify-center sm:justify-start"
                 >
                     <Save size={18} />
                     <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>

@@ -180,8 +180,7 @@ const StudentInterviews = () => {
   return (
     <div className="space-y-6">
       {incomingBanner && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between animate-pulse">
-          <div className="flex-1">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 animate-pulse">          <div className="flex-1">
             <p className="text-sm font-bold text-emerald-800">📞 Incoming Interview Call</p>
             <p className="text-xs text-emerald-700/80 mt-1">
               {incomingBanner.test_title || 'Interview'} 
@@ -223,18 +222,16 @@ const StudentInterviews = () => {
                   key={interview.id}
                   className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light p-6 hover:shadow-[0_8px_30px_rgba(14,14,39,0.12)] transition-shadow"
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-3">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4 sm:gap-0">
+                    <div className="flex-1 w-full">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3">
                         <h3 className="text-lg font-bold text-shnoor-navy">
                           {interview.test_title}
                         </h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(interview.status)}`}>
-                          {interview.status.replace('_', ' ').toUpperCase()}
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${getStatusColor(interview.status)}`}>                          {interview.status.replace('_', ' ').toUpperCase()}
                         </span>
                         {interview.status === 'in_progress' && (
-                          <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200">
-                            LIVE CALL
+                        <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200 whitespace-nowrap">                            LIVE CALL
                           </span>
                         )}
                       </div>
@@ -270,8 +267,8 @@ const StudentInterviews = () => {
                       )}
                     </div>
 
-                    <div className="ml-4">
-                      <button
+                    <div className="w-full sm:w-auto sm:ml-4 flex-shrink-0">
+                        <button
                         onClick={() => canJoin && joinInterview(interview.id)}
                         disabled={!canJoin}
                         className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-colors shadow-[0_8px_30px_rgba(14,14,39,0.06)] ${

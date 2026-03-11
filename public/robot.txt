@@ -1,0 +1,22 @@
+# robots.txt for SHNOOR Assessments Portal
+
+# Allow all crawlers
+User-agent: *
+Disallow: /test
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /instructions
+Disallow: /result
+Disallow: /feedback
+Disallow: /interview-room/
+Disallow: /api/
+
+# Allow crawling of public pages
+Allow: /
+Allow: /login
+Allow: /register
+Allow: /privacy-policy
+Allow: /terms-and-conditions
+
+# Sitemap location (create this file if needed)
+# Sitemap: https://yourdomain.com/sitemap.xml

@@ -89,14 +89,14 @@ const AdminReports = () => {
     return (
         <div className="space-y-6">
             <Card className="overflow-hidden" noPadding>
-                <div className="p-8">
-                    <div className="flex items-center justify-between mb-8 pb-6 border-b border-shnoor-light">
+                <div className="p-4 sm:p-8">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 pb-4 sm:pb-6 border-b border-shnoor-light">
                         <div>
-                            <h2 className="text-3xl font-bold text-shnoor-navy mb-2 flex items-center">
-                                <FileSpreadsheet className="mr-3 text-shnoor-indigo" size={32} />
+                            <h2 className="text-2xl sm:text-3xl font-bold text-shnoor-navy mb-2 flex items-center">
+                                <FileSpreadsheet className="mr-2 sm:mr-3 text-shnoor-indigo h-6 w-6 sm:h-8 sm:w-8" />
                                 Student Reports
                             </h2>
-                            <p className="text-shnoor-indigoMedium ml-11">Download candidate details in Excel format</p>
+                            <p className="text-sm sm:text-base text-shnoor-indigoMedium ml-8 sm:ml-11">Download candidate details in Excel format</p>
                         </div>
                     </div>
 
@@ -165,11 +165,11 @@ const AdminReports = () => {
                                     }),
                                     option: (base, state) => ({
                                         ...base,
-                                        backgroundColor: state.isSelected 
+                                        backgroundColor: state.isSelected
                                             ? '#44448E' // shnoor-indigo
-                                            : state.isFocused 
-                                            ? '#E0E0EF' // shnoor-lavender
-                                            : 'white',
+                                            : state.isFocused
+                                                ? '#E0E0EF' // shnoor-lavender
+                                                : 'white',
                                         color: state.isSelected ? 'white' : '#0E0E27', // shnoor-navy
                                         cursor: 'pointer',
                                         padding: '10px 12px',

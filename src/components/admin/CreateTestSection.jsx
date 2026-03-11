@@ -24,7 +24,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
     const [isLoadingTest, setIsLoadingTest] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [viewMode, setViewMode] = useState(false); // New state for view mode
-    
+
     // Name availability checker state
     const [nameAvailability, setNameAvailability] = useState({
         checking: false,
@@ -84,7 +84,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                     setDuration(test.duration || 60);
                     setMaxAttempts(test.max_attempts || 1);
                     setPassingPercentage(test.passing_percentage || 50);
-                    
+
                     // Format datetime for input (convert to Asia/Kolkata timezone)
                     if (test.start_datetime) {
                         const date = new Date(test.start_datetime);
@@ -99,7 +99,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                     } else {
                         setStartDateTime('');
                     }
-                    
+
                     if (test.end_datetime) {
                         const date = new Date(test.end_datetime);
                         // Convert to Asia/Kolkata timezone
@@ -113,7 +113,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                     } else {
                         setEndDateTime('');
                     }
-                    
+
                     // Load job roles
                     if (test.jobRoles && test.jobRoles.length > 0) {
                         setJobRoles(test.jobRoles.map(r => ({
@@ -155,7 +155,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
 
                     setUploadedTestId(test.id);
                     setNameAvailability({ checking: false, available: true, message: 'Current test name' });
-                    
+
                     // Stay on init step to allow editing test details first
                     setStep('init');
                 } else {
@@ -275,7 +275,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
     };
 
     // Coding Question Handlers
-    
+
     // const handleAddPublicTestCase = () => {
     //     setCurrentCodingQuestion({
     //         ...currentCodingQuestion,
@@ -331,7 +331,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
     //         // Add new question
     //         setCodingQuestions([...codingQuestions, { ...currentCodingQuestion, id: Date.now() }]);
     //     }
-        
+
     //     setCurrentCodingQuestion({
     //         title: '',
     //         description: '',
@@ -364,7 +364,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
     //     setEditingCodingQuestionId(question.id);
     //     setShowCodingModal(true);
     // };
-    
+
 
     const convertISTToUTC = (dateTimeString) => {
         if (!dateTimeString) return null;
@@ -372,11 +372,11 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
         const [datePart, timePart] = dateTimeString.split('T');
         const [year, month, day] = datePart.split('-');
         const [hours, minutes] = timePart.split(':');
-        
+
         // Create date string in IST format
         const istDateString = `${year}-${month}-${day}T${hours}:${minutes}:00+05:30`;
         const date = new Date(istDateString);
-        
+
         return date.toISOString();
     };
 
@@ -389,10 +389,10 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
         }
 
         setIsUploading(true);
-        
+
         try {
             const token = localStorage.getItem('adminToken');
-            
+
             // Prepare question data
             const questionData = questions.map(q => ({
                 question_text: q.text,
@@ -492,7 +492,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
 
                 if (response.ok && data.success) {
                     const testId = data.testId;
-                    
+
                     // CODE EXECUTION FEATURE - TEMPORARILY DISABLED
                     // if (ENABLE_CODE_EXECUTION) {
                     //     // ALWAYS save coding questions (even if empty, to ensure consistency)
@@ -551,7 +551,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
         }
 
         setIsUploading(true);
-        
+
         try {
             const token = localStorage.getItem('adminToken');
 
@@ -606,7 +606,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                     //     }
                     //     console.log('[BULK UPLOAD EDIT] Coding questions saved successfully');
                     // }
-                    
+
                     alert(`Questions uploaded successfully! ${data.questionsCount} questions added. Click "Save Changes" to save.`);
                     // Reload test data to show new questions
                     const testResponse = await apiFetch(`api/tests/${uploadedTestId}`, {
@@ -655,7 +655,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
 
                 if (response.ok && data.success) {
                     const testId = data.testId;
-                    
+
                     // CODE EXECUTION FEATURE - TEMPORARILY DISABLED
                     // if (ENABLE_CODE_EXECUTION) {
                     //     // Save coding questions after bulk upload
@@ -682,7 +682,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                     //     }
                     //     console.log('[BULK UPLOAD] Coding questions saved successfully');
                     // }
-                    
+
                     setUploadedTestId(testId);
                     setUploadedTestName(testTitle);
                     setStep('success');
@@ -773,12 +773,12 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                     onChange={(e) => setTestTitle(e.target.value)}
                                     disabled={viewMode}
                                     className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:border-shnoor-indigo focus:ring-shnoor-indigo/20 transition-all font-medium text-shnoor-navy shadow-sm pr-10 ${viewMode ? 'bg-shnoor-light opacity-50 cursor-not-allowed border-shnoor-light' :
-                                            nameAvailability.available === false
-                                                ? 'border-shnoor-danger bg-shnoor-dangerLight'
-                                                : nameAvailability.available === true
-                                                    ? 'border-shnoor-success bg-white'
-                                                    : 'border-shnoor-light bg-white'
-                                    }`}
+                                        nameAvailability.available === false
+                                            ? 'border-shnoor-danger bg-shnoor-dangerLight'
+                                            : nameAvailability.available === true
+                                                ? 'border-shnoor-success bg-white'
+                                                : 'border-shnoor-light bg-white'
+                                        }`}
                                     placeholder="e.g., Java Fundamentals - Batch A"
                                     required
                                 />
@@ -799,11 +799,10 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                 )}
                             </div>
                             {nameAvailability.message && (
-                                <p className={`mt-2 text-sm ${
-                                    nameAvailability.available 
-                                        ? 'text-shnoor-success' 
+                                <p className={`mt-2 text-sm ${nameAvailability.available
+                                        ? 'text-shnoor-success'
                                         : 'text-shnoor-danger'
-                                }`}>
+                                    }`}>
                                     {nameAvailability.message}
                                 </p>
                             )}
@@ -824,7 +823,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                     </button>
                                 )}
                             </div>
-                            
+
                             {jobRoles.map((role, index) => (
                                 <div key={index} className="p-5 border border-shnoor-light rounded-xl space-y-3 bg-white shadow-sm">
                                     <div className="flex items-center justify-between">
@@ -842,7 +841,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                             </button>
                                         )}
                                     </div>
-                                    
+
                                     <div>
                                         <input
                                             type="text"
@@ -854,7 +853,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                             required
                                         />
                                     </div>
-                                    
+
                                     <div>
                                         <textarea
                                             value={role.job_description}
@@ -1057,7 +1056,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                                 </div>
                                             </button>
                                         </div>
-                                        
+
                                         <div className="bg-shnoor-warningLight border-2 border-shnoor-warningLight rounded-xl p-4 flex items-start space-x-3 mb-6">
                                             <AlertCircle className="w-5 h-5 text-shnoor-warning flex-shrink-0 mt-0.5" />
                                             <div className="text-sm text-shnoor-warning">
@@ -1071,7 +1070,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                         </div>
 
                                         {/* Save Changes and Cancel Buttons */}
-                                        <div className="flex items-center space-x-3">
+                                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
                                             <button
                                                 onClick={handleManualSubmit}
                                                 disabled={isUploading}
@@ -1105,11 +1104,10 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                                 <button
                                     onClick={() => handleStart('manual')}
-                                    className={`p-6 border-2 border-shnoor-mist rounded-xl text-left transition-all hover:border-shnoor-indigo group bg-white ${
-                                        !testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking
-                                            ? 'opacity-50 cursor-not-allowed' 
+                                    className={`p-6 border-2 border-shnoor-mist rounded-xl text-left transition-all hover:border-shnoor-indigo group bg-white ${!testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking
+                                            ? 'opacity-50 cursor-not-allowed'
                                             : 'hover:shadow-md'
-                                    }`}
+                                        }`}
                                     disabled={!testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking}
                                 >
                                     <div className="w-12 h-12 bg-shnoor-lavender rounded-full flex items-center justify-center mb-4 group-hover:bg-shnoor-indigo transition-colors">
@@ -1121,11 +1119,10 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
 
                                 <button
                                     onClick={() => handleStart('bulk')}
-                                    className={`p-6 border-2 border-shnoor-mist rounded-xl text-left transition-all hover:border-shnoor-indigo group bg-white ${
-                                        !testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking
-                                            ? 'opacity-50 cursor-not-allowed' 
+                                    className={`p-6 border-2 border-shnoor-mist rounded-xl text-left transition-all hover:border-shnoor-indigo group bg-white ${!testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking
+                                            ? 'opacity-50 cursor-not-allowed'
                                             : 'hover:shadow-md'
-                                    }`}
+                                        }`}
                                     disabled={!testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking}
                                 >
                                     <div className="w-12 h-12 bg-shnoor-lavender rounded-full flex items-center justify-center mb-4 group-hover:bg-shnoor-indigo transition-colors">
@@ -1169,11 +1166,10 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                         <button
                                             type="button"
                                             onClick={() => setCurrentQuestion({ ...currentQuestion, format: 'paragraph' })}
-                                            className={`p-2 rounded transition-colors ${
-                                                currentQuestion.format === 'paragraph' 
-                                                    ? 'bg-shnoor-indigo text-white' 
+                                            className={`p-2 rounded transition-colors ${currentQuestion.format === 'paragraph'
+                                                    ? 'bg-shnoor-indigo text-white'
                                                     : 'text-shnoor-navy hover:bg-white'
-                                            }`}
+                                                }`}
                                             title="Paragraph format (Markdown supported)"
                                         >
                                             <AlignLeft size={16} />
@@ -1181,11 +1177,10 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                         <button
                                             type="button"
                                             onClick={() => setCurrentQuestion({ ...currentQuestion, format: 'line' })}
-                                            className={`p-2 rounded transition-colors ${
-                                                currentQuestion.format === 'line' 
-                                                    ? 'bg-shnoor-indigo text-white' 
+                                            className={`p-2 rounded transition-colors ${currentQuestion.format === 'line'
+                                                    ? 'bg-shnoor-indigo text-white'
                                                     : 'text-shnoor-navy hover:bg-white'
-                                            }`}
+                                                }`}
                                             title="Line format (preserves line breaks)"
                                         >
                                             <List size={16} />
@@ -1193,11 +1188,10 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                         <button
                                             type="button"
                                             onClick={() => setCurrentQuestion({ ...currentQuestion, format: 'code' })}
-                                            className={`p-2 rounded transition-colors ${
-                                                currentQuestion.format === 'code' 
-                                                    ? 'bg-shnoor-indigo text-white' 
+                                            className={`p-2 rounded transition-colors ${currentQuestion.format === 'code'
+                                                    ? 'bg-shnoor-indigo text-white'
                                                     : 'text-shnoor-navy hover:bg-white'
-                                            }`}
+                                                }`}
                                             title="Code format (monospace, syntax highlighting)"
                                         >
                                             <Code size={16} />
@@ -1208,9 +1202,8 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                     value={currentQuestion.text}
                                     onChange={(e) => setCurrentQuestion({ ...currentQuestion, text: e.target.value })}
                                     rows={6}
-                                    className={`w-full px-4 py-3 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-navyLight focus:border-transparent text-sm ${
-                                        currentQuestion.format === 'code' ? 'font-mono' : ''
-                                    }`}
+                                    className={`w-full px-4 py-3 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-navyLight focus:border-transparent text-sm ${currentQuestion.format === 'code' ? 'font-mono' : ''
+                                        }`}
                                     placeholder="Enter Question here"
                                     style={{ whiteSpace: 'pre-wrap' }}
                                 />
@@ -1257,7 +1250,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                             </button>
 
                             <div className="pt-6 border-t border-shnoor-mist">
-                                <div className="flex items-center space-x-3">
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
                                     <button
                                         onClick={handleManualSubmit}
                                         disabled={questions.length === 0 || isUploading}

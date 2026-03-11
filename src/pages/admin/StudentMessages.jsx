@@ -314,7 +314,7 @@ const StudentMessages = () => {
           Back to Dashboard
         </button>
         
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
           <div>
             <h1 className="text-2xl font-bold text-shnoor-navy">Student Support</h1>
             <p className="text-shnoor-soft text-sm mt-1">
@@ -326,7 +326,7 @@ const StudentMessages = () => {
               )}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
             <button
               onClick={fetchMessages}
               className="flex items-center gap-2 px-3 py-2 text-sm bg-white border border-shnoor-mist rounded-lg hover:bg-shnoor-lavender transition-colors"
@@ -492,7 +492,7 @@ const StudentMessages = () => {
         </div>
 
         {/* Message detail / Conversation */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-shnoor-mist overflow-hidden flex flex-col" style={{ height: '700px' }}>
+        <div className="lg:col-span-2 bg-white rounded-xl border border-shnoor-mist overflow-hidden flex flex-col min-h-[500px] lg:h-[700px]">
           {selectedMessage ? (
             <>
               {/* Header */}

@@ -176,22 +176,22 @@ const InterviewsList = () => {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-4">Interviews</h1>
         
-        <div className="flex space-x-4 items-end">
-          <div>
+        <div className="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0 md:items-end">
+          <div className="w-full md:w-auto">
             <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
             <input
               type="date"
               value={filter.date}
               onChange={(e) => setFilter({ ...filter, date: e.target.value })}
               disabled={showAllDates}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
           
-          <div>
+          <div className="w-full md:w-auto">
             <button
               onClick={() => setShowAllDates(!showAllDates)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${
                 showAllDates
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -201,12 +201,12 @@ const InterviewsList = () => {
             </button>
           </div>
           
-          <div>
+          <div className="w-full md:w-auto">
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
               value={filter.status}
               onChange={(e) => setFilter({ ...filter, status: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All</option>
               <option value="scheduled">Scheduled</option>
@@ -229,44 +229,44 @@ const InterviewsList = () => {
               key={interview.id}
               className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
             >
-              <div className="flex justify-between items-start">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-start space-y-4 sm:space-y-0">
                 <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-800">
+                  <div className="flex items-center space-x-3 mb-2 flex-wrap gap-y-2">
+                    <h3 className="text-lg font-semibold text-gray-800 break-words">
                       {interview.student_name}
                     </h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(interview.status)}`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium shrink-0 ${getStatusColor(interview.status)}`}>
                       {interview.status.replace('_', ' ').toUpperCase()}
                     </span>
                   </div>
                   
                   <div className="space-y-1 text-sm text-gray-600">
                     <p className="flex items-center">
-                      <Users className="w-4 h-4 mr-2" />
-                      {interview.institute_name || 'No Institute'}
+                      <Users className="w-4 h-4 mr-2 shrink-0" />
+                      <span className="truncate">{interview.institute_name || 'No Institute'}</span>
                     </p>
                     <p className="flex items-center">
-                      <Clock className="w-4 h-4 mr-2" />
+                      <Clock className="w-4 h-4 mr-2 shrink-0" />
                       {formatDateTime(interview.scheduled_time)} ({interview.duration} min)
                     </p>
-                    <p className="text-gray-500">{interview.student_email}</p>
+                    <p className="text-gray-500 truncate">{interview.student_email}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center sm:justify-end space-x-2 w-full sm:w-auto mt-4 sm:mt-0">
                   {(interview.status === 'scheduled' || interview.status === 'in_progress') && (
                     <button
                       onClick={() => joinInterview(interview.id)}
-                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      className="flex-1 sm:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                     >
                       <Video size={18} />
-                      <span>{interview.status === 'in_progress' ? 'Resume Call' : 'Call'}</span>
+                      <span className="whitespace-nowrap">{interview.status === 'in_progress' ? 'Resume Call' : 'Call'}</span>
                     </button>
                   )}
                   
                   <button
                     onClick={() => openEditModal(interview)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors shrink-0"
                     title="Edit schedule"
                   >
                     <Edit2 size={18} />
@@ -274,7 +274,7 @@ const InterviewsList = () => {
                   
                   <button
                     onClick={() => deleteInterview(interview.id, interview.student_name)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0"
                     title="Delete interview"
                   >
                     <Trash2 size={18} />

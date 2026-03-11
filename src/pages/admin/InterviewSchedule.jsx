@@ -16,11 +16,11 @@ const InterviewSchedule = ({ student, testId, onClose, onScheduled }) => {
     const [datePart, timePart] = dateTimeString.split('T');
     const [year, month, day] = datePart.split('-');
     const [hours, minutes] = timePart.split(':');
-    
+
     // Create date string in IST format (Asia/Kolkata = UTC+05:30)
     const istDateString = `${year}-${month}-${day}T${hours}:${minutes}:00+05:30`;
     const date = new Date(istDateString);
-    
+
     return date.toISOString();
   };
 
@@ -36,7 +36,7 @@ const InterviewSchedule = ({ student, testId, onClose, onScheduled }) => {
     try {
       // Convert IST to UTC before sending to backend (same as test scheduling)
       const scheduledTimeUTC = convertISTToUTC(formData.scheduled_time);
-      
+
       console.log('Scheduled Time (IST input):', formData.scheduled_time);
       console.log('Scheduled Time (UTC ISO):', scheduledTimeUTC);
 
@@ -46,7 +46,7 @@ const InterviewSchedule = ({ student, testId, onClose, onScheduled }) => {
         scheduled_time: scheduledTimeUTC,
         duration: formData.duration
       };
-      
+
       console.log('Request Body:', requestBody);
 
       const response = await apiFetch('api/interviews/schedule', {
@@ -121,18 +121,18 @@ const InterviewSchedule = ({ student, testId, onClose, onScheduled }) => {
             </select>
           </div>
 
-          <div className="flex space-x-3">
+          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-center"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-center"
             >
               {loading ? 'Scheduling...' : 'Schedule'}
             </button>

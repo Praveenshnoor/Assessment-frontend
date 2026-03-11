@@ -31,7 +31,7 @@ const Instructions = () => {
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           console.log('Test data received:', data);
@@ -84,23 +84,23 @@ const Instructions = () => {
             autoGainControl: false
           }
         });
-        
+
         // Check if both camera and microphone are available
         const videoTracks = stream.getVideoTracks();
         const audioTracks = stream.getAudioTracks();
-        
+
         if (videoTracks.length === 0) {
           stream.getTracks().forEach(track => track.stop());
           alert('⚠️ Camera Access Required\n\nYou must allow camera access to take this exam.\n\nPlease:\n1. Click the camera icon in your browser address bar\n2. Allow camera access\n3. Refresh the page and try again');
           return;
         }
-        
+
         if (audioTracks.length === 0) {
           stream.getTracks().forEach(track => track.stop());
           alert('⚠️ Microphone Access Required\n\nYou must allow microphone access to take this exam.\n\nPlease:\n1. Click the microphone icon in your browser address bar\n2. Allow microphone access\n3. Refresh the page and try again');
           return;
         }
-        
+
         // Stop the stream immediately - we just needed to check permissions
         stream.getTracks().forEach(track => track.stop());
         console.log('Camera and microphone permissions granted');
@@ -142,7 +142,7 @@ const Instructions = () => {
         console.log('Resuming existing progress with camera permission verified...');
       }
 
-      
+
       navigate('/test');
     } catch (error) {
       console.error('Error starting exam:', error);
@@ -189,47 +189,47 @@ const Instructions = () => {
     <div className="min-h-screen bg-[#F8F8FB] py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-mist p-8 mb-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-mist p-4 sm:p-8 mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4 sm:gap-0">
             <div>
-              <h1 className="text-3xl font-bold text-shnoor-navy mb-2">Examination Instructions</h1>
-              <p className="text-lg text-shnoor-indigoMedium">{testDetails.title}</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-shnoor-navy mb-2">Examination Instructions</h1>
+              <p className="text-base sm:text-lg text-shnoor-indigoMedium">{testDetails.title}</p>
               {hasProgress && (
                 <div className="mt-3 flex items-center space-x-2 text-shnoor-success bg-shnoor-successLight px-4 py-2 rounded-lg inline-flex">
-                  <CheckCircle className="w-5 h-5" />
-                  <span className="font-semibold">You have saved progress for this test</span>
+                  <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-semibold text-sm sm:text-base">You have saved progress for this test</span>
                 </div>
               )}
             </div>
-            <div className="w-16 h-16 bg-shnoor-lavender rounded-full flex items-center justify-center">
+            <div className="hidden sm:flex w-16 h-16 bg-shnoor-lavender rounded-full items-center justify-center flex-shrink-0">
               <Shield className="w-8 h-8 text-shnoor-indigo" />
             </div>
           </div>
-          <div className="flex items-center space-x-4 text-sm text-shnoor-indigoMedium font-medium">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-0 sm:space-x-4 text-xs sm:text-sm text-shnoor-indigoMedium font-medium">
             <span className="flex items-center">
-              <Clock className="w-4 h-4 mr-1" />
+              <Clock className="w-4 h-4 mr-1 flex-shrink-0" />
               Duration: {testDetails?.duration || 60} Minutes
             </span>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <span>Total Questions: {testDetails?.totalQuestions || 0}</span>
-            <span>•</span>
-            <span>Full Screen Required</span>
+            <span className="hidden sm:inline">•</span>
+            <span className="bg-shnoor-lavender px-2 py-0.5 rounded sm:bg-transparent sm:px-0 sm:py-0 font-bold sm:font-medium text-shnoor-navy sm:text-shnoor-indigoMedium">Full Screen Required</span>
           </div>
         </div>
 
         {/* Rules Grid */}
-        <div className="grid gap-4 mb-8">
+        <div className="grid sm:grid-cols-2 gap-4 mb-8">
           {rules.map((rule, index) => (
             <div
               key={index}
-              className="bg-white rounded-xl border border-shnoor-mist p-6 flex items-start space-x-4 hover:shadow-[0_8px_30px_rgba(14,14,39,0.08)] hover:border-shnoor-indigo transition-all duration-200"
+              className="bg-white rounded-xl border border-shnoor-mist p-4 sm:p-6 flex flex-col xl:flex-row items-start gap-4 hover:shadow-[0_8px_30px_rgba(14,14,39,0.08)] hover:border-shnoor-indigo transition-all duration-200"
             >
               <div className="flex-shrink-0 w-12 h-12 bg-[#F8F8FB] rounded-lg flex items-center justify-center">
                 {rule.icon}
               </div>
               <div>
-                <h3 className="text-lg font-bold text-shnoor-navy mb-1">{rule.title}</h3>
-                <p className="text-shnoor-indigoMedium leading-relaxed text-sm">{rule.description}</p>
+                <h3 className="text-base sm:text-lg font-bold text-shnoor-navy mb-1">{rule.title}</h3>
+                <p className="text-shnoor-indigoMedium leading-relaxed text-xs sm:text-sm">{rule.description}</p>
               </div>
             </div>
           ))}
@@ -242,8 +242,8 @@ const Instructions = () => {
             <div>
               <h4 className="text-lg font-bold text-shnoor-danger mb-2">Important Warning</h4>
               <p className="text-shnoor-danger text-sm leading-relaxed">
-                Any attempt to cheat, switch tabs, or exit fullscreen mode will be recorded. 
-                After 3 warnings, your test will be automatically submitted with your current progress. 
+                Any attempt to cheat, switch tabs, or exit fullscreen mode will be recorded.
+                After 3 warnings, your test will be automatically submitted with your current progress.
                 Please ensure you are in a quiet environment with no distractions before starting.
               </p>
             </div>
@@ -251,7 +251,7 @@ const Instructions = () => {
         </div>
 
         {/* Action Section */}
-        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-mist p-8">
+        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-mist p-4 sm:p-8">
           <label className="flex items-start space-x-3 cursor-pointer group">
             <div className="flex-shrink-0 mt-1">
               <input
@@ -262,28 +262,28 @@ const Instructions = () => {
               />
             </div>
             <div className="flex-1">
-              <span className="text-shnoor-navy font-bold group-hover:text-shnoor-indigo transition-colors flex items-center">
+              <span className="text-shnoor-navy font-bold group-hover:text-shnoor-indigo transition-colors flex items-center text-sm sm:text-base">
                 I have read and understood all the instructions
               </span>
-              <p className="text-sm text-shnoor-indigoMedium mt-1">
+              <p className="text-xs sm:text-sm text-shnoor-indigoMedium mt-1">
                 By checking this box, you agree to abide by the examination rules and regulations.
               </p>
             </div>
           </label>
 
-          <div className="mt-6 flex items-center justify-between pt-6 border-t border-shnoor-mist">
+          <div className="mt-6 flex flex-col-reverse sm:flex-row items-center justify-between pt-6 border-t border-shnoor-mist gap-4 sm:gap-0">
             <button
               onClick={() => navigate('/dashboard')}
-              className="px-6 py-3 text-shnoor-indigoMedium hover:text-shnoor-navy font-bold transition-colors"
+              className="w-full sm:w-auto px-6 py-3 text-shnoor-indigoMedium hover:text-shnoor-navy font-bold transition-colors"
             >
               ← Back to Dashboard
             </button>
-            
+
             <button
               onClick={handleStartExam}
               disabled={!hasRead}
               className={`
-                px-8 py-4 rounded-xl font-bold text-lg transition-all duration-200
+                w-full sm:w-auto px-4 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg transition-all duration-200
                 ${hasRead
                   ? hasProgress
                     ? 'bg-shnoor-success hover:bg-shnoor-success text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5'
@@ -291,9 +291,9 @@ const Instructions = () => {
                   : 'bg-shnoor-mist/30 text-shnoor-indigoMedium cursor-not-allowed'}
               `}
             >
-              {hasRead 
-                ? hasProgress 
-                  ? '▶ Resume Examination →' 
+              {hasRead
+                ? hasProgress
+                  ? '▶ Resume Examination →'
                   : 'Start Examination →'
                 : 'Please Read Instructions First'}
             </button>

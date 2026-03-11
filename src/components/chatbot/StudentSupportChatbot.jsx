@@ -40,18 +40,18 @@ const StudentSupportChatbot = () => {
   const institute = localStorage.getItem('institute') || '';
 
   // Support socket for real-time notifications
-  const { 
-    notifications, 
+  const {
+    notifications,
     markAllRead: socketMarkAllRead,
     notificationPermission,
     requestPermission,
     isConnected
-  } = useSupportSocket({ 
-    isAdmin: false, 
-    rollNumber: studentId, 
-    studentName, 
+  } = useSupportSocket({
+    isAdmin: false,
+    rollNumber: studentId,
+    studentName,
     enabled: !!studentId,
-    enableBrowserNotifications: true 
+    enableBrowserNotifications: true
   });
 
   // Debug: Log socket connection status
@@ -75,7 +75,7 @@ const StudentSupportChatbot = () => {
   useEffect(() => {
     const fetchUnreadCount = async () => {
       if (!studentId) return;
-      
+
       try {
         const token = localStorage.getItem('studentAuthToken');
         const response = await apiFetch('api/student-messages/student-unread-count', {
@@ -84,6 +84,11 @@ const StudentSupportChatbot = () => {
           }
         });
 
+        // Silently ignore 401 errors (token might be expired/invalid)
+        if (response.status === 401) {
+          return;
+        }
+
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
@@ -91,12 +96,15 @@ const StudentSupportChatbot = () => {
           }
         }
       } catch (error) {
-        console.error('Error fetching unread count:', error);
+        // Only log non-auth errors
+        if (!error.message?.includes('401')) {
+          console.error('Error fetching unread count:', error);
+        }
       }
     };
 
     fetchUnreadCount();
-    
+
     // Poll every 60 seconds
     const interval = setInterval(fetchUnreadCount, 60000);
     return () => clearInterval(interval);
@@ -105,33 +113,33 @@ const StudentSupportChatbot = () => {
   // Handle socket notifications for new admin replies
   useEffect(() => {
     console.log('[StudentChatbot] Notifications changed:', notifications.length);
-    
+
     if (notifications.length > 0) {
       const latestNotification = notifications[0];
       const notificationId = latestNotification.id;
-      
+
       console.log('[StudentChatbot] Latest notification:', latestNotification);
       console.log('[StudentChatbot] Already processed?', processedNotificationsRef.current.has(notificationId));
-      
+
       // Only process if we haven't already processed this notification
       if (!latestNotification.read && !processedNotificationsRef.current.has(notificationId)) {
         console.log('[StudentChatbot] Showing toast for new notification ID:', notificationId);
-        
+
         // Mark as processed
         processedNotificationsRef.current.add(notificationId);
-        
+
         setUnreadCount(prev => prev + 1);
-        
+
         // Show toast notification
         setToastMessage(latestNotification);
         setShowToastNotification(true);
-        
+
         // Auto-hide toast
         const timer = setTimeout(() => {
           setShowToastNotification(false);
           setToastMessage(null);
         }, 5000);
-        
+
         return () => clearTimeout(timer);
       }
     }
@@ -140,7 +148,7 @@ const StudentSupportChatbot = () => {
   // Mark messages as read when opening contact view
   const markMessagesAsRead = useCallback(async () => {
     if (!studentId) return;
-    
+
     try {
       const token = localStorage.getItem('studentAuthToken');
       await apiFetch('api/student-messages/mark-student-read', {
@@ -151,13 +159,6 @@ const StudentSupportChatbot = () => {
       });
       setUnreadCount(0);
       socketMarkAllRead();
-      
-      // Clear toast notification when messages are read
-      setShowToastNotification(false);
-      setToastMessage(null);
-      
-      // Clear processed notifications to allow new ones
-      processedNotificationsRef.current.clear();
     } catch (error) {
       console.error('Error marking messages as read:', error);
     }
@@ -181,7 +182,7 @@ const StudentSupportChatbot = () => {
   // Fetch conversation history when Contact/Support is opened
   const fetchConversationHistory = useCallback(async () => {
     if (!studentId) return;
-    
+
     setLoadingHistory(true);
     try {
       const token = localStorage.getItem('studentAuthToken');
@@ -230,7 +231,7 @@ const StudentSupportChatbot = () => {
 
   const handleTopicSelect = (topic) => {
     setSelectedTopic(topic);
-    
+
     // If Contact/Support topic, go directly to chat view
     if (topic.id === 'contact') {
       setCurrentView('contact');
@@ -278,7 +279,7 @@ const StudentSupportChatbot = () => {
         return;
       }
       setSelectedImage(file);
-      
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
@@ -297,7 +298,7 @@ const StudentSupportChatbot = () => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    
+
     if (!newMessage.trim() && !selectedImage) {
       return;
     }
@@ -308,9 +309,13 @@ const StudentSupportChatbot = () => {
     try {
       const token = localStorage.getItem('studentAuthToken');
       const formData = new FormData();
+      formData.append('name', studentName);
+      formData.append('email', studentEmail);
+      formData.append('studentId', studentId);
+      formData.append('college', institute);
       formData.append('message', newMessage.trim());
       formData.append('topic', 'Contact / Support');
-      
+
       if (selectedImage) {
         formData.append('image', selectedImage);
       }
@@ -350,8 +355,8 @@ const StudentSupportChatbot = () => {
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
       hour12: true
     });
@@ -368,8 +373,8 @@ const StudentSupportChatbot = () => {
     } else if (date.toDateString() === yesterday.toDateString()) {
       return 'Yesterday';
     } else {
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
         day: 'numeric',
         year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
       });
@@ -386,17 +391,15 @@ const StudentSupportChatbot = () => {
         <button
           key={topic.id}
           onClick={() => handleTopicSelect(topic)}
-          className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all group ${
-            topic.id === 'contact' 
-              ? 'border-shnoor-indigo bg-shnoor-lavender hover:bg-shnoor-indigo/20' 
+          className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all group ${topic.id === 'contact'
+              ? 'border-shnoor-indigo bg-shnoor-lavender hover:bg-shnoor-indigo/20'
               : 'border-shnoor-mist bg-white hover:bg-shnoor-lavender hover:border-shnoor-indigo/30'
-          }`}
+            }`}
         >
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-            topic.id === 'contact' 
-              ? 'bg-shnoor-indigo/20 group-hover:bg-shnoor-indigo/30' 
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${topic.id === 'contact'
+              ? 'bg-shnoor-indigo/20 group-hover:bg-shnoor-indigo/30'
               : 'bg-shnoor-lavender group-hover:bg-shnoor-indigo/20'
-          }`}>
+            }`}>
             <Icon d={TOPIC_ICONS[topic.icon]} className="w-5 h-5 text-shnoor-indigo" />
           </div>
           <div className="text-left">
@@ -411,7 +414,7 @@ const StudentSupportChatbot = () => {
   // Render questions for selected topic (no Contact Admin option)
   const renderQuestions = () => {
     const questions = CHATBOT_QA[selectedTopic.id] || [];
-    
+
     return (
       <div className="p-4 space-y-2">
         {questions.map((qa, index) => (
@@ -436,18 +439,17 @@ const StudentSupportChatbot = () => {
           className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
         >
           <div
-            className={`max-w-[85%] p-3 rounded-xl text-sm whitespace-pre-wrap ${
-              msg.type === 'user'
+            className={`max-w-[85%] p-3 rounded-xl text-sm whitespace-pre-wrap ${msg.type === 'user'
                 ? 'bg-shnoor-indigo text-white rounded-tr-none'
                 : 'bg-shnoor-lavender text-shnoor-navy rounded-tl-none'
-            }`}
+              }`}
           >
             {msg.content}
           </div>
         </div>
       ))}
       <div ref={messagesEndRef} />
-      
+
       {/* Show more questions button */}
       {currentView === 'chat' && selectedTopic && (
         <div className="pt-4">
@@ -481,9 +483,9 @@ const StudentSupportChatbot = () => {
           <>
             {conversationHistory.map((msg, index) => {
               const isStudent = msg.sender_type === 'student';
-              const showDate = index === 0 || 
+              const showDate = index === 0 ||
                 formatDate(msg.created_at) !== formatDate(conversationHistory[index - 1].created_at);
-              
+
               return (
                 <div key={msg.id || index}>
                   {showDate && (
@@ -499,11 +501,10 @@ const StudentSupportChatbot = () => {
                         <p className="text-xs text-shnoor-indigo font-medium mb-1 ml-1">Admin</p>
                       )}
                       <div
-                        className={`p-3 rounded-xl text-sm ${
-                          isStudent
+                        className={`p-3 rounded-xl text-sm ${isStudent
                             ? 'bg-shnoor-indigo text-white rounded-tr-none'
                             : 'bg-shnoor-lavender text-shnoor-navy rounded-tl-none'
-                        }`}
+                          }`}
                       >
                         <p className="whitespace-pre-wrap">{msg.message}</p>
                         {msg.image_path && (
@@ -614,9 +615,9 @@ const StudentSupportChatbot = () => {
     <>
       {/* Toast Notification for New Admin Reply - positioned at top for global visibility */}
       {showToastNotification && toastMessage && (
-        <div className="fixed top-4 right-4 z-[9999] animate-slide-in-right">
-          <div 
-            className="bg-white rounded-xl shadow-2xl border border-gray-100 p-4 max-w-sm cursor-pointer hover:shadow-xl transition-shadow"
+        <div className="fixed top-4 left-4 sm:left-auto right-4 z-[9999] animate-slide-in-right">
+          <div
+            className="bg-white rounded-xl shadow-2xl border border-gray-100 p-4 w-full sm:max-w-sm cursor-pointer hover:shadow-xl transition-shadow"
             onClick={() => {
               setShowToastNotification(false);
               setToastMessage(null);
@@ -640,7 +641,7 @@ const StudentSupportChatbot = () => {
                   {toastMessage.messagePreview}
                 </p>
               </div>
-              <button 
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowToastNotification(false);
@@ -658,7 +659,7 @@ const StudentSupportChatbot = () => {
       {/* Floating Chat Button */}
       <button
         onClick={handleOpen}
-        className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-shnoor-indigo text-white shadow-lg hover:bg-shnoor-navy transition-all hover:scale-110 flex items-center justify-center ${isOpen ? 'hidden' : ''}`}
+        className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-shnoor-indigo text-white shadow-lg hover:bg-shnoor-navy transition-all hover:scale-110 flex items-center justify-center ${isOpen ? 'hidden' : ''}`}
         aria-label="Open support chat"
       >
         <MessageCircle size={24} />
@@ -672,7 +673,7 @@ const StudentSupportChatbot = () => {
 
       {/* Chat Modal */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-[360px] h-[550px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
+        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[360px] h-[500px] sm:h-[550px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
           {/* Header */}
           <div className="bg-shnoor-indigo text-white p-4 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">

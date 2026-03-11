@@ -14,7 +14,7 @@ const LiveProctoring = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const socketRef = useRef(null);
-  
+
 
   useEffect(() => {
     // Check admin authentication
@@ -44,7 +44,7 @@ const LiveProctoring = () => {
       console.log('[Admin] Socket ID:', socket.id);
       console.log('[Admin] Transport:', socket.io.engine.transport.name);
       setIsConnected(true);
-      
+
       // Join monitoring room
       socket.emit('admin:join-monitoring');
       console.log('[Admin] Sent admin:join-monitoring event');
@@ -104,7 +104,7 @@ const LiveProctoring = () => {
       console.log('[Admin] Student left:', data);
       const leftStudentId = String(data.studentId);
       setActiveSessions(prev => prev.filter(s => String(s.studentId) !== leftStudentId));
-      
+
       // Remove frame data
       setFrameData(prev => {
         const newMap = new Map(prev);
@@ -116,7 +116,7 @@ const LiveProctoring = () => {
     // Receive video frames from students
     socket.on('proctoring:frame', (data) => {
       const { studentId, frame } = data;
-      
+
       // Update frame data for this student
       setFrameData(prev => {
         const newMap = new Map(prev);
@@ -161,7 +161,7 @@ const LiveProctoring = () => {
       {/* Header */}
       <header className="bg-shnoor-navy text-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-3 sm:py-0 sm:h-16 space-y-3 sm:space-y-0">
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => navigate('/admin/dashboard')}
@@ -209,7 +209,7 @@ const LiveProctoring = () => {
               // Ensure consistent string key for lookup
               const sessionKey = String(session.studentId);
               const currentFrame = frameData.get(sessionKey);
-              
+
               return (
                 <div
                   key={sessionKey}
@@ -231,7 +231,7 @@ const LiveProctoring = () => {
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Live Indicator */}
                     <div className="absolute top-3 left-3 flex items-center space-x-1 bg-shnoor-danger text-white px-2 py-1 rounded-full text-xs font-medium">
                       <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
@@ -267,7 +267,7 @@ const LiveProctoring = () => {
                         </span>
                       </div>
                     </div>
-                                        
+
                     {/* Chat Button */}
                     <div className="mt-4 pt-3 border-t border-shnoor-light">
                       <button
@@ -297,7 +297,7 @@ const LiveProctoring = () => {
           onMessageSent={handleMessageSent}
         />
       )}
-      
+
     </div>
   );
 };
