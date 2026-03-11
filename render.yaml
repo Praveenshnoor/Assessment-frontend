@@ -19,3 +19,5 @@ services:
         value: false
       - key: NODE_ENV
         value: production
+      - key: NPM_CONFIG_FORCE
+        value: true
