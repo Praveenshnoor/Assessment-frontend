@@ -3,13 +3,18 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0 <22.0.0",
+    "npm": ">=8.0.0"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm ci --force && vite build",
     "build:prod": "vite build --mode production",
     "build:analyze": "vite build --mode production && npx vite-bundle-visualizer",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "npm rebuild"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.18",

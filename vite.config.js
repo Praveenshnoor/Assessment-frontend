@@ -9,4 +9,25 @@ export default defineConfig({
       overlay: false,
     },
   },
+  build: {
+    rollupOptions: {
+      external: [],
+      output: {
+        manualChunks: undefined,
+      }
+    },
+    commonjsOptions: {
+      include: [/node_modules/],
+    },
+    target: 'esnext',
+    minify: 'terser',
+    sourcemap: false,
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom'],
+    force: true
+  },
+  esbuild: {
+    target: 'esnext'
+  }
 })

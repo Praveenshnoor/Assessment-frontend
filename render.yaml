@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: mcq-exam-portal
+    env: static
+    buildCommand: |
+      cd mcq-exam-portal
+      rm -rf node_modules package-lock.json
+      npm install --force
+      npm run build
+    staticPublishPath: mcq-exam-portal/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: 18.20.4
+      - key: NPM_CONFIG_PRODUCTION
+        value: false
+      - key: NODE_ENV
+        value: production
