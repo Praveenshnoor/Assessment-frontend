@@ -10,42 +10,54 @@
     <!-- DNS prefetch for external domains -->
     <link rel="dns-prefetch" href="https://fonts.googleapis.com">
     <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+    <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com">
     
-    <!-- Preconnect to external domains for faster font loading -->
+    <!-- Preconnect to external domains for faster loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
     
-    <!-- Remove preload for favicon as it's not critical for LCP -->
-    
-    <!-- Load fonts asynchronously to prevent render blocking -->
+    <!-- Load fonts with proper fallback -->
     <link 
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" 
-      rel="stylesheet" 
-      media="print" 
-      onload="this.media='all'"
+      rel="stylesheet"
     >
-    <noscript>
-      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-    </noscript>
     
-    <!-- Fallback font while custom font loads + layout shift prevention -->
+    <!-- Critical CSS to prevent flash of unstyled content -->
     <style>
       body {
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
       }
+      
       /* Prevent layout shift by reserving space for images */
       img {
         max-width: 100%;
         height: auto;
       }
-      /* Critical CSS to prevent flash of unstyled content */
+      
+      /* Loading state */
       #root {
         min-height: 100vh;
+      }
+      
+      /* Prevent flash of unstyled content */
+      .loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        color: #374151;
       }
     </style>
   </head>
   <body>
-    <main id="root"></main>
+    <main id="root">
+      <div class="loading">Loading...</div>
+    </main>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
