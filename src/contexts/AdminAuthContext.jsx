@@ -32,16 +32,30 @@ export const AdminAuthProvider = ({ children }) => {
         return;
       }
 
-      // Validate token with backend
-      const response = await axios.post(
-        `${API_BASE_URL}/api/admin/validate-token`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      // Add retry logic for token validation
+      let retries = 2;
+      let response;
+      
+      while (retries > 0) {
+        try {
+          response = await axios.post(
+            `${API_BASE_URL}/api/admin/validate-token`,
+            {},
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+              timeout: 10000, // 10 second timeout
+            }
+          );
+          break; // Success, exit retry loop
+        } catch (error) {
+          retries--;
+          if (retries === 0) throw error;
+          // Wait 1 second before retry
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
-      );
+      }
 
       if (response.data.success) {
         setAdmin(response.data.admin);
@@ -49,13 +63,15 @@ export const AdminAuthProvider = ({ children }) => {
       } else {
         // Invalid token, remove it
         localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUser');
         setAdmin(null);
         setIsAuthenticated(false);
       }
     } catch (error) {
       console.error('Auth check failed:', error);
-      // Token is invalid, remove it
+      // Token is invalid or network error, remove it
       localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminUser');
       setAdmin(null);
       setIsAuthenticated(false);
     } finally {

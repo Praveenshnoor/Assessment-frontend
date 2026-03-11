@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import React, { Suspense } from 'react';
+import './App.css';
 import ErrorBoundary from './components/ErrorBoundary';
 import { AdminAuthProvider } from './contexts/AdminAuthContext';
 import AdminProtectedRoute from './components/AdminProtectedRoute';

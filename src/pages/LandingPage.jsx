@@ -48,7 +48,7 @@ const LandingPage = () => (
             width="48" 
             height="48"
             loading="eager"
-            fetchpriority="high"
+            fetchPriority="high"
           />
           <div>
             <p className="font-bold text-shnoor-navy text-lg sm:text-xl leading-tight">SHNOOR Assessments</p>

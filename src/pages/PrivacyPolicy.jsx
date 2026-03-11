@@ -23,7 +23,7 @@ const PrivacyPolicy = () => {
             <nav className="bg-white border-b border-shnoor-mist sticky top-0 z-50 shadow-sm">
                 <div className="max-w-[1280px] mx-auto px-4 sm:px-8 flex flex-col sm:flex-row items-center justify-between h-auto py-4 sm:py-0 sm:h-[72px] gap-4 sm:gap-0">
                     <Link to="/" className="flex items-center gap-4 hover:opacity-90 transition-opacity">
-                        <img src={shnoorlogo1} alt="Shnoor" className="h-10 w-10 sm:h-12 sm:w-12 object-contain" width="48" height="48" loading="eager" fetchpriority="high" />
+                        <img src={shnoorlogo1} alt="Shnoor" className="h-10 w-10 sm:h-12 sm:w-12 object-contain" width="48" height="48" loading="eager" fetchPriority="high" />
                         <div>
                             <p className="font-bold text-shnoor-navy text-lg sm:text-xl leading-tight">SHNOOR Assessments</p>
                             <p className="text-[10px] sm:text-[11px] text-shnoor-soft font-semibold uppercase tracking-widest">Secure Examination Portal</p>

@@ -72,6 +72,31 @@ const Login = () => {
     setIsLoading(true);
 
     try {
+      // For admin emails, try direct admin login first (more reliable)
+      if (email.includes('@admin') || email.includes('admin@') || email.toLowerCase().includes('admin')) {
+        try {
+          const adminResponse = await apiFetch('api/admin/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email: email.trim(), password }),
+          });
+
+          const adminData = await adminResponse.json();
+
+          if (adminResponse.ok && adminData.success) {
+            // Admin login successful
+            localStorage.setItem('adminToken', adminData.token);
+            localStorage.setItem('adminUser', JSON.stringify(adminData.admin));
+            navigate('/admin/dashboard');
+            return;
+          }
+        } catch (adminError) {
+          console.log('Direct admin login failed, trying Firebase...');
+        }
+      }
+
       // Step 1: Try Firebase Authentication (for both admin and student)
       try {
         const { signInWithEmailAndPassword, auth } = await import('../config/firebase');
@@ -135,7 +160,9 @@ const Login = () => {
         
         if (firebaseError.code === 'auth/invalid-credential' || 
             firebaseError.code === 'auth/user-not-found' ||
-            firebaseError.code === 'auth/wrong-password') {
+            firebaseError.code === 'auth/wrong-password' ||
+            firebaseError.message?.includes('Failed to fetch dynamically imported module') ||
+            firebaseError.message?.includes('Loading chunk')) {
           
           // Try direct admin login with bcrypt
           try {
@@ -180,6 +207,8 @@ const Login = () => {
         setApiError('Invalid email address format.');
       } else if (error.code === 'auth/too-many-requests') {
         setApiError('Too many failed login attempts. Please try again later.');
+      } else if (error.message?.includes('Failed to fetch dynamically imported module') || error.message?.includes('Loading chunk')) {
+        setApiError('Loading issue detected. Please refresh the page and try again.');
       } else {
         setApiError(error.message || 'Login failed. Please verify your credentials.');
       }
@@ -199,7 +228,7 @@ const Login = () => {
         {/* Brand */}
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-12">
-            <img src={shnoorLogo} alt="Shnoor" className="h-11 w-11 object-contain" width="44" height="44" loading="eager" fetchpriority="high" />
+            <img src={shnoorLogo} alt="Shnoor" className="h-11 w-11 object-contain" width="44" height="44" loading="eager" fetchPriority="high" />
             <div>
               <p className="font-extrabold text-white text-lg leading-tight">SHNOOR Assessments</p>
               <p className="text-[11px] text-[#8F8FC4] uppercase tracking-widest font-semibold">Secure Examination Portal</p>

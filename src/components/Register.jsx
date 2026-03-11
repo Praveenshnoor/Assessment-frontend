@@ -116,6 +116,8 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [institutes, setInstitutes] = useState([]);
   const [showInstituteDropdown, setShowInstituteDropdown] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const dropdownRef = useRef(null);
 
   // OTP-related states - COMMENTED OUT FOR NOW
@@ -648,9 +650,30 @@ const Register = () => {
           <ReviewRow label="Password" value="set" hidden />
         </ReviewSection>
 
+        {/* Terms and Conditions Checkbox */}
+        <div className="flex items-start gap-3 mt-2">
+          <input
+            type="checkbox"
+            id="termsAccepted"
+            checked={termsAccepted}
+            onChange={(e) => setTermsAccepted(e.target.checked)}
+            className="w-4 h-4 mt-0.5 text-shnoor-indigo border-shnoor-mist rounded focus:ring-shnoor-indigo focus:ring-2 cursor-pointer"
+          />
+          <label htmlFor="termsAccepted" className="text-sm text-shnoor-soft leading-relaxed cursor-pointer">
+            I agree to the{' '}
+            <button
+              type="button"
+              onClick={() => setShowTermsModal(true)}
+              className="text-shnoor-indigo font-semibold hover:text-shnoor-navy hover:underline transition-colors"
+            >
+              Terms and Conditions
+            </button>
+          </label>
+        </div>
+
         {/* Disclaimer */}
         <p className="text-xs text-shnoor-soft text-center leading-relaxed">
-          By submitting, you confirm that all details are accurate and you agree to the platform's terms of use.
+          By submitting, you confirm that all details are accurate.
         </p>
       </div>
     );
@@ -665,7 +688,7 @@ const Register = () => {
 
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-12">
-            <img src={shnoorLogo} alt="Shnoor" className="h-11 w-11 object-contain" width="44" height="44" loading="eager" fetchpriority="high" />
+            <img src={shnoorLogo} alt="Shnoor" className="h-11 w-11 object-contain" width="44" height="44" loading="eager" fetchPriority="high" />
             <div>
               <p className="font-extrabold text-white text-lg leading-tight">SHNOOR Assessments</p>
               <p className="text-[11px] text-[#8F8FC4] uppercase tracking-widest font-semibold">Secure Examination Portal</p>
@@ -795,7 +818,7 @@ const Register = () => {
                   </svg>
                 </Button>
               ) : (
-                <Button type="submit" variant="primary" className="flex-1 !h-[50px]" disabled={isLoading}>
+                <Button type="submit" variant="primary" className="flex-1 !h-[50px]" disabled={isLoading || !termsAccepted}>
                   {isLoading ? (
                     <>
                       <div className="w-5 h-5 border-[3px] border-white border-t-transparent rounded-full animate-spin" />
@@ -831,6 +854,154 @@ const Register = () => {
           </div>
         </div>
       </div>
+
+      {/* Terms and Conditions Modal */}
+      {showTermsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-shnoor-mist bg-shnoor-lavender">
+              <h2 className="text-xl font-extrabold text-shnoor-navy">Terms and Conditions</h2>
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                className="text-shnoor-soft hover:text-shnoor-navy transition-colors p-1"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="px-6 py-4 overflow-y-auto max-h-[calc(90vh-120px)]">
+              <div className="prose prose-sm max-w-none text-shnoor-navy">
+                <h3 className="text-lg font-bold text-shnoor-navy mb-4">SHNOOR Assessment Platform - Terms of Service</h3>
+                
+                <div className="space-y-4 text-sm leading-relaxed">
+                  <section>
+                    <h4 className="font-semibold text-shnoor-indigo mb-2">1. Acceptance of Terms</h4>
+                    <p>By registering for and using the SHNOOR Assessment Platform, you agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use our platform.</p>
+                  </section>
+
+                  <section>
+                    <h4 className="font-semibold text-shnoor-indigo mb-2">2. Platform Usage</h4>
+                    <p>The SHNOOR Assessment Platform is designed for conducting secure online examinations and assessments. Users must:</p>
+                    <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                      <li>Provide accurate and truthful information during registration</li>
+                      <li>Maintain the confidentiality of their account credentials</li>
+                      <li>Use the platform only for its intended purpose</li>
+                      <li>Comply with all examination rules and guidelines</li>
+                    </ul>
+                  </section>
+
+                  <section>
+                    <h4 className="font-semibold text-shnoor-indigo mb-2">3. Account Security</h4>
+                    <p>You are responsible for maintaining the security of your account and password. SHNOOR cannot and will not be liable for any loss or damage from your failure to comply with this security obligation.</p>
+                  </section>
+
+                  <section>
+                    <h4 className="font-semibold text-shnoor-indigo mb-2">4. Examination Conduct</h4>
+                    <p>During examinations, users must:</p>
+                    <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                      <li>Not engage in any form of cheating or academic dishonesty</li>
+                      <li>Not share examination content with others</li>
+                      <li>Allow proctoring software to monitor their activities when required</li>
+                      <li>Report any technical issues immediately</li>
+                    </ul>
+                  </section>
+
+                  <section>
+                    <h4 className="font-semibold text-shnoor-indigo mb-2">5. Privacy and Data Protection</h4>
+                    <p>We collect and process personal information in accordance with our Privacy Policy. By using our platform, you consent to the collection and use of your information as described in our Privacy Policy.</p>
+                  </section>
+
+                  <section>
+                    <h4 className="font-semibold text-shnoor-indigo mb-2">6. Intellectual Property</h4>
+                    <p>All content on the SHNOOR Assessment Platform, including but not limited to text, graphics, logos, and software, is the property of SHNOOR and is protected by copyright and other intellectual property laws.</p>
+                  </section>
+
+                  <section>
+                    <h4 className="font-semibold text-shnoor-indigo mb-2">7. Prohibited Activities</h4>
+                    <p>Users are prohibited from:</p>
+                    <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                      <li>Attempting to hack, reverse engineer, or compromise the platform</li>
+                      <li>Using automated tools or bots to interact with the platform</li>
+                      <li>Sharing login credentials with others</li>
+                      <li>Engaging in any activity that disrupts the platform's operation</li>
+                    </ul>
+                  </section>
+
+                  <section>
+                    <h4 className="font-semibold text-shnoor-indigo mb-2">8. Termination</h4>
+                    <p>SHNOOR reserves the right to terminate or suspend your account at any time for violation of these terms or for any other reason deemed necessary by SHNOOR.</p>
+                  </section>
+
+                  <section>
+                    <h4 className="font-semibold text-shnoor-indigo mb-2">9. Limitation of Liability</h4>
+                    <p>SHNOOR shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of the platform.</p>
+                  </section>
+
+                  <section>
+                    <h4 className="font-semibold text-shnoor-indigo mb-2">10. Changes to Terms</h4>
+                    <p>SHNOOR reserves the right to modify these Terms and Conditions at any time. Users will be notified of significant changes, and continued use of the platform constitutes acceptance of the modified terms.</p>
+                  </section>
+
+                  <section>
+                    <h4 className="font-semibold text-shnoor-indigo mb-2">11. Contact Information</h4>
+                    <p>If you have any questions about these Terms and Conditions, please contact us through the platform's support system.</p>
+                  </section>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-shnoor-mist">
+                  <p className="text-xs text-shnoor-soft">
+                    Last updated: {new Date().toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between px-6 py-4 border-t border-shnoor-mist bg-gray-50">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="modalTermsAccepted"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="w-4 h-4 text-shnoor-indigo border-shnoor-mist rounded focus:ring-shnoor-indigo focus:ring-2 cursor-pointer"
+                />
+                <label htmlFor="modalTermsAccepted" className="text-sm text-shnoor-soft cursor-pointer">
+                  I have read and agree to these terms
+                </label>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  onClick={() => setShowTermsModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-shnoor-navy border border-shnoor-mist rounded-lg hover:bg-shnoor-lavender transition-colors"
+                >
+                  Close
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (termsAccepted) {
+                      setShowTermsModal(false);
+                    }
+                  }}
+                  disabled={!termsAccepted}
+                  variant="primary"
+                  className="px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Accept & Continue
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
