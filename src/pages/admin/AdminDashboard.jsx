@@ -374,7 +374,7 @@ const AdminDashboard = () => {
               testStats[testId] = { totalScore: 0, count: 0, passed: 0 };
             }
 
-            const isPassed = result.percentage >= (result.passing_percentage || 50);
+            const isPassed = result.percentage >= (result.passing_percentage || selectedExamDetails?.passingPercentage || 50);
 
             groupedResults[testId].push({
               id: result.roll_number,
@@ -384,7 +384,7 @@ const AdminDashboard = () => {
               institute_name: result.institute_name || 'Not Specified',
               score: result.marks_obtained,
               total: result.total_marks,
-              passingPercentage: result.passing_percentage || 50,
+              passingPercentage: result.passing_percentage || selectedExamDetails?.passingPercentage || 50,
               date: new Date(result.submitted_at).toLocaleDateString('en-IN', {
                 year: 'numeric',
                 month: 'short',
@@ -663,7 +663,7 @@ const AdminDashboard = () => {
       // Prepare data for PDF generation
       const pdfData = selectedStudents.map(student => {
         const percentage = (student.score / student.total * 100);
-        const isPassed = percentage >= (student.passingPercentage || 50);
+        const isPassed = percentage >= (student.passingPercentage || selectedExamDetails?.passingPercentage || 50);
         const isShortlisted = isPassed && !student.flagged;
         return {
           student_id: student.student_id || student.id,
@@ -847,6 +847,11 @@ const AdminDashboard = () => {
     });
   };
 
+  // Helper function to get the correct passing percentage
+  const getPassingPercentage = (student) => {
+    return student.passingPercentage || selectedExamDetails?.passingPercentage || 50;
+  };
+
   // Assign Test to Selected Students
   const handleAssignTest = async () => {
     if (!selectedTest) {
@@ -886,9 +891,11 @@ const AdminDashboard = () => {
         setSelectedStudents([]);
         setSelectedTest('');
       } else {
-        // Handle case where all students already have the test
+        // Handle case where all students already have the test (for backward compatibility)
         if (data.already_assigned > 0 && data.newly_assigned === 0) {
-          alert(`⚠️ ${data.message}`);
+          alert(`ℹ️ ${data.message}`);
+          setSelectedStudents([]);
+          setSelectedTest('');
         } else {
           alert(`❌ ${data.message || 'Failed to assign test'}`);
         }
@@ -1348,7 +1355,11 @@ const AdminDashboard = () => {
             const data = await response.json();
 
             if (response.ok && data.success) {
-              successCount++;
+              if (data.already_assigned) {
+                alreadyAssignedCount++;
+              } else {
+                successCount++;
+              }
             } else if (data.message && data.message.includes('already assigned')) {
               alreadyAssignedCount++;
             } else {
@@ -1465,8 +1476,12 @@ const AdminDashboard = () => {
           const data = await response.json();
 
           if (response.ok && data.success) {
-            successCount++;
-          } else if (response.status === 409 && data.already_assigned) {
+            if (data.already_assigned) {
+              alreadyAssignedCount++;
+            } else {
+              successCount++;
+            }
+          } else if (data.already_assigned || (data.message && data.message.includes('already assigned'))) {
             alreadyAssignedCount++;
           } else {
             failCount++;
@@ -2049,7 +2064,7 @@ const AdminDashboard = () => {
                                   const filteredStudents = selectedExamStudents.filter(s => {
                                     if (statusFilter === 'all') return true;
                                     const percentage = (Number(s.score) / Number(s.total) * 100);
-                                    const passingPercentage = s.passingPercentage || 50;
+                                    const passingPercentage = s.passingPercentage || selectedExamDetails?.passingPercentage || 50;
                                     const isPassed = percentage >= passingPercentage;
                                     if (statusFilter === 'pass') return isPassed;
                                     if (statusFilter === 'fail') return !isPassed;
@@ -2071,7 +2086,7 @@ const AdminDashboard = () => {
                                   console.log('Select Shortlisted Students clicked');
                                   const shortlistedStudents = selectedExamStudents.filter(s => {
                                     const percentage = (Number(s.score) / Number(s.total) * 100);
-                                    const passingPercentage = s.passingPercentage || 50;
+                                    const passingPercentage = s.passingPercentage || selectedExamDetails?.passingPercentage || 50;
                                     return percentage >= passingPercentage && !s.flagged;
                                   }).map(s => s.student_id || s.id);
                                   console.log('Shortlisted students:', shortlistedStudents);
@@ -2088,7 +2103,7 @@ const AdminDashboard = () => {
                                   console.log('Select All Failed clicked');
                                   const failedStudents = selectedExamStudents.filter(s => {
                                     const percentage = (Number(s.score) / Number(s.total) * 100);
-                                    const passingPercentage = s.passingPercentage || 50;
+                                    const passingPercentage = s.passingPercentage || selectedExamDetails?.passingPercentage || 50;
                                     return percentage < passingPercentage;
                                   }).map(s => s.student_id || s.id);
                                   console.log('Failed students:', failedStudents);
@@ -2179,7 +2194,7 @@ const AdminDashboard = () => {
                 const lowestScore = scores.length > 0 ? Math.min(...scores) : 0;
                 const maxTotal = totals.length > 0 ? Math.max(...totals) : 0;
                 const passedCount = selectedExamStudents.filter(s =>
-                  (Number(s.score) / Number(s.total) * 100) >= (s.passingPercentage || 50)
+                  (Number(s.score) / Number(s.total) * 100) >= (s.passingPercentage || selectedExamDetails?.passingPercentage || 50)
                 ).length;
                 const failedCount = selectedExamStudents.length - passedCount;
                 const passRate = selectedExamStudents.length > 0 ? (passedCount / selectedExamStudents.length) * 100 : 0;
@@ -2190,7 +2205,7 @@ const AdminDashboard = () => {
                 const filteredStudents = selectedExamStudents.filter(s => {
                   if (statusFilter === 'all') return true;
                   const percentage = (Number(s.score) / Number(s.total) * 100);
-                  const passingPercentage = s.passingPercentage || 50;
+                  const passingPercentage = s.passingPercentage || selectedExamDetails?.passingPercentage || 50;
                   const isPassed = percentage >= passingPercentage;
                   if (statusFilter === 'pass') return isPassed;
                   if (statusFilter === 'fail') return !isPassed;
@@ -2249,13 +2264,13 @@ const AdminDashboard = () => {
                   {/* Status Filter Tabs - Matching Results/Feedback Style */}
                   {selectedExamStudents.length > 0 && (() => {
                     const passedCount = selectedExamStudents.filter(s =>
-                      (Number(s.score) / Number(s.total) * 100) >= (s.passingPercentage || 50)
+                      (Number(s.score) / Number(s.total) * 100) >= (s.passingPercentage || selectedExamDetails?.passingPercentage || 50)
                     ).length;
                     const failedCount = selectedExamStudents.length - passedCount;
                     const filteredCount = selectedExamStudents.filter(s => {
                       if (statusFilter === 'all') return true;
                       const percentage = (Number(s.score) / Number(s.total) * 100);
-                      const passingPercentage = s.passingPercentage || 50;
+                      const passingPercentage = s.passingPercentage || selectedExamDetails?.passingPercentage || 50;
                       const isPassed = percentage >= passingPercentage;
                       return statusFilter === 'pass' ? isPassed : !isPassed;
                     }).length;
@@ -2348,7 +2363,7 @@ const AdminDashboard = () => {
                                 const filteredStudents = selectedExamStudents.filter(s => {
                                   if (statusFilter === 'all') return true;
                                   const percentage = (Number(s.score) / Number(s.total) * 100);
-                                  const passingPercentage = s.passingPercentage || 50;
+                                  const passingPercentage = getPassingPercentage(s);
                                   const isPassed = percentage >= passingPercentage;
                                   if (statusFilter === 'pass') return isPassed;
                                   if (statusFilter === 'fail') return !isPassed;
@@ -2360,7 +2375,7 @@ const AdminDashboard = () => {
                                 const filteredStudents = selectedExamStudents.filter(s => {
                                   if (statusFilter === 'all') return true;
                                   const percentage = (Number(s.score) / Number(s.total) * 100);
-                                  const passingPercentage = s.passingPercentage || 50;
+                                  const passingPercentage = getPassingPercentage(s);
                                   const isPassed = percentage >= passingPercentage;
                                   if (statusFilter === 'pass') return isPassed;
                                   if (statusFilter === 'fail') return !isPassed;
@@ -2407,7 +2422,7 @@ const AdminDashboard = () => {
                           const filteredStudents = selectedExamStudents.filter(s => {
                             if (statusFilter === 'all') return true;
                             const percentage = (Number(s.score) / Number(s.total) * 100);
-                            const passingPercentage = s.passingPercentage || 50;
+                            const passingPercentage = getPassingPercentage(s);
                             const isPassed = percentage >= passingPercentage;
                             if (statusFilter === 'pass') return isPassed;
                             if (statusFilter === 'fail') return !isPassed;
@@ -2417,7 +2432,7 @@ const AdminDashboard = () => {
                           return filteredStudents.length > 0 ? (
                             filteredStudents.map((student, idx) => {
                               const percentage = (student.score / student.total * 100);
-                              const passingPercentage = student.passingPercentage || 50;
+                              const passingPercentage = getPassingPercentage(student);
                               const isPassed = percentage >= passingPercentage;
                               const studentIdentifier = student.student_id || student.id;
                               return (

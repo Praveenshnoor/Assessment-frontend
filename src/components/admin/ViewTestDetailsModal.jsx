@@ -114,7 +114,7 @@ const ViewTestDetailsModal = ({ test, onClose, onEdit }) => {
             <div className="border border-shnoor-light rounded-lg p-3 text-center bg-white">
               <Award size={20} className="text-shnoor-success mx-auto mb-1" />
               <h4 className="font-semibold text-shnoor-navy text-xs mb-1">Passing %</h4>
-              <p className="text-xl font-bold text-shnoor-success">{test.passingPercentage || 50}%</p>
+              <p className="text-xl font-bold text-shnoor-success">{test.passingPercentage}%</p>
               <p className="text-xs text-shnoor-soft">minimum</p>
             </div>
 
