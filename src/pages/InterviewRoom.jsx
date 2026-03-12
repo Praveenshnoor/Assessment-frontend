@@ -561,7 +561,7 @@ const InterviewRoom = () => {
         }
       }
     });
-
+// ................................................
     // Listen for chat messages
     socket.on('interview:chat-message', (data) => {
       console.log('Received chat message from server:', data);
