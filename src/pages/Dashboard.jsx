@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { LogOut, Clock, BookOpen, AlertCircle, FileText, X, Video } from 'lucide-react';
 import ExamSearchFilter from '../components/ExamSearchFilter';
 import StudentInterviews from '../components/StudentInterviews';
+import StudentSupportChatbot from '../components/chatbot/StudentSupportChatbot';
 import { apiFetch } from '../config/api';
 
 const Dashboard = () => {
@@ -633,6 +634,9 @@ const Dashboard = () => {
           </ul>
         </div>
       </main>
+
+      {/* Student Support Chatbot */}
+      <StudentSupportChatbot />
     </div>
   );
 };
