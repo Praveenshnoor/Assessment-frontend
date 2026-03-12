@@ -49,10 +49,13 @@ const Result = () => {
                 return;
             }
 
+            const token = localStorage.getItem('studentAuthToken');
+            
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/feedback`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     studentId: studentId,
