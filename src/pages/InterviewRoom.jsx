@@ -35,6 +35,8 @@ const InterviewRoom = () => {
   const [callState, setCallState] = useState('idle'); // 'idle', 'calling', 'ringing', 'connected', 'ended'
   const [reconnecting, setReconnecting] = useState(false);
   const [participants, setParticipants] = useState(new Map());
+  const [isCallInProgress, setIsCallInProgress] = useState(false);
+  const [lastCallAttempt, setLastCallAttempt] = useState(0);
   
   const chatEndRef = useRef(null);
   const localVideoRef = useRef(null);
@@ -49,16 +51,93 @@ const InterviewRoom = () => {
   const isStudent = !!localStorage.getItem('studentAuthToken') && !isAdmin;
   const role = isAdmin ? 'admin' : 'student';
 
-  // Helper function to ensure video plays
-  const ensureVideoPlays = (videoElement, streamType) => {
-    if (videoElement && videoElement.srcObject) {
-      videoElement.play().catch(error => {
-        console.log(`${streamType} video autoplay failed:`, error);
-        // Try to play again after a short delay
-        setTimeout(() => {
-          videoElement.play().catch(e => console.log(`${streamType} video retry failed:`, e));
-        }, 1000);
+  // Helper function to ensure video plays with comprehensive error handling
+  const ensureVideoPlays = async (videoElement, streamType) => {
+    if (!videoElement || !videoElement.srcObject) {
+      console.log(`${streamType} video: No element or stream`);
+      return;
+    }
+
+    try {
+      // Check if stream has active video tracks
+      const stream = videoElement.srcObject;
+      const videoTracks = stream.getVideoTracks();
+      const audioTracks = stream.getAudioTracks();
+      
+      console.log(`${streamType} stream info:`, {
+        videoTracks: videoTracks.length,
+        audioTracks: audioTracks.length,
+        videoEnabled: videoTracks[0]?.enabled,
+        audioEnabled: audioTracks[0]?.enabled,
+        videoReadyState: videoTracks[0]?.readyState,
+        audioReadyState: audioTracks[0]?.readyState
       });
+
+      // Set video properties for better compatibility
+      videoElement.muted = streamType === 'Local'; // Only mute local video
+      videoElement.playsInline = true;
+      videoElement.autoplay = true;
+      
+      // Force play with retry logic
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      const tryPlay = async () => {
+        attempts++;
+        try {
+          // Ensure video is ready before playing
+          if (videoElement.readyState < 2) {
+            console.log(`${streamType} video not ready, waiting...`);
+            await new Promise(resolve => {
+              const onReady = () => {
+                videoElement.removeEventListener('loadeddata', onReady);
+                videoElement.removeEventListener('canplay', onReady);
+                resolve();
+              };
+              videoElement.addEventListener('loadeddata', onReady);
+              videoElement.addEventListener('canplay', onReady);
+              
+              // Timeout after 3 seconds
+              setTimeout(() => {
+                videoElement.removeEventListener('loadeddata', onReady);
+                videoElement.removeEventListener('canplay', onReady);
+                resolve();
+              }, 3000);
+            });
+          }
+          
+          await videoElement.play();
+          console.log(`${streamType} video playing successfully (attempt ${attempts})`);
+          return true;
+        } catch (error) {
+          console.log(`${streamType} video play attempt ${attempts} failed:`, error.name, error.message);
+          
+          if (attempts < maxAttempts) {
+            // Wait and try again
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return tryPlay();
+          } else {
+            console.error(`${streamType} video failed to play after ${maxAttempts} attempts`);
+            
+            // Try user interaction workaround
+            if (error.name === 'NotAllowedError') {
+              console.log(`${streamType} video requires user interaction - adding click handler`);
+              const clickHandler = () => {
+                videoElement.play().then(() => {
+                  console.log(`${streamType} video started after user interaction`);
+                  document.removeEventListener('click', clickHandler);
+                }).catch(e => console.log(`${streamType} video still failed after click:`, e));
+              };
+              document.addEventListener('click', clickHandler, { once: true });
+            }
+            return false;
+          }
+        }
+      };
+      
+      await tryPlay();
+    } catch (error) {
+      console.error(`${streamType} video setup error:`, error);
     }
   };
 
@@ -126,7 +205,7 @@ const InterviewRoom = () => {
     if (remoteVideoRef.current && remoteVideoRef.current.srcObject) {
       ensureVideoPlays(remoteVideoRef.current, 'Remote');
     }
-  }, [call]);
+  }, [call, remoteVideoRef.current?.srcObject]);
 
   // Handle reconnection logic
   useEffect(() => {
@@ -369,8 +448,8 @@ const InterviewRoom = () => {
             });
           } else if (retryCount < maxRetries) {
             retryCount++;
-            console.warn(`Socket not connected, retry ${retryCount}/${maxRetries} in 500ms...`);
-            setTimeout(emitPeerInfo, 500);
+            console.warn(`Socket not connected, retry ${retryCount}/${maxRetries} in 1000ms...`);
+            setTimeout(emitPeerInfo, 1000);
           } else {
             console.error('Socket connection failed after max retries');
             setConnectionStatus('Connection failed - please refresh');
@@ -423,35 +502,43 @@ const InterviewRoom = () => {
       });
     });
 
-    // Listen for other participant's peer ID
+    // Listen for other participant's peer ID - prevent duplicate updates
     socket.on('interview:peer-available', (data) => {
       console.log('Peer available event received:', data);
       const peerIdString = typeof data.peerId === 'string' ? data.peerId : String(data.peerId);
-      console.log('Setting remote peer ID to:', peerIdString);
-      setRemotePeerId(peerIdString);
-      setConnectionStatus(`${data.role === 'admin' ? 'Interviewer' : 'Student'} is ready`);
       
-      // Track if admin joined
-      if (data.role === 'admin') {
-        setAdminJoined(true);
-        console.log('Admin joined - adminJoined set to true');
+      // Only update if it's a different peer ID
+      if (remotePeerId !== peerIdString) {
+        console.log('Setting remote peer ID to:', peerIdString);
+        setRemotePeerId(peerIdString);
+        setConnectionStatus(`${data.role === 'admin' ? 'Interviewer' : 'Student'} is ready`);
+        
+        // Track if admin joined
+        if (data.role === 'admin') {
+          setAdminJoined(true);
+          console.log('Admin joined - adminJoined set to true');
+        }
       }
     });
 
-    // Listen for peer joining
+    // Listen for peer joining - prevent duplicate peer ID updates
     socket.on('interview:peer-joined', (data) => {
       console.log('Peer joined:', data);
       const peerIdString = typeof data.peerId === 'string' ? data.peerId : String(data.peerId);
-      console.log('Setting remotePeerId to:', peerIdString);
-      setRemotePeerId(peerIdString);
-      setConnectionStatus(`${data.role === 'admin' ? 'Interviewer' : 'Student'} joined`);
       
-      // Track participants
-      setParticipants(prev => new Map(prev.set(data.socketId, data)));
-      
-      // Track if admin joined
-      if (data.role === 'admin') {
-        setAdminJoined(true);
+      // Only update if it's a different peer ID
+      if (remotePeerId !== peerIdString) {
+        console.log('Setting remotePeerId to:', peerIdString);
+        setRemotePeerId(peerIdString);
+        setConnectionStatus(`${data.role === 'admin' ? 'Interviewer' : 'Student'} joined`);
+        
+        // Track participants
+        setParticipants(prev => new Map(prev.set(data.socketId, data)));
+        
+        // Track if admin joined
+        if (data.role === 'admin') {
+          setAdminJoined(true);
+        }
       }
     });
 
@@ -550,7 +637,13 @@ const InterviewRoom = () => {
     // Listen for student ready to receive call (admin side)
     socket.on('interview:student-ready', async (data) => {
       console.log('Student ready to receive call:', data);
-      if (isAdmin && data.peerId && peer && localStreamRef.current) {
+      if (isAdmin && data.peerId && peer && localStreamRef.current && !call) {
+        // Prevent duplicate calls
+        if (isCallInProgress) {
+          console.log('Call already in progress, ignoring student ready event');
+          return;
+        }
+        
         // Initiate PeerJS call to student
         try {
           setCallState('connecting');
@@ -560,29 +653,42 @@ const InterviewRoom = () => {
 
           outgoingCall.on('stream', (remoteStream) => {
             console.log('Received remote stream from student');
+            console.log('Remote stream details:', {
+              id: remoteStream.id,
+              videoTracks: remoteStream.getVideoTracks().length,
+              audioTracks: remoteStream.getAudioTracks().length,
+              active: remoteStream.active
+            });
+            
             if (remoteVideoRef.current) {
               remoteVideoRef.current.srcObject = remoteStream;
+              // Use the enhanced video play function
+              ensureVideoPlays(remoteVideoRef.current, 'Remote');
             }
             setConnectionStatus('Connected');
             setCallState('connected');
+            setIsCallInProgress(false);
           });
 
           outgoingCall.on('close', () => {
             setConnectionStatus('Call ended');
             setCall(null);
             setCallState('ended');
+            setIsCallInProgress(false);
           });
 
           outgoingCall.on('error', (error) => {
             console.error('Call error:', error);
             setConnectionStatus('Call failed');
             setCallState('idle');
+            setIsCallInProgress(false);
             setError('Call connection failed: ' + error.message);
           });
         } catch (error) {
           console.error('Error calling student:', error);
           setConnectionStatus('Failed to connect');
           setCallState('idle');
+          setIsCallInProgress(false);
           setError('Failed to establish call: ' + error.message);
         }
       }
@@ -628,8 +734,8 @@ const InterviewRoom = () => {
       localStreamRef.current = stream;
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
-        // Force play after setting srcObject
-        localVideoRef.current.play().catch(e => console.log('Local video autoplay failed:', e));
+        // Use the enhanced video play function
+        ensureVideoPlays(localVideoRef.current, 'Local');
       }
 
       incoming.answer(stream);
@@ -638,10 +744,17 @@ const InterviewRoom = () => {
 
       incoming.on('stream', (remoteStream) => {
         console.log('Received remote stream');
+        console.log('Remote stream details:', {
+          id: remoteStream.id,
+          videoTracks: remoteStream.getVideoTracks().length,
+          audioTracks: remoteStream.getAudioTracks().length,
+          active: remoteStream.active
+        });
+        
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = remoteStream;
-          // Force play after setting srcObject
-          remoteVideoRef.current.play().catch(e => console.log('Remote video autoplay failed:', e));
+          // Use the enhanced video play function
+          ensureVideoPlays(remoteVideoRef.current, 'Remote');
         }
         setConnectionStatus('Connected');
       });
@@ -667,6 +780,8 @@ const InterviewRoom = () => {
       
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
+        // Use the enhanced video play function
+        ensureVideoPlays(localVideoRef.current, 'Local');
       }
       
       // Notify admin that student is ready to receive the call
@@ -695,6 +810,14 @@ const InterviewRoom = () => {
 
   const startCall = async () => {
     try {
+      // Prevent multiple simultaneous call attempts with debounce
+      const now = Date.now();
+      if (isCallInProgress || callState !== 'idle' || (now - lastCallAttempt < 3000)) {
+        console.log('Call already in progress or too soon since last attempt, ignoring duplicate request');
+        return;
+      }
+
+      setLastCallAttempt(now);
       console.log('=== STARTING CALL ===');
       console.log('Admin joined:', adminJoined);
       console.log('Socket connected:', socketRef.current?.connected);
@@ -702,6 +825,7 @@ const InterviewRoom = () => {
       console.log('Remote peer ID:', remotePeerId);
       console.log('Peer object:', peer);
       
+      setIsCallInProgress(true);
       setCallState('calling');
       setConnectionStatus('Starting call...');
       
@@ -711,6 +835,8 @@ const InterviewRoom = () => {
       
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
+        // Use the enhanced video play function
+        ensureVideoPlays(localVideoRef.current, 'Local');
       }
       
       // Enhanced call flow: Admin calls → Student notification → Student answers → Admin sees student → Admin calls again → Connection
@@ -739,29 +865,40 @@ const InterviewRoom = () => {
 
             outgoingCall.on('stream', (remoteStream) => {
               console.log('Received remote stream');
+              console.log('Remote stream details:', {
+                id: remoteStream.id,
+                videoTracks: remoteStream.getVideoTracks().length,
+                audioTracks: remoteStream.getAudioTracks().length,
+                active: remoteStream.active
+              });
+              
               if (remoteVideoRef.current) {
                 remoteVideoRef.current.srcObject = remoteStream;
-                // Force play after setting srcObject
-                remoteVideoRef.current.play().catch(e => console.log('Remote video autoplay failed:', e));
+                // Use the enhanced video play function
+                ensureVideoPlays(remoteVideoRef.current, 'Remote');
               }
               setConnectionStatus('Connected');
               setCallState('connected');
+              setIsCallInProgress(false);
             });
 
             outgoingCall.on('close', () => {
               setConnectionStatus('Call ended');
               setCall(null);
               setCallState('ended');
+              setIsCallInProgress(false);
             });
 
             outgoingCall.on('error', (error) => {
               console.error('Call error:', error);
               setConnectionStatus('Call failed');
               setCallState('idle');
+              setIsCallInProgress(false);
               setError('Call connection failed: ' + error.message);
             });
           } else {
             setConnectionStatus('Waiting for student to join...');
+            setIsCallInProgress(false);
           }
         }
         
@@ -782,6 +919,7 @@ const InterviewRoom = () => {
     } catch (error) {
       console.error('Start call error:', error);
       setCallState('idle');
+      setIsCallInProgress(false);
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
         setError('Please allow camera and microphone access to start the call');
         setConnectionStatus('Media access denied');
@@ -956,6 +1094,15 @@ const InterviewRoom = () => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
     }
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+    
+    // Reset call state
+    setCall(null);
+    setCallState('idle');
+    setIsCallInProgress(false);
+    
     // Student leaving: clear their peer_id so admin never calls a stale ID
     if (isStudent) {
       const token = localStorage.getItem('studentAuthToken');
@@ -1015,10 +1162,25 @@ const InterviewRoom = () => {
               autoPlay
               playsInline
               muted={false}
+              controls={false}
               className="w-full h-full object-cover bg-black"
-              onLoadedMetadata={() => console.log('Remote video metadata loaded')}
-              onCanPlay={() => console.log('Remote video can play')}
-              onError={(e) => console.error('Remote video error:', e)}
+              onLoadedMetadata={() => {
+                console.log('Remote video metadata loaded');
+                if (remoteVideoRef.current) {
+                  ensureVideoPlays(remoteVideoRef.current, 'Remote');
+                }
+              }}
+              onCanPlay={() => {
+                console.log('Remote video can play');
+                if (remoteVideoRef.current) {
+                  ensureVideoPlays(remoteVideoRef.current, 'Remote');
+                }
+              }}
+              onPlay={() => console.log('Remote video started playing')}
+              onPause={() => console.log('Remote video paused')}
+              onError={(e) => console.error('Remote video error:', e.target.error)}
+              onLoadStart={() => console.log('Remote video load started')}
+              onLoadedData={() => console.log('Remote video data loaded')}
             />
             <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/60 text-xs text-white flex items-center space-x-2">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
@@ -1046,10 +1208,25 @@ const InterviewRoom = () => {
                 autoPlay
                 playsInline
                 muted
+                controls={false}
                 className="w-full h-full object-cover bg-black"
-                onLoadedMetadata={() => console.log('Local video metadata loaded')}
-                onCanPlay={() => console.log('Local video can play')}
-                onError={(e) => console.error('Local video error:', e)}
+                onLoadedMetadata={() => {
+                  console.log('Local video metadata loaded');
+                  if (localVideoRef.current) {
+                    ensureVideoPlays(localVideoRef.current, 'Local');
+                  }
+                }}
+                onCanPlay={() => {
+                  console.log('Local video can play');
+                  if (localVideoRef.current) {
+                    ensureVideoPlays(localVideoRef.current, 'Local');
+                  }
+                }}
+                onPlay={() => console.log('Local video started playing')}
+                onPause={() => console.log('Local video paused')}
+                onError={(e) => console.error('Local video error:', e.target.error)}
+                onLoadStart={() => console.log('Local video load started')}
+                onLoadedData={() => console.log('Local video data loaded')}
               />
               <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/60 text-xs text-white">
                 {isAdmin ? 'You (Interviewer)' : 'You'} {isScreenSharing && '(Screen sharing)'}
@@ -1060,14 +1237,16 @@ const InterviewRoom = () => {
               {!call && isAdmin && (
                 <button
                   onClick={startCall}
-                  disabled={!adminJoined}
+                  disabled={!adminJoined || isCallInProgress}
                   className="px-6 py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold flex items-center space-x-2 shadow-lg shadow-emerald-500/30"
                 >
                   <Video size={20} />
                   <span>
-                    {!adminJoined 
-                      ? 'Connecting...' 
-                      : 'Call Student'}
+                    {isCallInProgress 
+                      ? 'Starting Call...'
+                      : !adminJoined 
+                        ? 'Connecting...' 
+                        : 'Call Student'}
                   </span>
                 </button>
               )}
