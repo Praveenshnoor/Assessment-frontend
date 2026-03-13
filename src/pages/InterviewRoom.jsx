@@ -49,6 +49,19 @@ const InterviewRoom = () => {
   const isStudent = !!localStorage.getItem('studentAuthToken') && !isAdmin;
   const role = isAdmin ? 'admin' : 'student';
 
+  // Helper function to ensure video plays
+  const ensureVideoPlays = (videoElement, streamType) => {
+    if (videoElement && videoElement.srcObject) {
+      videoElement.play().catch(error => {
+        console.log(`${streamType} video autoplay failed:`, error);
+        // Try to play again after a short delay
+        setTimeout(() => {
+          videoElement.play().catch(e => console.log(`${streamType} video retry failed:`, e));
+        }, 1000);
+      });
+    }
+  };
+
   useEffect(() => {
     let isMounted = true; // Prevent duplicate initialization in StrictMode
     
@@ -101,6 +114,19 @@ const InterviewRoom = () => {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [chatMessages]);
+
+  // Ensure videos play when streams are available
+  useEffect(() => {
+    if (localVideoRef.current && localStreamRef.current) {
+      ensureVideoPlays(localVideoRef.current, 'Local');
+    }
+  }, [localStreamRef.current]);
+
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteVideoRef.current.srcObject) {
+      ensureVideoPlays(remoteVideoRef.current, 'Remote');
+    }
+  }, [call]);
 
   // Handle reconnection logic
   useEffect(() => {
@@ -602,6 +628,8 @@ const InterviewRoom = () => {
       localStreamRef.current = stream;
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
+        // Force play after setting srcObject
+        localVideoRef.current.play().catch(e => console.log('Local video autoplay failed:', e));
       }
 
       incoming.answer(stream);
@@ -612,6 +640,8 @@ const InterviewRoom = () => {
         console.log('Received remote stream');
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = remoteStream;
+          // Force play after setting srcObject
+          remoteVideoRef.current.play().catch(e => console.log('Remote video autoplay failed:', e));
         }
         setConnectionStatus('Connected');
       });
@@ -711,6 +741,8 @@ const InterviewRoom = () => {
               console.log('Received remote stream');
               if (remoteVideoRef.current) {
                 remoteVideoRef.current.srcObject = remoteStream;
+                // Force play after setting srcObject
+                remoteVideoRef.current.play().catch(e => console.log('Remote video autoplay failed:', e));
               }
               setConnectionStatus('Connected');
               setCallState('connected');
@@ -982,7 +1014,11 @@ const InterviewRoom = () => {
               ref={remoteVideoRef}
               autoPlay
               playsInline
+              muted={false}
               className="w-full h-full object-cover bg-black"
+              onLoadedMetadata={() => console.log('Remote video metadata loaded')}
+              onCanPlay={() => console.log('Remote video can play')}
+              onError={(e) => console.error('Remote video error:', e)}
             />
             <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/60 text-xs text-white flex items-center space-x-2">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
@@ -1011,6 +1047,9 @@ const InterviewRoom = () => {
                 playsInline
                 muted
                 className="w-full h-full object-cover bg-black"
+                onLoadedMetadata={() => console.log('Local video metadata loaded')}
+                onCanPlay={() => console.log('Local video can play')}
+                onError={(e) => console.error('Local video error:', e)}
               />
               <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/60 text-xs text-white">
                 {isAdmin ? 'You (Interviewer)' : 'You'} {isScreenSharing && '(Screen sharing)'}
