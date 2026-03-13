@@ -309,7 +309,7 @@ const StudentMessages = () => {
     });
   };
 
-  const unreadCount = messages.filter(m => m.status === 'unread').length;
+  const unreadCount = messages.reduce((total, msg) => total + (msg.unread_count || 0), 0);
 
   return (
     <AdminLayout title="Student Support">
@@ -462,6 +462,17 @@ const StudentMessages = () => {
                         </p>
                       )}
                       <p className="text-sm text-shnoor-soft truncate">{msg.message}</p>
+                      {msg.message_count > 1 && (
+                        <div className="flex items-center gap-1 mt-1 text-xs text-shnoor-indigo">
+                          <MessageCircle size={12} />
+                          {msg.message_count} messages
+                          {msg.unread_count > 0 && (
+                            <span className="ml-1 px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full text-xs font-medium">
+                              {msg.unread_count} new
+                            </span>
+                          )}
+                        </div>
+                      )}
                       {msg.image_path && (
                         <div className="flex items-center gap-1 mt-1 text-xs text-shnoor-indigo">
                           <Image size={12} />
