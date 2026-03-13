@@ -436,6 +436,40 @@ const InterviewRoom = () => {
         setAdminJoined(true);
         console.log('Admin joined - adminJoined set to true');
       }
+      
+      // Auto-call student if admin is in calling state and student is available
+      if (isAdmin && data.role === 'student' && callState === 'calling' && peer && localStreamRef.current && !call) {
+        console.log('Auto-calling available student:', peerIdString);
+        setTimeout(() => {
+          const outgoingCall = peer.call(peerIdString, localStreamRef.current);
+          setCall(outgoingCall);
+          setConnectionStatus('Connecting...');
+          setCallState('connecting');
+
+          outgoingCall.on('stream', (remoteStream) => {
+            console.log('Received remote stream from peer-available auto-call');
+            if (remoteVideoRef.current) {
+              remoteVideoRef.current.srcObject = remoteStream;
+              ensureVideoPlays(remoteVideoRef.current, 'Remote');
+            }
+            setConnectionStatus('Connected');
+            setCallState('connected');
+          });
+
+          outgoingCall.on('close', () => {
+            setConnectionStatus('Call ended');
+            setCall(null);
+            setCallState('ended');
+          });
+
+          outgoingCall.on('error', (error) => {
+            console.error('Peer-available auto-call error:', error);
+            setConnectionStatus('Call failed');
+            setCallState('idle');
+            setError('Call connection failed: ' + error.message);
+          });
+        }, 1000); // Small delay to ensure everything is ready
+      }
     });
 
     // Listen for peer joining
@@ -452,6 +486,40 @@ const InterviewRoom = () => {
       // Track if admin joined
       if (data.role === 'admin') {
         setAdminJoined(true);
+      }
+      
+      // Auto-call student if admin is in calling state and student just joined
+      if (isAdmin && data.role === 'student' && callState === 'calling' && peer && localStreamRef.current && !call) {
+        console.log('Auto-calling student who just joined:', peerIdString);
+        setTimeout(() => {
+          const outgoingCall = peer.call(peerIdString, localStreamRef.current);
+          setCall(outgoingCall);
+          setConnectionStatus('Connecting...');
+          setCallState('connecting');
+
+          outgoingCall.on('stream', (remoteStream) => {
+            console.log('Received remote stream from auto-call');
+            if (remoteVideoRef.current) {
+              remoteVideoRef.current.srcObject = remoteStream;
+              ensureVideoPlays(remoteVideoRef.current, 'Remote');
+            }
+            setConnectionStatus('Connected');
+            setCallState('connected');
+          });
+
+          outgoingCall.on('close', () => {
+            setConnectionStatus('Call ended');
+            setCall(null);
+            setCallState('ended');
+          });
+
+          outgoingCall.on('error', (error) => {
+            console.error('Auto-call error:', error);
+            setConnectionStatus('Call failed');
+            setCallState('idle');
+            setError('Call connection failed: ' + error.message);
+          });
+        }, 1000); // Small delay to ensure everything is ready
       }
     });
 
@@ -728,6 +796,39 @@ const InterviewRoom = () => {
             studentId: interview?.student_id
           });
           setConnectionStatus('Notifying student...');
+          
+          // If student is already in the room (remotePeerId exists), make direct call
+          if (remotePeerId && peer) {
+            console.log('Student already in room, making direct call to:', remotePeerId);
+            setTimeout(() => {
+              const outgoingCall = peer.call(remotePeerId, stream);
+              setCall(outgoingCall);
+              setConnectionStatus('Calling...');
+
+              outgoingCall.on('stream', (remoteStream) => {
+                console.log('Received remote stream from direct call');
+                if (remoteVideoRef.current) {
+                  remoteVideoRef.current.srcObject = remoteStream;
+                  ensureVideoPlays(remoteVideoRef.current, 'Remote');
+                }
+                setConnectionStatus('Connected');
+                setCallState('connected');
+              });
+
+              outgoingCall.on('close', () => {
+                setConnectionStatus('Call ended');
+                setCall(null);
+                setCallState('ended');
+              });
+
+              outgoingCall.on('error', (error) => {
+                console.error('Direct call error:', error);
+                setConnectionStatus('Call failed');
+                setCallState('idle');
+                setError('Call connection failed: ' + error.message);
+              });
+            }, 1000); // Small delay to ensure everything is ready
+          }
         } else {
           console.log('Socket not available, using fallback...');
           // Fallback: Direct PeerJS call if socket disabled
