@@ -2,9 +2,20 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, MailOpen, Trash2, Image, Filter, RefreshCw, CheckCheck, Clock, User, AlertCircle, X, Send, Building, MessageCircle } from 'lucide-react';
 import AdminLayout from '../../components/AdminLayout';
-import { apiClient } from '../../config/api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const showConfirm = (message) => {
+  const confirmFn = globalThis?.['confirm'];
+  return typeof confirmFn === 'function' ? confirmFn(message) : false;
+};
+
+const showAlert = (message) => {
+  const alertFn = globalThis?.['alert'];
+  if (typeof alertFn === 'function') {
+    alertFn(message);
+  }
+};
 
 const StudentMessages = () => {
   const navigate = useNavigate();
@@ -28,8 +39,9 @@ const StudentMessages = () => {
   const fetchMessages = useCallback(async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('adminToken');
       
-      let url = `/api/student-messages?page=${pagination.page}&limit=${pagination.limit}`;
+      let url = `${API_URL}/api/student-messages?page=${pagination.page}&limit=${pagination.limit}`;
       if (filter !== 'all') {
         url += `&status=${filter}`;
       }
@@ -37,9 +49,13 @@ const StudentMessages = () => {
         url += `&college=${encodeURIComponent(selectedCollege)}`;
       }
 
-      const response = await apiClient.get(url);
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
-      const data = response.data;
+      const data = await response.json();
 
       if (data.success) {
         setMessages(data.messages);
@@ -97,48 +113,6 @@ const StudentMessages = () => {
     }
   }, [conversationThread]);
 
-  // Auto-mark all messages as read when user visits the page
-  useEffect(() => {
-    const autoMarkAsRead = async () => {
-      try {
-        const token = localStorage.getItem('adminToken');
-        if (!token) return;
-
-        // Only auto-mark if there are unread messages
-        const hasUnread = messages.some(m => m.status === 'unread');
-        if (!hasUnread) return;
-
-        const response = await fetch(`${API_URL}/api/student-messages/mark-all-read`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        const data = await response.json();
-        if (data.success) {
-          // Update local state to mark all as read
-          setMessages(prev => 
-            prev.map(msg => ({ 
-              ...msg, 
-              status: 'read', 
-              read_at: msg.read_at || new Date().toISOString() 
-            }))
-          );
-          
-          // Clear socket notifications since all messages are now read
-          window.dispatchEvent(new CustomEvent('admin-messages-all-read'));
-        }
-      } catch (err) {
-        console.error('Error auto-marking messages as read:', err);
-      }
-    };
-
-    // Auto-mark as read after a short delay to allow the page to load
-    const timer = setTimeout(autoMarkAsRead, 1000);
-    return () => clearTimeout(timer);
-  }, [messages.length]); // Only run when messages are first loaded
-
   const markAsRead = async (messageId) => {
     try {
       const token = localStorage.getItem('adminToken');
@@ -163,7 +137,7 @@ const StudentMessages = () => {
   };
 
   const deleteMessage = async (messageId) => {
-    if (!window.confirm('Are you sure you want to delete this message?')) {
+    if (!showConfirm('Are you sure you want to delete this message?')) {
       return;
     }
 
@@ -189,6 +163,49 @@ const StudentMessages = () => {
     }
   };
 
+  const deleteConversation = async () => {
+    if (!selectedMessage) return;
+
+    // Some legacy messages may not have student_id; fall back to single message deletion.
+    if (!selectedMessage.student_id) {
+      deleteMessage(selectedMessage.id);
+      return;
+    }
+
+    const confirmed = showConfirm(
+      `Delete entire conversation for ${selectedMessage.name || 'this student'}? This cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(
+        `${API_URL}/api/student-messages/conversation/${encodeURIComponent(selectedMessage.student_id)}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        setMessages(prev => prev.filter(msg => msg.student_id !== selectedMessage.student_id));
+        setSelectedMessage(null);
+        setConversationThread([]);
+        setReplyMessage('');
+        fetchMessages();
+      } else {
+        throw new Error(data.message || 'Failed to delete conversation');
+      }
+    } catch (err) {
+      console.error('Error deleting conversation:', err);
+      showAlert('Failed to delete conversation. Please try again.');
+    }
+  };
+
   const markAllAsRead = async () => {
     try {
       const token = localStorage.getItem('adminToken');
@@ -202,8 +219,6 @@ const StudentMessages = () => {
       const data = await response.json();
       if (data.success) {
         fetchMessages();
-        // Clear socket notifications since all messages are now read
-        window.dispatchEvent(new CustomEvent('admin-messages-all-read'));
       }
     } catch (err) {
       console.error('Error marking all as read:', err);
@@ -248,7 +263,7 @@ const StudentMessages = () => {
       }
     } catch (err) {
       console.error('Error sending reply:', err);
-      alert('Failed to send reply. Please try again.');
+      showAlert('Failed to send reply. Please try again.');
     } finally {
       setSendingReply(false);
     }
@@ -296,13 +311,6 @@ const StudentMessages = () => {
 
   const unreadCount = messages.filter(m => m.status === 'unread').length;
 
-  // Expose unread count to header via custom event so the badge updates when messages are viewed
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent('admin-unread-messages-changed', {
-      detail: { unreadCount }
-    }));
-  }, [unreadCount]);
-
   return (
     <AdminLayout title="Student Support">
       <div className="mb-6">
@@ -314,7 +322,7 @@ const StudentMessages = () => {
           Back to Dashboard
         </button>
         
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-shnoor-navy">Student Support</h1>
             <p className="text-shnoor-soft text-sm mt-1">
@@ -326,7 +334,7 @@ const StudentMessages = () => {
               )}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-3">
             <button
               onClick={fetchMessages}
               className="flex items-center gap-2 px-3 py-2 text-sm bg-white border border-shnoor-mist rounded-lg hover:bg-shnoor-lavender transition-colors"
@@ -492,7 +500,7 @@ const StudentMessages = () => {
         </div>
 
         {/* Message detail / Conversation */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-shnoor-mist overflow-hidden flex flex-col min-h-[500px] lg:h-[700px]">
+        <div className="lg:col-span-2 bg-white rounded-xl border border-shnoor-mist overflow-hidden flex flex-col" style={{ height: '700px' }}>
           {selectedMessage ? (
             <>
               {/* Header */}
@@ -512,9 +520,9 @@ const StudentMessages = () => {
                   </div>
                 </div>
                 <button
-                  onClick={() => deleteMessage(selectedMessage.id)}
+                  onClick={deleteConversation}
                   className="p-2 text-shnoor-soft hover:text-red-600 hover:bg-white rounded-lg transition-colors"
-                  title="Delete"
+                  title="Delete conversation"
                 >
                   <Trash2 size={16} />
                 </button>
