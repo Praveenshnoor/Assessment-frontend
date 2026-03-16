@@ -9,6 +9,14 @@ export default defineConfig({
       overlay: false,
     },
   },
+  define: {
+    global: 'globalThis',
+  },
+  resolve: {
+    alias: {
+      buffer: 'buffer',
+    },
+  },
   build: {
     rollupOptions: {
       external: [],
@@ -24,7 +32,7 @@ export default defineConfig({
     sourcemap: false,
   },
   optimizeDeps: {
-    include: ['react', 'react-dom'],
+    include: ['react', 'react-dom', 'simple-peer', 'buffer'],
     force: true
   },
   esbuild: {

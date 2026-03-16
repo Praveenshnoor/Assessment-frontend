@@ -55,6 +55,13 @@
     </style>
   </head>
   <body>
+    <!-- Global polyfill for simple-peer compatibility -->
+    <script>
+      if (typeof global === 'undefined') {
+        var global = globalThis;
+      }
+    </script>
+    
     <main id="root">
       <div class="loading">Loading...</div>
     </main>
