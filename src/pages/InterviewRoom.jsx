@@ -375,30 +375,35 @@ const InterviewRoom = () => {
         }
       });
 
-      // Initialize PeerJS with STUN + TURN for NAT traversal on deployed environments
+      // Initialize PeerJS with multiple STUN + TURN servers for reliable NAT traversal
       const newPeer = new Peer(undefined, {
         config: {
           iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
-            // Free TURN from Open Relay Project — works on deployed sites
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            // Twilio NTS free TURN (no auth needed for STUN, TURN needs credentials)
+            { urls: 'stun:global.stun.twilio.com:3478' },
+            // Open Relay TURN — multiple ports/protocols for maximum compatibility
             {
-              urls: 'turn:openrelay.metered.ca:80',
-              username: 'openrelayproject',
-              credential: 'openrelayproject'
-            },
-            {
-              urls: 'turn:openrelay.metered.ca:443',
-              username: 'openrelayproject',
-              credential: 'openrelayproject'
-            },
-            {
-              urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+              urls: [
+                'turn:openrelay.metered.ca:80',
+                'turn:openrelay.metered.ca:80?transport=tcp',
+                'turn:openrelay.metered.ca:443',
+                'turn:openrelay.metered.ca:443?transport=tcp',
+                'turns:openrelay.metered.ca:443'
+              ],
               username: 'openrelayproject',
               credential: 'openrelayproject'
             }
-          ]
-        }
+          ],
+          iceTransportPolicy: 'all',
+          bundlePolicy: 'max-bundle',
+          rtcpMuxPolicy: 'require'
+        },
+        debug: 2
       });
       
       newPeer.on('open', (id) => {
@@ -453,12 +458,14 @@ const InterviewRoom = () => {
     }
   };
   const setupSocketEventHandlers = (socket, peer) => {
-    // Handle incoming PeerJS calls - set this up early and don't override
+    // Store incoming PeerJS call — student answers it manually via answerIncomingCall()
     peer.on('call', (incoming) => {
-      console.log('Receiving PeerJS call...');
-      setConnectionStatus('Incoming call...');
-      setCallState('ringing');
-      answerCall(incoming);
+      console.log('Incoming PeerJS call received, waiting for student to answer');
+      incomingCallRef.current = incoming;
+      // If student already clicked Answer (media ready), answer immediately
+      if (localStreamRef.current && !callRef.current) {
+        answerCall(incoming);
+      }
     });
 
     // Listen for peer joining
@@ -594,8 +601,8 @@ const InterviewRoom = () => {
     // Request chat history when joining
     socket.emit('interview:get-chat-history', { interviewId });
   };
-  // Ref to hold pending remote stream until remoteVideoRef is mounted
   const pendingRemoteStreamRef = useRef(null);
+  const incomingCallRef = useRef(null); // stores PeerJS incoming call until student clicks Answer
 
   const answerCall = async (incoming) => {
     try {
@@ -677,7 +684,7 @@ const InterviewRoom = () => {
       setIncomingCall(false);
       setConnectionStatus('Answering call...');
 
-      // Ensure media is ready — peer.on('call') will fire and answerCall() handles the rest
+      // Get media first
       if (!localStreamRef.current) {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         localStreamRef.current = stream;
@@ -686,7 +693,15 @@ const InterviewRoom = () => {
           ensureVideoPlays(localVideoRef.current, 'Local');
         }
       }
-      setConnectionStatus('Ready - waiting for connection...');
+
+      // If PeerJS call already arrived, answer it now
+      if (incomingCallRef.current) {
+        answerCall(incomingCallRef.current);
+        incomingCallRef.current = null;
+      } else {
+        // PeerJS call hasn't arrived yet — it will be answered when peer.on('call') fires
+        setConnectionStatus('Ready - waiting for connection...');
+      }
     } catch (error) {
       console.error('Answer call error:', error);
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {

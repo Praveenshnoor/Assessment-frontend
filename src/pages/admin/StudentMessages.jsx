@@ -116,23 +116,33 @@ const StudentMessages = () => {
   const markAsRead = async (messageId) => {
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`${API_URL}/api/student-messages/${messageId}/read`, {
+      await fetch(`${API_URL}/api/student-messages/${messageId}/read`, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-
-      const data = await response.json();
-      if (data.success) {
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === messageId ? { ...msg, status: 'read', read_at: new Date().toISOString() } : msg
-          )
-        );
-      }
     } catch (err) {
       console.error('Error marking as read:', err);
+    }
+  };
+
+  const markConversationAsRead = async (msg) => {
+    if (!msg.student_id || !parseInt(msg.unread_count)) return;
+    try {
+      const token = localStorage.getItem('adminToken');
+      await fetch(`${API_URL}/api/student-messages/conversation/${encodeURIComponent(msg.student_id)}/read`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      // Update local state so green dot disappears immediately
+      setMessages(prev =>
+        prev.map(m =>
+          m.student_id === msg.student_id
+            ? { ...m, unread_count: 0, status: 'read' }
+            : m
+        )
+      );
+    } catch (err) {
+      console.error('Error marking conversation as read:', err);
     }
   };
 
@@ -271,9 +281,8 @@ const StudentMessages = () => {
 
   const handleSelectMessage = async (msg) => {
     setSelectedMessage(msg);
-    if (msg.status === 'unread') {
-      markAsRead(msg.id);
-    }
+    // Mark all unread messages in this conversation as read
+    markConversationAsRead(msg);
     // Fetch conversation thread
     fetchConversationThread(msg.id);
   };
@@ -309,7 +318,7 @@ const StudentMessages = () => {
     });
   };
 
-  const unreadCount = messages.reduce((total, msg) => total + (msg.unread_count || 0), 0);
+  const unreadCount = messages.reduce((total, msg) => total + (parseInt(msg.unread_count) || 0), 0);
 
   return (
     <AdminLayout title="Student Support">
@@ -374,13 +383,20 @@ const StudentMessages = () => {
                   setFilter(key);
                   setPagination(prev => ({ ...prev, page: 1 }));
                 }}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors flex items-center gap-1.5 ${
                   filter === key
                     ? 'bg-shnoor-indigo text-white'
                     : 'bg-shnoor-lavender text-shnoor-navy hover:bg-shnoor-indigo/10'
                 }`}
               >
                 {label}
+                {key === 'unread' && unreadCount > 0 && (
+                  <span className={`px-1.5 py-0.5 rounded-full text-xs font-semibold ${
+                    filter === 'unread' ? 'bg-white text-shnoor-indigo' : 'bg-red-500 text-white'
+                  }`}>
+                    {unreadCount}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -436,19 +452,24 @@ const StudentMessages = () => {
                   onClick={() => handleSelectMessage(msg)}
                   className={`p-4 cursor-pointer hover:bg-shnoor-lavender/50 transition-colors ${
                     selectedMessage?.id === msg.id ? 'bg-shnoor-lavender' : ''
-                  } ${msg.status === 'unread' ? 'bg-shnoor-indigo/5' : ''}`}
+                  } ${msg.unread_count > 0 ? 'bg-shnoor-indigo/5' : ''}`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${msg.status === 'unread' ? 'bg-shnoor-indigo/10' : 'bg-shnoor-mist'}`}>
-                      {msg.status === 'unread' ? (
-                        <Mail size={16} className="text-shnoor-indigo" />
-                      ) : (
-                        <MailOpen size={16} className="text-shnoor-soft" />
+                    <div className="relative">
+                      <div className={`p-2 rounded-lg ${msg.unread_count > 0 ? 'bg-shnoor-indigo/10' : 'bg-shnoor-mist'}`}>
+                        {msg.unread_count > 0 ? (
+                          <Mail size={16} className="text-shnoor-indigo" />
+                        ) : (
+                          <MailOpen size={16} className="text-shnoor-soft" />
+                        )}
+                      </div>
+                      {msg.unread_count > 0 && (
+                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <p className={`text-sm truncate ${msg.status === 'unread' ? 'font-semibold text-shnoor-navy' : 'text-shnoor-navy'}`}>
+                        <p className={`text-sm truncate ${msg.unread_count > 0 ? 'font-semibold text-shnoor-navy' : 'text-shnoor-navy'}`}>
                           {msg.name}
                         </p>
                         <span className="text-xs text-shnoor-soft flex-shrink-0 ml-2">
@@ -462,15 +483,11 @@ const StudentMessages = () => {
                         </p>
                       )}
                       <p className="text-sm text-shnoor-soft truncate">{msg.message}</p>
-                      {msg.message_count > 1 && (
-                        <div className="flex items-center gap-1 mt-1 text-xs text-shnoor-indigo">
-                          <MessageCircle size={12} />
-                          {msg.message_count} messages
-                          {msg.unread_count > 0 && (
-                            <span className="ml-1 px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full text-xs font-medium">
-                              {msg.unread_count} new
-                            </span>
-                          )}
+                      {parseInt(msg.unread_count) > 0 && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                            {parseInt(msg.unread_count)} new
+                          </span>
                         </div>
                       )}
                       {msg.image_path && (
