@@ -43,6 +43,9 @@ const InterviewRoom = () => {
   const screenStreamRef = useRef(null);
   const socketRef = useRef(null);
   const isInterviewTimeValidRef = useRef(false); // ref to avoid stale closure in socket handlers
+  const isCallInProgressRef = useRef(false);     // ref to avoid stale closure in socket handlers
+  const callRef = useRef(null);                  // ref to avoid stale closure in socket handlers
+  const peerIdRef = useRef('');                  // ref so socket handlers always have latest peerId
 
   const isAdmin = !!localStorage.getItem('adminToken');
   const isStudent = !!localStorage.getItem('studentAuthToken') && !isAdmin;
@@ -186,10 +189,11 @@ const InterviewRoom = () => {
     }
   }, [interview?.scheduled_time, isStudent]);
 
-  // Keep ref in sync so socket handlers always read the latest value
-  useEffect(() => {
-    isInterviewTimeValidRef.current = isInterviewTimeValid;
-  }, [isInterviewTimeValid]);
+  // Keep refs in sync so socket handlers always read the latest values (stale closure fix)
+  useEffect(() => { isInterviewTimeValidRef.current = isInterviewTimeValid; }, [isInterviewTimeValid]);
+  useEffect(() => { isCallInProgressRef.current = isCallInProgress; }, [isCallInProgress]);
+  useEffect(() => { callRef.current = call; }, [call]);
+  useEffect(() => { peerIdRef.current = peerId; }, [peerId]);
 
   // Update student room status when time becomes valid
   useEffect(() => {
@@ -319,13 +323,11 @@ const InterviewRoom = () => {
       console.log('Connecting to socket URL:', socketUrl);
       
       const socket = io(socketUrl, {
-        transports: ['polling', 'websocket'],
+        transports: ['websocket', 'polling'], // websocket first — avoids polling→upgrade race on deployed
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionAttempts: 10,
         withCredentials: false,
-        upgrade: true,
-        rememberUpgrade: true,
         timeout: 20000,
         forceNew: false
       });
@@ -509,8 +511,8 @@ const InterviewRoom = () => {
         setConnectionStatus('Student left');
       }
       
-      if (call) {
-        call.close();
+      if (callRef.current) {
+        callRef.current.close();
         setCall(null);
         setCallState('ended');
       }
@@ -534,130 +536,19 @@ const InterviewRoom = () => {
       }
     });
     
-    // Listen for admin starting call
+    // Listen for admin starting call — student shows incoming call UI
     socket.on('interview:call-started', (data) => {
       console.log('Interview call started event received:', data);
-      console.log('Student state:', { isStudent, isInterviewTimeValid: isInterviewTimeValidRef.current, studentInRoom });
-      
       if (isStudent && isInterviewTimeValidRef.current) {
-        console.log('Setting incoming call to true');
+        console.log('Showing incoming call UI');
         setIncomingCall(true);
         setCallState('ringing');
         setConnectionStatus('Incoming call from interviewer...');
-        
-        // Play call sound
-        try {
-          const AudioCtx = window.AudioContext || window.webkitAudioContext;
-          if (AudioCtx) {
-            const ctx = new AudioCtx();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.value = 1000;
-            gain.gain.value = 0.1;
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start();
-            setTimeout(() => {
-              osc.stop();
-              ctx.close();
-            }, 2000);
-          }
-        } catch (e) {
-          console.error('Audio error:', e);
-        }
-      } else if (isStudent && !isInterviewTimeValidRef.current) {
-        console.log('Student received call but interview time not valid yet');
-        // Optionally notify admin that student can't join yet
-        socket.emit('interview:student-not-ready', {
-          interviewId,
-          reason: 'Interview time not yet valid'
-        });
-      } else {
-        console.log('Call started event ignored - not student or time not valid');
       }
     });
 
-    // Listen for student ready to receive call (admin side)
-    socket.on('interview:student-ready', async (data) => {
-      console.log('Student ready to receive call:', data);
-      if (isAdmin && data.peerId && peer && !call) {
-        if (isCallInProgress) {
-          console.log('Call already in progress, ignoring student ready event');
-          return;
-        }
-        
-        try {
-          // Ensure admin has media stream
-          if (!localStreamRef.current) {
-            console.log('Admin getting media stream for call');
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            localStreamRef.current = stream;
-            
-            if (localVideoRef.current) {
-              localVideoRef.current.srcObject = stream;
-              ensureVideoPlays(localVideoRef.current, 'Local');
-            }
-          }
-          
-          setCallState('connecting');
-          setIsCallInProgress(true);
-          console.log('Admin calling student with peer ID:', data.peerId);
-          
-          const outgoingCall = peer.call(data.peerId, localStreamRef.current);
-          setCall(outgoingCall);
-          setConnectionStatus('Connecting...');
-
-          outgoingCall.on('stream', (remoteStream) => {
-            console.log('Admin received student stream');
-            console.log('Student stream details:', {
-              id: remoteStream.id,
-              active: remoteStream.active,
-              videoTracks: remoteStream.getVideoTracks().length,
-              audioTracks: remoteStream.getAudioTracks().length
-            });
-            
-            // Store as pending — remoteVideoRef may not be mounted yet
-            pendingRemoteStreamRef.current = remoteStream;
-
-            if (remoteVideoRef.current) {
-              remoteVideoRef.current.srcObject = null;
-              remoteVideoRef.current.srcObject = remoteStream;
-              remoteVideoRef.current.muted = false;
-              remoteVideoRef.current.playsInline = true;
-              remoteVideoRef.current.autoplay = true;
-              ensureVideoPlays(remoteVideoRef.current, 'Remote');
-              pendingRemoteStreamRef.current = null;
-            }
-            setConnectionStatus('Connected');
-            setCallState('connected');
-            setIsCallInProgress(false);
-          });
-
-          outgoingCall.on('close', () => {
-            console.log('Student ended the call');
-            setConnectionStatus('Call ended');
-            setCall(null);
-            setCallState('ended');
-            setIsCallInProgress(false);
-          });
-
-          outgoingCall.on('error', (error) => {
-            console.error('Admin call error:', error);
-            setConnectionStatus('Call failed');
-            setCallState('idle');
-            setIsCallInProgress(false);
-            setError('Call connection failed: ' + error.message);
-          });
-        } catch (error) {
-          console.error('Error calling student:', error);
-          setConnectionStatus('Failed to connect');
-          setCallState('idle');
-          setIsCallInProgress(false);
-          setError('Failed to establish call: ' + error.message);
-        }
-      }
-    });
+    // Admin side: student-ready is no longer used for call initiation.
+    // Kept only for legacy compatibility — admin calls directly via startCall().
 
     // Listen for student joining room (admin side)
     socket.on('interview:student-joined-room', (data) => {
@@ -785,33 +676,17 @@ const InterviewRoom = () => {
     try {
       setIncomingCall(false);
       setConnectionStatus('Answering call...');
-      
-      // Student should already have media access from joinInterviewRoom
-      // Just confirm they're ready to receive the PeerJS call
-      if (socketRef.current && peerId && localStreamRef.current) {
-        socketRef.current.emit('interview:student-ready', {
-          interviewId,
-          peerId
-        });
-        setConnectionStatus('Ready - waiting for connection...');
-      } else {
-        // Fallback: get media access if not already available
+
+      // Ensure media is ready — peer.on('call') will fire and answerCall() handles the rest
+      if (!localStreamRef.current) {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         localStreamRef.current = stream;
-        
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
           ensureVideoPlays(localVideoRef.current, 'Local');
         }
-        
-        if (socketRef.current && peerId) {
-          socketRef.current.emit('interview:student-ready', {
-            interviewId,
-            peerId
-          });
-        }
-        setConnectionStatus('Ready - waiting for connection...');
       }
+      setConnectionStatus('Ready - waiting for connection...');
     } catch (error) {
       console.error('Answer call error:', error);
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
@@ -846,19 +721,14 @@ const InterviewRoom = () => {
       setStudentInRoom(true);
       setConnectionStatus('Waiting for interviewer to start the call');
       
-      // Notify admin that student has joined the room and is ready for calls
-      if (socketRef.current && peerId) {
+      // Notify admin that student has joined the room
+      if (socketRef.current && peerIdRef.current) {
         socketRef.current.emit('interview:student-joined-room', {
           interviewId,
-          peerId,
+          peerId: peerIdRef.current,
           studentId: interview?.student_id
         });
-        
-        // Also emit student-ready so admin knows student can receive calls
-        socketRef.current.emit('interview:student-ready', {
-          interviewId,
-          peerId
-        });
+        // Do NOT emit student-ready here — student signals ready only when they click Answer
       }
       
       console.log('Student joined interview room successfully and ready for calls');
@@ -873,53 +743,101 @@ const InterviewRoom = () => {
     }
   };
 
+  const remotePeerIdRef = useRef(''); // always-current remotePeerId for use in startCall
+  useEffect(() => { remotePeerIdRef.current = remotePeerId; }, [remotePeerId]);
+
   const startCall = async () => {
     try {
-      if (isCallInProgress || callState !== 'idle') {
+      if (isCallInProgressRef.current || callRef.current) {
         console.log('Call already in progress, ignoring duplicate request');
         return;
       }
-      
+
       if (!studentInRoom) {
         alert('Please wait for student to join the interview room first');
         return;
       }
-      
+
+      if (!remotePeerIdRef.current) {
+        alert('Cannot find student peer ID. Please wait a moment and try again.');
+        return;
+      }
+
       setIsCallInProgress(true);
       setCallState('calling');
       setConnectionStatus('Starting call...');
-      
-      // Get media access first
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      localStreamRef.current = stream;
-      
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-        ensureVideoPlays(localVideoRef.current, 'Local');
+
+      // Get admin media
+      if (!localStreamRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStreamRef.current = stream;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+          ensureVideoPlays(localVideoRef.current, 'Local');
+        }
       }
-      
-      if (socketRef.current && SOCKET_ENABLED) {
-        console.log('Emitting interview:start-call event...');
-        
+
+      // Notify student via socket so they see the incoming call UI
+      if (socketRef.current) {
         socketRef.current.emit('interview:start-call', {
           interviewId,
           studentId: interview?.student_id
         });
-        setConnectionStatus('Calling student...');
-        
-        // Direct PeerJS call is handled via interview:student-ready socket event.
-        // Do NOT make a duplicate call here to avoid double-call race conditions.
       }
+
+      // Call student directly via PeerJS — no student-ready handshake needed
+      const peerInstance = peer; // capture current peer from state
+      if (!peerInstance) {
+        throw new Error('PeerJS not initialized');
+      }
+
+      console.log('Admin calling student directly via PeerJS, remotePeerId:', remotePeerIdRef.current);
+      const outgoingCall = peerInstance.call(remotePeerIdRef.current, localStreamRef.current);
+      setCall(outgoingCall);
+      setConnectionStatus('Calling student...');
+
+      outgoingCall.on('stream', (remoteStream) => {
+        console.log('Admin received student stream:', {
+          videoTracks: remoteStream.getVideoTracks().length,
+          audioTracks: remoteStream.getAudioTracks().length
+        });
+        pendingRemoteStreamRef.current = remoteStream;
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = remoteStream;
+          remoteVideoRef.current.muted = false;
+          remoteVideoRef.current.playsInline = true;
+          remoteVideoRef.current.autoplay = true;
+          ensureVideoPlays(remoteVideoRef.current, 'Remote');
+          pendingRemoteStreamRef.current = null;
+        }
+        setConnectionStatus('Connected');
+        setCallState('connected');
+        setIsCallInProgress(false);
+      });
+
+      outgoingCall.on('close', () => {
+        setConnectionStatus('Call ended');
+        setCall(null);
+        setCallState('ended');
+        setIsCallInProgress(false);
+      });
+
+      outgoingCall.on('error', (err) => {
+        console.error('Outgoing call error:', err);
+        setConnectionStatus('Call failed');
+        setCallState('idle');
+        setIsCallInProgress(false);
+        setError('Call failed: ' + err.message);
+      });
+
     } catch (error) {
       console.error('Start call error:', error);
       setCallState('idle');
       setIsCallInProgress(false);
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
         setError('Please allow camera and microphone access to start the call');
-        setConnectionStatus('Media access denied');
       } else {
-        setError('Failed to access camera/microphone: ' + error.message);
-        setConnectionStatus('Media access failed');
+        setError('Failed to start call: ' + error.message);
       }
     }
   };
