@@ -59,14 +59,17 @@ const InterviewRoom = () => {
         videoElement.pause();
       }
 
+      // Mobile-specific video properties
       videoElement.muted = streamType === 'Local' || streamType === 'Local-PIP';
       videoElement.playsInline = true;
       videoElement.autoplay = true;
+      videoElement.controls = false;
       
       // Additional properties for remote video
       if (streamType === 'Remote') {
-        videoElement.controls = false;
         videoElement.style.objectFit = 'cover';
+        // For mobile browsers, ensure video is not muted for remote streams
+        videoElement.muted = false;
       }
       
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -83,6 +86,15 @@ const InterviewRoom = () => {
         return false;
       }
       console.error(`${streamType} video play error:`, error);
+      
+      // Mobile fallback - try to play without waiting
+      if (streamType === 'Remote' && videoElement.srcObject) {
+        try {
+          videoElement.play();
+        } catch (e) {
+          console.error('Mobile fallback play failed:', e);
+        }
+      }
       return false;
     }
   };
@@ -188,6 +200,20 @@ const InterviewRoom = () => {
         ensureVideoPlays(remoteVideoRef.current, 'Remote');
       }, 100);
       return () => clearTimeout(timeoutId);
+    }
+    // Apply any stream that arrived before the video element was mounted
+    if (remoteVideoRef.current && pendingRemoteStreamRef.current) {
+      const el = remoteVideoRef.current;
+      const stream = pendingRemoteStreamRef.current;
+      el.srcObject = stream;
+      el.muted = false;
+      el.playsInline = true;
+      el.autoplay = true;
+      el.play().catch(e => {
+        console.error('Pending stream play failed:', e);
+        setTimeout(() => el.play().catch(console.error), 500);
+      });
+      pendingRemoteStreamRef.current = null;
     }
   }, [call, remoteVideoRef.current?.srcObject]);
 
@@ -318,6 +344,11 @@ const InterviewRoom = () => {
           }
           console.log('Student connected - will auto-join when time is valid');
         }
+        
+        // Request room status after connecting
+        setTimeout(() => {
+          socket.emit('interview:get-room-status', { interviewId });
+        }, 1000);
       });
 
       socket.on('connect_error', (error) => {
@@ -391,9 +422,9 @@ const InterviewRoom = () => {
     }
   };
   const setupSocketEventHandlers = (socket, peer) => {
-    // Handle incoming PeerJS calls
+    // Handle incoming PeerJS calls - set this up early and don't override
     peer.on('call', (incoming) => {
-      console.log('Receiving call...');
+      console.log('Receiving PeerJS call...');
       setConnectionStatus('Incoming call...');
       setCallState('ringing');
       answerCall(incoming);
@@ -418,6 +449,24 @@ const InterviewRoom = () => {
       }
     });
 
+    // Listen for existing participants when joining
+    socket.on('interview:existing-participants', (data) => {
+      console.log('Existing participants:', data);
+      if (data.participants && data.participants.length > 0) {
+        data.participants.forEach(participant => {
+          if (participant.role === 'admin' && isStudent) {
+            setAdminInRoom(true);
+            setRemotePeerId(participant.peerId);
+            console.log('Found existing admin in room');
+          } else if (participant.role === 'student' && isAdmin) {
+            setStudentInRoom(true);
+            setRemotePeerId(participant.peerId);
+            console.log('Found existing student in room');
+          }
+        });
+      }
+    });
+
     // Listen for peer leaving
     socket.on('interview:peer-left', (data) => {
       console.log('Peer left:', data);
@@ -437,10 +486,23 @@ const InterviewRoom = () => {
         setCallState('ended');
       }
     });
-    
-    // Test event to verify socket communication
-    socket.on('test-event', (data) => {
-      console.log('Test event received:', data);
+
+    // Listen for room status response
+    socket.on('interview:room-status', (data) => {
+      console.log('Room status received:', data);
+      if (data.participants && data.participants.length > 0) {
+        data.participants.forEach(participant => {
+          if (participant.role === 'admin' && isStudent) {
+            setAdminInRoom(true);
+            setRemotePeerId(participant.peerId);
+            console.log('Room status: Admin is in room');
+          } else if (participant.role === 'student' && isAdmin) {
+            setStudentInRoom(true);
+            setRemotePeerId(participant.peerId);
+            console.log('Room status: Student is in room');
+          }
+        });
+      }
     });
     
     // Listen for admin starting call
@@ -490,45 +552,53 @@ const InterviewRoom = () => {
     // Listen for student ready to receive call (admin side)
     socket.on('interview:student-ready', async (data) => {
       console.log('Student ready to receive call:', data);
-      if (isAdmin && data.peerId && peer && localStreamRef.current && !call) {
+      if (isAdmin && data.peerId && peer && !call) {
         if (isCallInProgress) {
           console.log('Call already in progress, ignoring student ready event');
           return;
         }
         
         try {
+          // Ensure admin has media stream
+          if (!localStreamRef.current) {
+            console.log('Admin getting media stream for call');
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localStreamRef.current = stream;
+            
+            if (localVideoRef.current) {
+              localVideoRef.current.srcObject = stream;
+              ensureVideoPlays(localVideoRef.current, 'Local');
+            }
+          }
+          
           setCallState('connecting');
+          setIsCallInProgress(true);
+          console.log('Admin calling student with peer ID:', data.peerId);
+          
           const outgoingCall = peer.call(data.peerId, localStreamRef.current);
           setCall(outgoingCall);
           setConnectionStatus('Connecting...');
 
           outgoingCall.on('stream', (remoteStream) => {
-            console.log('Received remote stream from student');
-            console.log('Remote stream details:', {
+            console.log('Admin received student stream');
+            console.log('Student stream details:', {
               id: remoteStream.id,
               active: remoteStream.active,
               videoTracks: remoteStream.getVideoTracks().length,
               audioTracks: remoteStream.getAudioTracks().length
             });
             
+            // Store as pending — remoteVideoRef may not be mounted yet
+            pendingRemoteStreamRef.current = remoteStream;
+
             if (remoteVideoRef.current) {
-              if (remoteVideoRef.current.srcObject) {
-                remoteVideoRef.current.srcObject = null;
-              }
-              
-              setTimeout(() => {
-                if (remoteVideoRef.current) {
-                  console.log('Setting remote video srcObject for admin');
-                  remoteVideoRef.current.srcObject = remoteStream;
-                  
-                  // Force video properties
-                  remoteVideoRef.current.muted = false;
-                  remoteVideoRef.current.playsInline = true;
-                  remoteVideoRef.current.autoplay = true;
-                  
-                  ensureVideoPlays(remoteVideoRef.current, 'Remote');
-                }
-              }, 200);
+              remoteVideoRef.current.srcObject = null;
+              remoteVideoRef.current.srcObject = remoteStream;
+              remoteVideoRef.current.muted = false;
+              remoteVideoRef.current.playsInline = true;
+              remoteVideoRef.current.autoplay = true;
+              ensureVideoPlays(remoteVideoRef.current, 'Remote');
+              pendingRemoteStreamRef.current = null;
             }
             setConnectionStatus('Connected');
             setCallState('connected');
@@ -536,6 +606,7 @@ const InterviewRoom = () => {
           });
 
           outgoingCall.on('close', () => {
+            console.log('Student ended the call');
             setConnectionStatus('Call ended');
             setCall(null);
             setCallState('ended');
@@ -543,7 +614,7 @@ const InterviewRoom = () => {
           });
 
           outgoingCall.on('error', (error) => {
-            console.error('Call error:', error);
+            console.error('Admin call error:', error);
             setConnectionStatus('Call failed');
             setCallState('idle');
             setIsCallInProgress(false);
@@ -565,16 +636,6 @@ const InterviewRoom = () => {
       if (isAdmin) {
         setStudentInRoom(true);
         setConnectionStatus('Student joined - ready to call');
-      }
-    });
-
-    // Emergency fallback - listen for any call-related events
-    socket.on('interview:emergency-call', (data) => {
-      console.log('Emergency call event received:', data);
-      if (isStudent) {
-        setIncomingCall(true);
-        setCallState('ringing');
-        setConnectionStatus('Incoming call from interviewer...');
       }
     });
 
@@ -613,60 +674,81 @@ const InterviewRoom = () => {
     // Request chat history when joining
     socket.emit('interview:get-chat-history', { interviewId });
   };
+  // Ref to hold pending remote stream until remoteVideoRef is mounted
+  const pendingRemoteStreamRef = useRef(null);
+
   const answerCall = async (incoming) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      localStreamRef.current = stream;
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-        ensureVideoPlays(localVideoRef.current, 'Local');
+      console.log('Student answering PeerJS call from admin');
+      
+      // Reuse existing stream if already acquired (e.g. from joinInterviewRoom)
+      if (!localStreamRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStreamRef.current = stream;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+          ensureVideoPlays(localVideoRef.current, 'Local');
+        }
       }
 
-      incoming.answer(stream);
-      setCall(incoming);
-      setIncomingCall(false);
-
+      // Register stream handler BEFORE answering so we never miss the event
       incoming.on('stream', (remoteStream) => {
-        console.log('Received remote stream');
-        console.log('Remote stream details:', {
+        console.log('Student received admin stream', {
           id: remoteStream.id,
           active: remoteStream.active,
           videoTracks: remoteStream.getVideoTracks().length,
-          audioTracks: remoteStream.getAudioTracks().length
+          audioTracks: remoteStream.getAudioTracks().length,
         });
-        
+
+        // remoteVideoRef is only in the DOM after setCall(incoming) triggers a re-render.
+        // Store the stream and apply it once the element is available.
+        pendingRemoteStreamRef.current = remoteStream;
+
+        const applyStream = (el) => {
+          el.srcObject = remoteStream;
+          el.muted = false;
+          el.playsInline = true;
+          el.autoplay = true;
+          el.play().catch(e => {
+            console.error('Failed to play admin video:', e);
+            setTimeout(() => el.play().catch(console.error), 1000);
+          });
+        };
+
         if (remoteVideoRef.current) {
-          if (remoteVideoRef.current.srcObject) {
-            remoteVideoRef.current.srcObject = null;
-          }
-          
-          setTimeout(() => {
-            if (remoteVideoRef.current) {
-              console.log('Setting remote video srcObject for student');
-              remoteVideoRef.current.srcObject = remoteStream;
-              
-              // Force video properties
-              remoteVideoRef.current.muted = false;
-              remoteVideoRef.current.playsInline = true;
-              remoteVideoRef.current.autoplay = true;
-              
-              ensureVideoPlays(remoteVideoRef.current, 'Remote');
-            }
-          }, 200);
+          applyStream(remoteVideoRef.current);
         }
-        setConnectionStatus('Connected');
-        setCallState('connected');
+        // The useEffect below will also fire once remoteVideoRef mounts
       });
 
       incoming.on('close', () => {
+        console.log('Admin ended the call');
         setConnectionStatus('Call ended');
         setCall(null);
         setIncomingCall(false);
         setCallState('ended');
+        pendingRemoteStreamRef.current = null;
       });
+
+      incoming.on('error', (error) => {
+        console.error('Call error:', error);
+        setConnectionStatus('Call failed');
+        setCallState('idle');
+      });
+
+      // Answer AFTER registering handlers
+      incoming.answer(localStreamRef.current);
+      setCall(incoming);
+      setIncomingCall(false);
+      setCallState('connected');
+      setConnectionStatus('Connected');
+
     } catch (error) {
-      console.error('Failed to get media:', error);
-      setConnectionStatus('Media access denied');
+      console.error('Failed to answer call:', error);
+      setConnectionStatus('Failed to access camera/microphone');
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        alert('Please allow camera and microphone access to join the call');
+      }
     }
   };
   
@@ -675,22 +757,32 @@ const InterviewRoom = () => {
       setIncomingCall(false);
       setConnectionStatus('Answering call...');
       
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      localStreamRef.current = stream;
-      
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-        ensureVideoPlays(localVideoRef.current, 'Local');
-      }
-      
-      if (socketRef.current && peerId) {
+      // Student should already have media access from joinInterviewRoom
+      // Just confirm they're ready to receive the PeerJS call
+      if (socketRef.current && peerId && localStreamRef.current) {
         socketRef.current.emit('interview:student-ready', {
           interviewId,
           peerId
         });
+        setConnectionStatus('Ready - waiting for connection...');
+      } else {
+        // Fallback: get media access if not already available
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStreamRef.current = stream;
+        
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+          ensureVideoPlays(localVideoRef.current, 'Local');
+        }
+        
+        if (socketRef.current && peerId) {
+          socketRef.current.emit('interview:student-ready', {
+            interviewId,
+            peerId
+          });
+        }
+        setConnectionStatus('Ready - waiting for connection...');
       }
-      
-      setConnectionStatus('Ready - waiting for connection...');
     } catch (error) {
       console.error('Answer call error:', error);
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
@@ -725,16 +817,22 @@ const InterviewRoom = () => {
       setStudentInRoom(true);
       setConnectionStatus('Waiting for interviewer to start the call');
       
-      // Notify admin that student has joined the room
+      // Notify admin that student has joined the room and is ready for calls
       if (socketRef.current && peerId) {
         socketRef.current.emit('interview:student-joined-room', {
           interviewId,
           peerId,
           studentId: interview?.student_id
         });
+        
+        // Also emit student-ready so admin knows student can receive calls
+        socketRef.current.emit('interview:student-ready', {
+          interviewId,
+          peerId
+        });
       }
       
-      console.log('Student joined interview room successfully');
+      console.log('Student joined interview room successfully and ready for calls');
     } catch (error) {
       console.error('Join room error:', error);
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
@@ -780,60 +878,8 @@ const InterviewRoom = () => {
         });
         setConnectionStatus('Calling student...');
         
-        // Also try direct PeerJS call if we have the remote peer ID
-        if (remotePeerId && peer) {
-          console.log('Also attempting direct PeerJS call to:', remotePeerId);
-          setTimeout(() => {
-            if (peer && localStreamRef.current && !call) {
-              console.log('Making direct PeerJS call...');
-              const outgoingCall = peer.call(remotePeerId, localStreamRef.current);
-              setCall(outgoingCall);
-              
-              outgoingCall.on('stream', (remoteStream) => {
-                console.log('Received remote stream from direct call');
-                console.log('Remote stream details:', {
-                  id: remoteStream.id,
-                  active: remoteStream.active,
-                  videoTracks: remoteStream.getVideoTracks().length,
-                  audioTracks: remoteStream.getAudioTracks().length
-                });
-                
-                if (remoteVideoRef.current) {
-                  console.log('Setting remote video srcObject');
-                  remoteVideoRef.current.srcObject = remoteStream;
-                  
-                  // Force video properties
-                  remoteVideoRef.current.muted = false;
-                  remoteVideoRef.current.playsInline = true;
-                  remoteVideoRef.current.autoplay = true;
-                  
-                  setTimeout(() => {
-                    ensureVideoPlays(remoteVideoRef.current, 'Remote');
-                  }, 300);
-                } else {
-                  console.error('remoteVideoRef.current is null');
-                }
-                setConnectionStatus('Connected');
-                setCallState('connected');
-                setIsCallInProgress(false);
-              });
-
-              outgoingCall.on('close', () => {
-                setConnectionStatus('Call ended');
-                setCall(null);
-                setCallState('ended');
-                setIsCallInProgress(false);
-              });
-
-              outgoingCall.on('error', (error) => {
-                console.error('Direct call error:', error);
-                setConnectionStatus('Call failed');
-                setCallState('idle');
-                setIsCallInProgress(false);
-              });
-            }
-          }, 2000); // Wait 2 seconds for socket event, then try direct call
-        }
+        // Direct PeerJS call is handled via interview:student-ready socket event.
+        // Do NOT make a duplicate call here to avoid double-call race conditions.
       }
     } catch (error) {
       console.error('Start call error:', error);
@@ -1083,38 +1129,35 @@ const InterviewRoom = () => {
           <div className="flex-1 rounded-xl bg-gray-800 overflow-hidden relative">
             {/* Remote Video (when in call) */}
             {call && (
-              <>
-                <video
-                  ref={remoteVideoRef}
-                  autoPlay
-                  playsInline
-                  muted={false}
-                  className="w-full h-full object-cover"
-                  onLoadedMetadata={() => {
-                    console.log('Remote video metadata loaded');
-                    if (remoteVideoRef.current) {
-                      console.log('Remote video dimensions:', {
-                        videoWidth: remoteVideoRef.current.videoWidth,
-                        videoHeight: remoteVideoRef.current.videoHeight,
-                        readyState: remoteVideoRef.current.readyState
-                      });
-                    }
-                  }}
-                  onCanPlay={() => {
-                    console.log('Remote video can play');
-                  }}
-                  onPlay={() => {
-                    console.log('Remote video started playing');
-                  }}
-                  onError={(e) => {
-                    console.error('Remote video error:', e);
-                  }}
-                />
-                {/* Fallback indicator when remote video isn't working */}
-                <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1 rounded text-sm">
-                  {remoteVideoRef.current?.srcObject ? 'Remote Stream Active' : 'Waiting for Remote Stream'}
-                </div>
-              </>
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                muted={false}
+                controls={false}
+                webkit-playsinline="true"
+                className="w-full h-full object-cover"
+                style={{ objectFit: 'cover' }}
+                onLoadedMetadata={() => {
+                  console.log('Remote video metadata loaded');
+                  if (remoteVideoRef.current) {
+                    console.log('Remote video dimensions:', {
+                      videoWidth: remoteVideoRef.current.videoWidth,
+                      videoHeight: remoteVideoRef.current.videoHeight,
+                      readyState: remoteVideoRef.current.readyState
+                    });
+                  }
+                }}
+                onCanPlay={() => {
+                  console.log('Remote video can play');
+                }}
+                onPlay={() => {
+                  console.log('Remote video started playing');
+                }}
+                onError={(e) => {
+                  console.error('Remote video error:', e);
+                }}
+              />
             )}
             
             {/* Local Video Preview (when not in call) */}
@@ -1271,47 +1314,9 @@ const InterviewRoom = () => {
 
                 {/* Student in room waiting for call */}
                 {!call && isStudent && studentInRoom && (
-                  <div className="flex items-center space-x-4">
-                    <div className="px-6 py-3 rounded-full bg-green-600 text-white font-semibold flex items-center space-x-2">
-                      <div className="animate-pulse w-2 h-2 bg-green-300 rounded-full"></div>
-                      <span>Waiting for interviewer to call</span>
-                    </div>
-                    {/* Debug button - remove in production */}
-                    <button
-                      onClick={() => {
-                        console.log('Debug: Forcing incoming call state');
-                        setIncomingCall(true);
-                        setCallState('ringing');
-                        setConnectionStatus('Debug: Incoming call from interviewer...');
-                      }}
-                      className="px-4 py-2 rounded bg-yellow-600 hover:bg-yellow-700 text-white text-sm"
-                    >
-                      Debug: Force Call
-                    </button>
-                    {/* Debug remote video button */}
-                    <button
-                      onClick={() => {
-                        console.log('Debug: Remote video state:', {
-                          element: !!remoteVideoRef.current,
-                          srcObject: !!remoteVideoRef.current?.srcObject,
-                          paused: remoteVideoRef.current?.paused,
-                          muted: remoteVideoRef.current?.muted,
-                          videoWidth: remoteVideoRef.current?.videoWidth,
-                          videoHeight: remoteVideoRef.current?.videoHeight,
-                          readyState: remoteVideoRef.current?.readyState
-                        });
-                        if (remoteVideoRef.current?.srcObject) {
-                          const stream = remoteVideoRef.current.srcObject;
-                          console.log('Stream tracks:', {
-                            video: stream.getVideoTracks().map(t => ({ enabled: t.enabled, readyState: t.readyState })),
-                            audio: stream.getAudioTracks().map(t => ({ enabled: t.enabled, readyState: t.readyState }))
-                          });
-                        }
-                      }}
-                      className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm"
-                    >
-                      Debug: Video
-                    </button>
+                  <div className="px-6 py-3 rounded-full bg-green-600 text-white font-semibold flex items-center space-x-2">
+                    <div className="animate-pulse w-2 h-2 bg-green-300 rounded-full"></div>
+                    <span>Waiting for interviewer to call</span>
                   </div>
                 )}
 
