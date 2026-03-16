@@ -373,8 +373,31 @@ const InterviewRoom = () => {
         }
       });
 
-      // Initialize PeerJS
-      const newPeer = new Peer();
+      // Initialize PeerJS with STUN + TURN for NAT traversal on deployed environments
+      const newPeer = new Peer(undefined, {
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            // Free TURN from Open Relay Project — works on deployed sites
+            {
+              urls: 'turn:openrelay.metered.ca:80',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            },
+            {
+              urls: 'turn:openrelay.metered.ca:443',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            },
+            {
+              urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            }
+          ]
+        }
+      });
       
       newPeer.on('open', (id) => {
         console.log('My peer ID:', id);
