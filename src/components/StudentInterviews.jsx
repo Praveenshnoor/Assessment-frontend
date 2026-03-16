@@ -16,10 +16,16 @@ const StudentInterviews = () => {
     fetchInterviews();
     initializeSocket();
     
+    // Set up periodic refresh to update time-based logic
+    const refreshInterval = setInterval(() => {
+      setInterviews(prev => [...prev]); // Force re-render to update time-based logic
+    }, 30000); // Check every 30 seconds
+    
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
+      clearInterval(refreshInterval);
     };
   }, []);
 
@@ -150,10 +156,21 @@ const StudentInterviews = () => {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-  // Student can actually enter the room ONLY when admin has started the call
+  // Student can join when scheduled time arrives OR when admin has started the call
   const canJoinInterview = (interview) => {
     if (!interview) return false;
-    return interview.status === 'in_progress';
+    
+    // If interview is in progress, always allow joining
+    if (interview.status === 'in_progress') return true;
+    
+    // If interview is scheduled, check if the scheduled time has arrived
+    if (interview.status === 'scheduled' && interview.scheduled_time) {
+      const now = new Date();
+      const interviewStart = new Date(interview.scheduled_time);
+      return now >= interviewStart;
+    }
+    
+    return false;
   };
 
   if (loading) {
@@ -180,7 +197,8 @@ const StudentInterviews = () => {
   return (
     <div className="space-y-6">
       {incomingBanner && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 animate-pulse">          <div className="flex-1">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 animate-pulse">
+          <div className="flex-1">
             <p className="text-sm font-bold text-emerald-800">📞 Incoming Interview Call</p>
             <p className="text-xs text-emerald-700/80 mt-1">
               {incomingBanner.test_title || 'Interview'} 
@@ -228,10 +246,12 @@ const StudentInterviews = () => {
                         <h3 className="text-lg font-bold text-shnoor-navy">
                           {interview.test_title}
                         </h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${getStatusColor(interview.status)}`}>                          {interview.status.replace('_', ' ').toUpperCase()}
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${getStatusColor(interview.status)}`}>
+                          {interview.status.replace('_', ' ').toUpperCase()}
                         </span>
                         {interview.status === 'in_progress' && (
-                        <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200 whitespace-nowrap">                            LIVE CALL
+                          <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200 whitespace-nowrap">
+                            LIVE CALL
                           </span>
                         )}
                       </div>
@@ -259,16 +279,31 @@ const StudentInterviews = () => {
                           <span className="font-medium">Your interviewer is calling. You can join now.</span>
                         </div>
                       )}
-                      {interview.status === 'scheduled' && (
-                        <div className="mt-3 flex items-center text-sm text-shnoor-soft bg-shnoor-mist/20 px-3 py-2 rounded-lg">
-                          <AlertCircle size={16} className="mr-2" />
-                          <span className="font-medium">Wait here. You’ll see a call banner when the interviewer starts.</span>
-                        </div>
-                      )}
+                      {interview.status === 'scheduled' && (() => {
+                        const now = new Date();
+                        const interviewStart = new Date(interview.scheduled_time);
+                        const canJoinNow = now >= interviewStart;
+                        
+                        if (canJoinNow) {
+                          return (
+                            <div className="mt-3 flex items-center text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
+                              <AlertCircle size={16} className="mr-2" />
+                              <span className="font-medium">Interview time has arrived. You can join the room now.</span>
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <div className="mt-3 flex items-center text-sm text-shnoor-soft bg-shnoor-mist/20 px-3 py-2 rounded-lg">
+                              <AlertCircle size={16} className="mr-2" />
+                              <span className="font-medium">Wait here. You can join when the scheduled time arrives.</span>
+                            </div>
+                          );
+                        }
+                      })()}
                     </div>
 
                     <div className="w-full sm:w-auto sm:ml-4 flex-shrink-0">
-                        <button
+                      <button
                         onClick={() => canJoin && joinInterview(interview.id)}
                         disabled={!canJoin}
                         className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-colors shadow-[0_8px_30px_rgba(14,14,39,0.06)] ${
@@ -278,7 +313,13 @@ const StudentInterviews = () => {
                         }`}
                       >
                         <Video size={20} />
-                        <span>{interview.status === 'in_progress' ? 'Answer Live Call' : 'Waiting for call'}</span>
+                        <span>{
+                          interview.status === 'in_progress' 
+                            ? 'Answer Live Call' 
+                            : canJoin 
+                              ? 'Join Interview Room'
+                              : 'Waiting for call'
+                        }</span>
                       </button>
                     </div>
                   </div>
