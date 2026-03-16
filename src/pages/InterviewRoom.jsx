@@ -42,6 +42,7 @@ const InterviewRoom = () => {
   const localStreamRef = useRef(null);
   const screenStreamRef = useRef(null);
   const socketRef = useRef(null);
+  const isInterviewTimeValidRef = useRef(false); // ref to avoid stale closure in socket handlers
 
   const isAdmin = !!localStorage.getItem('adminToken');
   const isStudent = !!localStorage.getItem('studentAuthToken') && !isAdmin;
@@ -184,6 +185,11 @@ const InterviewRoom = () => {
       return () => clearInterval(interval);
     }
   }, [interview?.scheduled_time, isStudent]);
+
+  // Keep ref in sync so socket handlers always read the latest value
+  useEffect(() => {
+    isInterviewTimeValidRef.current = isInterviewTimeValid;
+  }, [isInterviewTimeValid]);
 
   // Update student room status when time becomes valid
   useEffect(() => {
@@ -508,9 +514,9 @@ const InterviewRoom = () => {
     // Listen for admin starting call
     socket.on('interview:call-started', (data) => {
       console.log('Interview call started event received:', data);
-      console.log('Student state:', { isStudent, isInterviewTimeValid, studentInRoom });
+      console.log('Student state:', { isStudent, isInterviewTimeValid: isInterviewTimeValidRef.current, studentInRoom });
       
-      if (isStudent && isInterviewTimeValid) {
+      if (isStudent && isInterviewTimeValidRef.current) {
         console.log('Setting incoming call to true');
         setIncomingCall(true);
         setCallState('ringing');
@@ -537,7 +543,7 @@ const InterviewRoom = () => {
         } catch (e) {
           console.error('Audio error:', e);
         }
-      } else if (isStudent && !isInterviewTimeValid) {
+      } else if (isStudent && !isInterviewTimeValidRef.current) {
         console.log('Student received call but interview time not valid yet');
         // Optionally notify admin that student can't join yet
         socket.emit('interview:student-not-ready', {
