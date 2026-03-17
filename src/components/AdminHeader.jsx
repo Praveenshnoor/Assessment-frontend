@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Video, LogOut, Settings, MessageSquare, X, Menu } from 'lucide-react';
 import Button from './Button';
 import { useSupportSocket } from '../hooks/useSupportSocket';
+import shnoorLogo from '../assets/shnoor-logo1.png';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -103,8 +104,12 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
           <div className="flex items-center gap-3 sm:gap-4">
             {/* Logo icon */}
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-shnoor-lavender rounded-xl flex items-center justify-center font-bold text-shnoor-indigo text-lg sm:text-xl flex-shrink-0">
-              A
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 bg-white">
+              <img
+                src={shnoorLogo}
+                alt="Shnoor Logo"
+                className="w-full h-full object-cover"
+              />
             </div>
             <div className="flex-1 min-w-0">
               <h1 className="text-white font-bold text-base sm:text-lg leading-tight truncate">Admin Dashboard</h1>

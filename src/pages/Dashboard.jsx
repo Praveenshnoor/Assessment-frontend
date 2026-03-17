@@ -4,6 +4,7 @@ import { LogOut, Clock, BookOpen, AlertCircle, FileText, X, Video } from 'lucide
 import ExamSearchFilter from '../components/ExamSearchFilter';
 import StudentInterviews from '../components/StudentInterviews';
 import { apiFetch } from '../config/api';
+import shnoorLogo from '../assets/shnoor-logo1.png';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -354,8 +355,12 @@ const Dashboard = () => {
         <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center border-white/10 sm:border-transparent sm:h-16">
             <div className="flex items-center space-x-3 sm:space-x-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-shnoor-lavender rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
-                <span className="text-shnoor-indigo font-bold text-lg sm:text-xl">A</span>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl overflow-hidden shadow-sm flex-shrink-0 bg-white">
+                <img
+                  src={shnoorLogo}
+                  alt="Shnoor Logo"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div>
                 <h1 className="text-white font-bold text-base sm:text-lg leading-tight">Assessment Portal</h1>
