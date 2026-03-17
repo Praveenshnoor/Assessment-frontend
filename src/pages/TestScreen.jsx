@@ -211,6 +211,7 @@ int main() {
     stopProctoring();
 
     const testId = localStorage.getItem('selectedTestId');
+    const applicationId = localStorage.getItem('currentApplicationId');
     const studentId = localStorage.getItem('studentId');
     const token = localStorage.getItem('studentAuthToken');
 
@@ -239,6 +240,7 @@ int main() {
         body: JSON.stringify({
           testId: testId,
           studentId: studentId, // Send student ID for progress-based auth
+          applicationId: applicationId ? parseInt(applicationId, 10) : null,
           answers: answers,
           submissionReason: reason,
           warningCount: warningCount,
@@ -256,6 +258,7 @@ int main() {
 
         // Clear test-specific data
         localStorage.removeItem('selectedTestId');
+        localStorage.removeItem('currentApplicationId');
 
         // Navigate to results with backend response, testId, and studentId
         navigate('/result', {
@@ -436,6 +439,7 @@ int main() {
     const fetchData = async () => {
       const token = localStorage.getItem('studentAuthToken');
       const testId = localStorage.getItem('selectedTestId');
+      const applicationId = localStorage.getItem('currentApplicationId');
 
       if (!token || !testId) {
         navigate('/login');
@@ -443,8 +447,11 @@ int main() {
       }
 
       try {
-        const response = await apiFetch(`api/student/test/${testId}`, {
-          headers: {
+        const endpoint = applicationId
+          ? `api/student/test/${testId}?applicationId=${applicationId}`
+          : `api/student/test/${testId}`;
+
+        const response = await apiFetch(endpoint, {          headers: {
             'Authorization': `Bearer ${token}`
           }
         });

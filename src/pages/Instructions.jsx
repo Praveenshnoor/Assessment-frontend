@@ -11,6 +11,7 @@ const Instructions = () => {
 
   useEffect(() => {
     const testId = localStorage.getItem('selectedTestId');
+    const applicationId = localStorage.getItem('currentApplicationId');
     const token = localStorage.getItem('studentAuthToken');
 
     if (!token) {
@@ -26,7 +27,11 @@ const Instructions = () => {
     // Fetch test details and check for saved progress
     const fetchTestData = async () => {
       try {
-        const response = await apiFetch(`api/student/test/${testId}`, {
+        const endpoint = applicationId
+          ? `api/student/test/${testId}?applicationId=${applicationId}`
+          : `api/student/test/${testId}`;
+
+        const response = await apiFetch(endpoint, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

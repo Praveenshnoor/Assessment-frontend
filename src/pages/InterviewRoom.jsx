@@ -319,11 +319,11 @@ const InterviewRoom = () => {
       }
       
       // Initialize Socket.IO
-      const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const socketUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000');
       console.log('Connecting to socket URL:', socketUrl);
       
       const socket = io(socketUrl, {
-        transports: ['websocket', 'polling'], // websocket first — avoids polling→upgrade race on deployed
+        transports: ['polling', 'websocket'], // polling first — avoids connection issues on load balancers
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionAttempts: 10,
@@ -445,6 +445,9 @@ const InterviewRoom = () => {
 
       newPeer.on('error', (err) => {
         console.error('Peer error:', err);
+        if (err.type === 'server-error' || err.message.includes('timeout')) {
+          console.error('PeerJS server connection failed. The public 0.peerjs.com server may be blocked or overwhelmed.');
+        }
         setConnectionStatus('Connection error - ' + err.type);
         setError('WebRTC connection failed: ' + err.message);
       });

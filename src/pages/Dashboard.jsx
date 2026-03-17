@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { LogOut, Clock, BookOpen, AlertCircle, FileText, X, Video } from 'lucide-react';
-import ExamSearchFilter from '../components/ExamSearchFilter';
+import { LogOut, Clock, BookOpen, AlertCircle, FileText, X, Video, Briefcase, ClipboardList } from 'lucide-react';import ExamSearchFilter from '../components/ExamSearchFilter';
 import StudentInterviews from '../components/StudentInterviews';
 import StudentSupportChatbot from '../components/chatbot/StudentSupportChatbot';
 import { apiFetch } from '../config/api';
@@ -146,6 +145,7 @@ const Dashboard = () => {
 
   const handleTakeTest = (testId) => {
     localStorage.setItem('selectedTestId', testId);
+    localStorage.removeItem('currentApplicationId');
     navigate('/instructions');
   };
 
@@ -407,6 +407,20 @@ const Dashboard = () => {
             >
               <Video size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
               <span>Interviews</span>
+            </button>
+            <button
+              onClick={() => navigate('/job-board')}
+              className="flex items-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all text-sm sm:text-base bg-white text-shnoor-indigoMedium hover:text-shnoor-navy hover:bg-shnoor-lavender"
+            >
+              <Briefcase size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
+              <span>Job Board</span>
+            </button>
+            <button
+              onClick={() => navigate('/student/my-applications')}
+              className="flex items-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all text-sm sm:text-base bg-white text-shnoor-indigoMedium hover:text-shnoor-navy hover:bg-shnoor-lavender"
+            >
+              <ClipboardList size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
+              <span>My Applications</span>
             </button>
           </div>
         </div>
