@@ -25,6 +25,7 @@ const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminReports = React.lazy(() => import('./pages/admin/AdminReports'));
 const LiveProctoring = React.lazy(() => import('./pages/admin/LiveProctoring'));
 const AdminSettings = React.lazy(() => import('./pages/admin/AdminSettings'));
+const AdminJobApplicants = React.lazy(() => import('./components/admin/AdminJobApplicants'));
 const InterviewsList = React.lazy(() => import('./pages/admin/InterviewsList'));
 const StudentMessages = React.lazy(() => import('./pages/admin/StudentMessages'));
 const InterviewRoom = React.lazy(() => import('./pages/InterviewRoom'));
@@ -32,6 +33,8 @@ const ServerDown = React.lazy(() => import('./pages/ServerDown'));
 const Maintenance = React.lazy(() => import('./pages/Maintenance'));
 const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
 const TermsAndConditions = React.lazy(() => import('./pages/TermsAndConditions'));
+const JobBoard = React.lazy(() => import('./pages/JobBoard'));
+const MyApplications = React.lazy(() => import('./pages/MyApplications'));
 
 // Protected Route wrappers
 const StudentRoute = ({ children }) => {
@@ -70,6 +73,8 @@ function App() {
               <Route path="/test" element={<TestRoute><TestScreen /></TestRoute>} />
               <Route path="/result" element={<StudentRoute><Result /></StudentRoute>} />
               <Route path="/feedback" element={<StudentRoute><Feedback /></StudentRoute>} />
+              <Route path="/job-board" element={<StudentRoute><JobBoard /></StudentRoute>} />
+              <Route path="/student/my-applications" element={<StudentRoute><MyApplications /></StudentRoute>} />
 
               {/* Admin Routes - Now with Enhanced Protection */}
               <Route path="/admin/dashboard" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
@@ -77,6 +82,7 @@ function App() {
               <Route path="/admin/live-proctoring" element={<AdminProtectedRoute><LiveProctoring /></AdminProtectedRoute>} />
               <Route path="/admin/student-messages" element={<AdminProtectedRoute><StudentMessages /></AdminProtectedRoute>} />
               <Route path="/admin/settings" element={<AdminProtectedRoute><AdminSettings /></AdminProtectedRoute>} />
+              <Route path="/admin/job-applicants/:jobId" element={<AdminProtectedRoute><AdminJobApplicants /></AdminProtectedRoute>} />
               <Route path="/admin/interviews" element={<AdminProtectedRoute><InterviewsList /></AdminProtectedRoute>} />
               <Route path="/admin/interview-room/:interviewId" element={<AdminProtectedRoute><InterviewRoom /></AdminProtectedRoute>} />
 

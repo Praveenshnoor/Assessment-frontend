@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, FileSpreadsheet, LogOut, Download, ArrowLeft,
-  Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video, Loader2, X, Building2, MoreVertical, Copy, AlertCircle, Pencil, MessageSquare, Star, TrendingUp, BarChart3, Calendar, Filter, CheckSquare
+  Trash2, Eye, Users, CheckCircle, XCircle, UserCheck, ChevronDown, ChevronRight, Video, Loader2, X, Building2, MoreVertical, Copy, AlertCircle, Pencil, MessageSquare, Star, TrendingUp, BarChart3, Calendar, Filter, CheckSquare, Briefcase
 } from 'lucide-react';
 
 import axios from 'axios';
@@ -15,6 +15,7 @@ import BulkStudentUpload from '../../components/admin/BulkStudentUpload';
 import InstituteRegistrationControl from '../../components/admin/InstituteRegistrationControl';
 import InterviewsList from './InterviewsList';
 import InterviewSchedule from './InterviewSchedule';
+import AdminJobOpenings from '../../components/admin/AdminJobOpenings';
 import AdminReports from './AdminReports';
 import { apiFetch } from '../../config/api';
 import AdminHeader from '../../components/AdminHeader';
@@ -1973,6 +1974,7 @@ const AdminDashboard = () => {
                 { id: 'bulk-upload', label: 'Bulk Upload', icon: Users },
                 { id: 'violations', label: 'Violations', icon: AlertCircle },
                 { id: 'interviews', label: 'Interviews', icon: Video },
+                { id: 'job-openings', label: 'Job Openings', icon: Briefcase },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -3550,6 +3552,13 @@ const AdminDashboard = () => {
             {activeTab === 'interviews' && (
               <div className="space-y-6">
                 <InterviewsList />
+              </div>
+            )}
+
+            {/* Job Openings Tab */}
+            {activeTab === 'job-openings' && (
+              <div className="space-y-6">
+                <AdminJobOpenings />
               </div>
             )}
           </>

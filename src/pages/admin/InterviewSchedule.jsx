@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { apiFetch } from '../../config/api';
 
-const InterviewSchedule = ({ student, testId, onClose, onScheduled }) => {
+const InterviewSchedule = ({ student, testId, applicationId, onClose, onScheduled }) => {
   const [formData, setFormData] = useState({
     scheduled_time: '',
     duration: 60
@@ -43,6 +43,7 @@ const InterviewSchedule = ({ student, testId, onClose, onScheduled }) => {
       const requestBody = {
         student_id: student.id,
         test_id: testId,
+        application_id: applicationId || null,
         scheduled_time: scheduledTimeUTC,
         duration: formData.duration
       };
@@ -65,7 +66,7 @@ const InterviewSchedule = ({ student, testId, onClose, onScheduled }) => {
         onScheduled();
         onClose();
       } else {
-        alert('Failed to schedule interview');
+        alert(data.message || 'Failed to schedule interview');
       }
     } catch (error) {
       console.error('Schedule error:', error);
