@@ -42,7 +42,7 @@ const fmtDate = (iso) => {
     });
 };
 
-export default function MyApplications() {
+export default function MyApplications({ isEmbedded = false }) {
     const navigate = useNavigate();
     const [applications, setApplications] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -178,54 +178,58 @@ export default function MyApplications() {
     };
 
     return (
-        <div className="min-h-screen bg-[#F8F8FB] font-sans">
-            <header className="bg-shnoor-navy shadow-sm h-[72px] flex items-center sticky top-0 z-10 w-full">
-                <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 bg-shnoor-lavender rounded-xl flex items-center justify-center shadow-sm">
-                                <span className="text-shnoor-indigo font-bold text-xl">A</span>
+        <div className={isEmbedded ? "w-full font-sans" : "min-h-screen bg-[#F8F8FB] font-sans"}>
+            {!isEmbedded && (
+                <header className="bg-shnoor-navy shadow-sm h-[72px] flex items-center sticky top-0 z-10 w-full">
+                    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex justify-between items-center h-16">
+                            <div className="flex items-center space-x-4">
+                                <div className="w-12 h-12 bg-shnoor-lavender rounded-xl flex items-center justify-center shadow-sm">
+                                    <span className="text-shnoor-indigo font-bold text-xl">A</span>
+                                </div>
+                                <div>
+                                    <h1 className="text-white font-bold text-lg leading-tight">Assessment Portal</h1>
+                                    <p className="text-shnoor-light opacity-80 text-xs">My Applications</p>
+                                </div>
                             </div>
-                            <div>
-                                <h1 className="text-white font-bold text-lg leading-tight">Assessment Portal</h1>
-                                <p className="text-shnoor-light opacity-80 text-xs">My Applications</p>
-                            </div>
-                        </div>
 
-                        <div className="flex items-center space-x-6">
-                            <div className="text-right hidden sm:block">
-                                <p className="text-sm font-medium text-white">Welcome, {studentName}</p>
-                                <p className="text-xs text-shnoor-soft">{capitalizeInstitute(institute)} • ID: {studentId}</p>
+                            <div className="flex items-center space-x-6">
+                                <div className="text-right hidden sm:block">
+                                    <p className="text-sm font-medium text-white">Welcome, {studentName}</p>
+                                    <p className="text-xs text-shnoor-soft">{capitalizeInstitute(institute)} • ID: {studentId}</p>
+                                </div>
+                                <button
+                                    onClick={() => navigate('/dashboard')}
+                                    className="flex items-center space-x-2 px-5 py-2 !h-10 text-white bg-shnoor-indigo border border-shnoor-indigo hover:bg-[#4d4d9c] rounded-lg transition-colors text-sm font-semibold"
+                                >
+                                    <ArrowLeft size={16} />
+                                    <span className="hidden sm:inline">Back to Dashboard</span>
+                                </button>
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex items-center space-x-2 px-5 py-2 !h-10 text-white bg-transparent border border-white/20 hover:bg-white/10 rounded-lg transition-colors text-sm font-medium"
+                                >
+                                    <LogOut size={16} />
+                                    <span>Logout</span>
+                                </button>
                             </div>
-                            <button
-                                onClick={() => navigate('/dashboard')}
-                                className="flex items-center space-x-2 px-5 py-2 !h-10 text-white bg-shnoor-indigo border border-shnoor-indigo hover:bg-[#4d4d9c] rounded-lg transition-colors text-sm font-semibold"
-                            >
-                                <ArrowLeft size={16} />
-                                <span className="hidden sm:inline">Back to Dashboard</span>
-                            </button>
-                            <button
-                                onClick={handleLogout}
-                                className="flex items-center space-x-2 px-5 py-2 !h-10 text-white bg-transparent border border-white/20 hover:bg-white/10 rounded-lg transition-colors text-sm font-medium"
-                            >
-                                <LogOut size={16} />
-                                <span>Logout</span>
-                            </button>
                         </div>
                     </div>
-                </div>
-            </header>
+                </header>
+            )}
 
-            <main className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className={isEmbedded ? "" : "w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-8"}>
                 {/* Page heading */}
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-shnoor-navy mb-2">
-                        📋 Application Tracker
-                    </h1>
-                    <p className="text-shnoor-indigoMedium">
-                        Track your job applications, assessment progress, and status updates
-                    </p>
-                </div>
+                {!isEmbedded && (
+                    <div className="text-center mb-8">
+                        <h1 className="text-3xl font-bold text-shnoor-navy mb-2">
+                            📋 Application Tracker
+                        </h1>
+                        <p className="text-shnoor-indigoMedium">
+                            Track your job applications, assessment progress, and status updates
+                        </p>
+                    </div>
+                )}
 
                 {/* Loading state */}
                 {loading && (
@@ -276,10 +280,11 @@ export default function MyApplications() {
                             {applications.length} application{applications.length !== 1 ? 's' : ''}
                         </p>
 
-                        {applications.map((app) => {
-                            const testProgress = getTestProgress(app);
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                            {applications.map((app) => {
+                                const testProgress = getTestProgress(app);
 
-                            return (
+                                return (
                                 <div
                                     key={app.application_id}
                                     className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border-2 border-shnoor-indigo overflow-hidden transition-all duration-200 hover:shadow-[0_8px_30px_rgba(14,14,39,0.08)]"
@@ -460,6 +465,7 @@ export default function MyApplications() {
                                 </div>
                             );
                         })}
+                        </div>
                     </div>
                 )}
             </main>

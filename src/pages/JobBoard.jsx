@@ -21,7 +21,7 @@ const isExpiringSoon = (iso) => {
 
 
 
-export default function JobBoard() {
+export default function JobBoard({ isEmbedded = false }) {
     const navigate = useNavigate();
     const [jobs, setJobs] = useState([]);
     const [filtered, setFiltered] = useState([]);
@@ -203,55 +203,58 @@ export default function JobBoard() {
     };
 
     return (
-        <div className="min-h-screen bg-[#F8F8FB] font-sans">
-            {/* Header - matches Dashboard style */}
-            <header className="bg-shnoor-navy shadow-sm h-[72px] flex items-center sticky top-0 z-10 w-full">
-                <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 bg-shnoor-lavender rounded-xl flex items-center justify-center shadow-sm">
-                                <span className="text-shnoor-indigo font-bold text-xl">A</span>
+        <div className={isEmbedded ? "w-full font-sans" : "min-h-screen bg-[#F8F8FB] font-sans"}>
+            {!isEmbedded && (
+                <header className="bg-shnoor-navy shadow-sm h-[72px] flex items-center sticky top-0 z-10 w-full">
+                    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex justify-between items-center h-16">
+                            <div className="flex items-center space-x-4">
+                                <div className="w-12 h-12 bg-shnoor-lavender rounded-xl flex items-center justify-center shadow-sm">
+                                    <span className="text-shnoor-indigo font-bold text-xl">A</span>
+                                </div>
+                                <div>
+                                    <h1 className="text-white font-bold text-lg leading-tight">Assessment Portal</h1>
+                                    <p className="text-shnoor-light opacity-80 text-xs">Job Board</p>
+                                </div>
                             </div>
-                            <div>
-                                <h1 className="text-white font-bold text-lg leading-tight">Assessment Portal</h1>
-                                <p className="text-shnoor-light opacity-80 text-xs">Job Board</p>
-                            </div>
-                        </div>
 
-                        <div className="flex items-center space-x-6">
-                            <div className="text-right hidden sm:block">
-                                <p className="text-sm font-medium text-white">Welcome, {studentName}</p>
-                                <p className="text-xs text-shnoor-soft">{capitalizeInstitute(institute)} &bull; ID: {studentId}</p>
+                            <div className="flex items-center space-x-6">
+                                <div className="text-right hidden sm:block">
+                                    <p className="text-sm font-medium text-white">Welcome, {studentName}</p>
+                                    <p className="text-xs text-shnoor-soft">{capitalizeInstitute(institute)} &bull; ID: {studentId}</p>
+                                </div>
+                                <button
+                                    onClick={() => navigate('/dashboard')}
+                                    className="flex items-center space-x-2 px-5 py-2 text-white bg-shnoor-indigo border border-shnoor-indigo hover:bg-[#4d4d9c] rounded-lg transition-colors text-sm font-semibold"
+                                >
+                                    <ArrowLeft size={16} />
+                                    <span className="hidden sm:inline">Back to Dashboard</span>
+                                </button>
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex items-center space-x-2 px-5 py-2 text-white bg-transparent border border-white/20 hover:bg-white/10 rounded-lg transition-colors text-sm font-medium"
+                                >
+                                    <LogOut size={16} />
+                                    <span>Logout</span>
+                                </button>
                             </div>
-                            <button
-                                onClick={() => navigate('/dashboard')}
-                                className="flex items-center space-x-2 px-5 py-2 text-white bg-shnoor-indigo border border-shnoor-indigo hover:bg-[#4d4d9c] rounded-lg transition-colors text-sm font-semibold"
-                            >
-                                <ArrowLeft size={16} />
-                                <span className="hidden sm:inline">Back to Dashboard</span>
-                            </button>
-                            <button
-                                onClick={handleLogout}
-                                className="flex items-center space-x-2 px-5 py-2 text-white bg-transparent border border-white/20 hover:bg-white/10 rounded-lg transition-colors text-sm font-medium"
-                            >
-                                <LogOut size={16} />
-                                <span>Logout</span>
-                            </button>
                         </div>
                     </div>
-                </div>
-            </header>
+                </header>
+            )}
 
-            <main className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className={isEmbedded ? "" : "w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-8"}>
                 {/* Page heading */}
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-shnoor-navy mb-2">
-                        🎯 Job Openings &amp; Off-Campus Hiring
-                    </h1>
-                    <p className="text-shnoor-indigoMedium">
-                        Opportunities posted by your placement team — apply before the deadline!
-                    </p>
-                </div>
+                {!isEmbedded && (
+                    <div className="text-center mb-8">
+                        <h1 className="text-3xl font-bold text-shnoor-navy mb-2">
+                            🎯 Job Openings &amp; Off-Campus Hiring
+                        </h1>
+                        <p className="text-shnoor-indigoMedium">
+                            Opportunities posted by your placement team — apply before the deadline!
+                        </p>
+                    </div>
+                )}
 
                 {/* Search */}
                 <div className="relative mb-6">
@@ -302,7 +305,8 @@ export default function JobBoard() {
                             {search ? ` matching "${search}"` : ''}
                         </p>
 
-                        {filtered.map(job => (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                            {filtered.map(job => (
                             <div
                                 key={job.id}
                                 className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border-2 border-shnoor-indigo overflow-hidden transition-all duration-200 hover:shadow-[0_8px_30px_rgba(14,14,39,0.08)]"
@@ -409,6 +413,7 @@ export default function JobBoard() {
                                 </div>
                             </div>
                         ))}
+                        </div>
                     </div>
                 )}
             </main>

@@ -375,8 +375,17 @@ const InterviewRoom = () => {
         }
       });
 
-      // Initialize PeerJS with multiple STUN + TURN servers for reliable NAT traversal
+      // Initialize PeerJS pointing to our own backend signaling server
+      const backendHost = (import.meta.env.VITE_API_URL || 'http://localhost:5000')
+        .replace(/^https?:\/\//, '')
+        .replace(/\/$/, '');
+      const isSecure = (import.meta.env.VITE_API_URL || '').startsWith('https');
+
       const newPeer = new Peer(undefined, {
+        host: backendHost,
+        path: '/peerjs',
+        port: isSecure ? 443 : 5000,
+        secure: isSecure,
         config: {
           iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -384,9 +393,7 @@ const InterviewRoom = () => {
             { urls: 'stun:stun2.l.google.com:19302' },
             { urls: 'stun:stun3.l.google.com:19302' },
             { urls: 'stun:stun4.l.google.com:19302' },
-            // Twilio NTS free TURN (no auth needed for STUN, TURN needs credentials)
             { urls: 'stun:global.stun.twilio.com:3478' },
-            // Open Relay TURN — multiple ports/protocols for maximum compatibility
             {
               urls: [
                 'turn:openrelay.metered.ca:80',
@@ -819,14 +826,26 @@ const InterviewRoom = () => {
           videoTracks: remoteStream.getVideoTracks().length,
           audioTracks: remoteStream.getAudioTracks().length
         });
-        pendingRemoteStreamRef.current = remoteStream;
+
+        const applyRemoteStream = (el) => {
+          el.srcObject = remoteStream;
+          el.muted = false;
+          el.volume = 1.0;
+          el.playsInline = true;
+          el.autoplay = true;
+          // Use a user-gesture-safe play with retry
+          const tryPlay = () => el.play().catch(e => {
+            console.warn('Remote play blocked, retrying:', e.name);
+            setTimeout(tryPlay, 500);
+          });
+          tryPlay();
+        };
+
         if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = remoteStream;
-          remoteVideoRef.current.muted = false;
-          remoteVideoRef.current.playsInline = true;
-          remoteVideoRef.current.autoplay = true;
-          ensureVideoPlays(remoteVideoRef.current, 'Remote');
+          applyRemoteStream(remoteVideoRef.current);
           pendingRemoteStreamRef.current = null;
+        } else {
+          pendingRemoteStreamRef.current = remoteStream;
         }
         setConnectionStatus('Connected');
         setCallState('connected');

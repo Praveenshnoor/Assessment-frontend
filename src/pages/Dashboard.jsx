@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react';
 import { LogOut, Clock, BookOpen, AlertCircle, FileText, X, Video, Briefcase, ClipboardList } from 'lucide-react';import ExamSearchFilter from '../components/ExamSearchFilter';
 import StudentInterviews from '../components/StudentInterviews';
 import StudentSupportChatbot from '../components/chatbot/StudentSupportChatbot';
+import JobBoard from './JobBoard';
+import MyApplications from './MyApplications';
+import shnoorLogo from '../assets/shnoor-logo1.png';
 import { apiFetch } from '../config/api';
 
 const Dashboard = () => {
@@ -355,8 +358,12 @@ const Dashboard = () => {
         <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center border-white/10 sm:border-transparent sm:h-16">
             <div className="flex items-center space-x-3 sm:space-x-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-shnoor-lavender rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
-                <span className="text-shnoor-indigo font-bold text-lg sm:text-xl">A</span>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl overflow-hidden shadow-sm flex-shrink-0 bg-white">
+                <img
+                  src={shnoorLogo}
+                  alt="Shnoor Logo"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div>
                 <h1 className="text-white font-bold text-base sm:text-lg leading-tight">Assessment Portal</h1>
@@ -409,15 +416,21 @@ const Dashboard = () => {
               <span>Interviews</span>
             </button>
             <button
-              onClick={() => navigate('/job-board')}
-              className="flex items-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all text-sm sm:text-base bg-white text-shnoor-indigoMedium hover:text-shnoor-navy hover:bg-shnoor-lavender"
+              onClick={() => setActiveTab('job-board')}
+              className={`flex items-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all text-sm sm:text-base ${activeTab === 'job-board'
+                ? 'bg-shnoor-indigo text-white'
+                : 'bg-white text-shnoor-indigoMedium hover:text-shnoor-navy hover:bg-shnoor-lavender'
+                }`}
             >
               <Briefcase size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
               <span>Job Board</span>
             </button>
             <button
-              onClick={() => navigate('/student/my-applications')}
-              className="flex items-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all text-sm sm:text-base bg-white text-shnoor-indigoMedium hover:text-shnoor-navy hover:bg-shnoor-lavender"
+              onClick={() => setActiveTab('my-applications')}
+              className={`flex items-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all text-sm sm:text-base ${activeTab === 'my-applications'
+                ? 'bg-shnoor-indigo text-white'
+                : 'bg-white text-shnoor-indigoMedium hover:text-shnoor-navy hover:bg-shnoor-lavender'
+                }`}
             >
               <ClipboardList size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
               <span>My Applications</span>
@@ -623,6 +636,16 @@ const Dashboard = () => {
         {/* Interviews Tab */}
         {activeTab === 'interviews' && (
           <StudentInterviews />
+        )}
+
+        {/* Job Board Tab */}
+        {activeTab === 'job-board' && (
+          <JobBoard isEmbedded={true} />
+        )}
+
+        {/* My Applications Tab */}
+        {activeTab === 'my-applications' && (
+          <MyApplications isEmbedded={true} />
         )}
 
         {/* Info Section */}
