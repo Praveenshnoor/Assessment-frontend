@@ -223,14 +223,6 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
             alert('Please enter a test title first');
             return;
         }
-        if (jobRoles.length === 0 || !jobRoles[0].job_role.trim()) {
-            alert('Please enter at least one job role');
-            return;
-        }
-        if (!jobRoles[0].job_description.trim()) {
-            alert('Please enter a job description for the first role');
-            return;
-        }
         if (nameAvailability.available === false) {
             alert('This test name is already taken. Please choose a different name.');
             return;
@@ -243,10 +235,6 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
     };
 
     const handleRemoveJobRole = (index) => {
-        if (jobRoles.length === 1) {
-            alert('At least one job role is required');
-            return;
-        }
         const newJobRoles = jobRoles.filter((_, i) => i !== index);
         setJobRoles(newJobRoles);
     };
@@ -811,7 +799,7 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                         {/* Job Roles Section */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <label className="block text-sm font-bold text-shnoor-navy">Job Roles & Descriptions *</label>
+                                <label className="block text-sm font-bold text-shnoor-navy">Job Roles & Descriptions</label>
                                 {!viewMode && (
                                     <button
                                         type="button"
@@ -850,7 +838,6 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                             disabled={viewMode}
                                             className={`w-full px-4 py-3 border-2 border-shnoor-light rounded-xl focus:ring-4 focus:ring-shnoor-indigo/20 focus:border-shnoor-indigo transition-all font-medium text-shnoor-navy ${viewMode ? 'bg-shnoor-light opacity-50 cursor-not-allowed' : 'bg-white'}`}
                                             placeholder="e.g., Senior Software Engineer, Junior Developer"
-                                            required
                                         />
                                     </div>
 
@@ -862,7 +849,6 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                                             disabled={viewMode}
                                             className={`w-full px-4 py-3 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-navyLight focus:border-transparent resize-y ${viewMode ? 'bg-shnoor-lavender cursor-not-allowed' : ''}`}
                                             placeholder="Enter job description, requirements, responsibilities..."
-                                            required
                                         />
                                     </div>
                                 </div>
@@ -1104,11 +1090,11 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                                 <button
                                     onClick={() => handleStart('manual')}
-                                    className={`p-6 border-2 border-shnoor-mist rounded-xl text-left transition-all hover:border-shnoor-indigo group bg-white ${!testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking
+                                    className={`p-6 border-2 border-shnoor-mist rounded-xl text-left transition-all hover:border-shnoor-indigo group bg-white ${!testTitle || nameAvailability.available === false || nameAvailability.checking
                                             ? 'opacity-50 cursor-not-allowed'
                                             : 'hover:shadow-md'
                                         }`}
-                                    disabled={!testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking}
+                                    disabled={!testTitle || nameAvailability.available === false || nameAvailability.checking}
                                 >
                                     <div className="w-12 h-12 bg-shnoor-lavender rounded-full flex items-center justify-center mb-4 group-hover:bg-shnoor-indigo transition-colors">
                                         <Plus className="w-6 h-6 text-shnoor-indigo group-hover:text-white" />
@@ -1119,11 +1105,11 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
 
                                 <button
                                     onClick={() => handleStart('bulk')}
-                                    className={`p-6 border-2 border-shnoor-mist rounded-xl text-left transition-all hover:border-shnoor-indigo group bg-white ${!testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking
+                                    className={`p-6 border-2 border-shnoor-mist rounded-xl text-left transition-all hover:border-shnoor-indigo group bg-white ${!testTitle || nameAvailability.available === false || nameAvailability.checking
                                             ? 'opacity-50 cursor-not-allowed'
                                             : 'hover:shadow-md'
                                         }`}
-                                    disabled={!testTitle || jobRoles.length === 0 || !jobRoles[0].job_role || !jobRoles[0].job_description || nameAvailability.available === false || nameAvailability.checking}
+                                    disabled={!testTitle || nameAvailability.available === false || nameAvailability.checking}
                                 >
                                     <div className="w-12 h-12 bg-shnoor-lavender rounded-full flex items-center justify-center mb-4 group-hover:bg-shnoor-indigo transition-colors">
                                         <Upload className="w-6 h-6 text-shnoor-indigo group-hover:text-white" />

@@ -51,10 +51,6 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.jobRole.trim()) {
-      newErrors.jobRole = 'Job role is required';
-    }
-
     if (formData.duration < 1 || formData.duration > 300) {
       newErrors.duration = 'Duration must be between 1 and 300 minutes';
     }
@@ -179,7 +175,7 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
           {/* Job Role */}
           <div>
             <label className="block text-sm font-semibold text-shnoor-navy mb-2">
-              Job Role <span className="text-shnoor-danger">*</span>
+              Job Role
             </label>
             <input
               type="text"
