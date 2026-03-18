@@ -35,10 +35,10 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
     if (!dateTimeString) return '';
     // Parse the datetime from backend and convert to Asia/Kolkata timezone
     const date = new Date(dateTimeString);
-    
+
     // Convert to Asia/Kolkata timezone (IST)
     const istDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-    
+
     // Format for datetime-local input (YYYY-MM-DDTHH:MM)
     const year = istDate.getFullYear();
     const month = String(istDate.getMonth() + 1).padStart(2, '0');
@@ -50,10 +50,6 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
 
   const validateForm = () => {
     const newErrors = {};
-
-    if (!formData.jobRole.trim()) {
-      newErrors.jobRole = 'Job role is required';
-    }
 
     if (formData.duration < 1 || formData.duration > 300) {
       newErrors.duration = 'Duration must be between 1 and 300 minutes';
@@ -93,17 +89,17 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
     const [datePart, timePart] = dateTimeString.split('T');
     const [year, month, day] = datePart.split('-');
     const [hours, minutes] = timePart.split(':');
-    
+
     // Create date string in IST format
     const istDateString = `${year}-${month}-${day}T${hours}:${minutes}:00+05:30`;
     const date = new Date(istDateString);
-    
+
     return date.toISOString();
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -179,7 +175,7 @@ const EditTestDetailsModal = ({ test, onClose, onSave }) => {
           {/* Job Role */}
           <div>
             <label className="block text-sm font-semibold text-shnoor-navy mb-2">
-              Job Role <span className="text-shnoor-danger">*</span>
+              Job Role
             </label>
             <input
               type="text"

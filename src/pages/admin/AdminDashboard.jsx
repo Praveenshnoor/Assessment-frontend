@@ -967,13 +967,6 @@ const AdminDashboard = () => {
 
   // Handle saving job role and description
   const handleSaveJob = async () => {
-    // Validate all job roles
-    for (let i = 0; i < jobRoles.length; i++) {
-      if (!jobRoles[i].jobRole.trim()) {
-        alert(`Job role ${i + 1} is required`);
-        return;
-      }
-    }
 
     try {
       setIsSavingJob(true);
@@ -1014,14 +1007,10 @@ const AdminDashboard = () => {
   };
 
   const handleRemoveJobRole = (index) => {
-    if (jobRoles.length === 1) {
-      alert('At least one job role is required');
-      return;
-    }
     const newJobRoles = jobRoles.filter((_, i) => i !== index);
     setJobRoles(newJobRoles);
     if (selectedJobRoleIndex >= newJobRoles.length) {
-      setSelectedJobRoleIndex(newJobRoles.length - 1);
+      setSelectedJobRoleIndex(Math.max(newJobRoles.length - 1, 0));
     }
   };
 
