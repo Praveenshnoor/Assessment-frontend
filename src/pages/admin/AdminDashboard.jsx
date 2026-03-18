@@ -91,6 +91,7 @@ const AdminDashboard = () => {
   const [selectedTestsForStudentModal, setSelectedTestsForStudentModal] = useState([]);
   const [isAssigningTestInModal, setIsAssigningTestInModal] = useState(false);
   const [isStudentTestDropdownOpen, setIsStudentTestDropdownOpen] = useState(false);
+  const [selectionRange, setSelectionRange] = useState({ start: '', end: '' });
   const [newStudentData, setNewStudentData] = useState({
     full_name: '',
     email: '',
@@ -1754,6 +1755,23 @@ const AdminDashboard = () => {
     } else {
       setSelectedStudentsForDelete(studentIds);
     }
+  };
+
+  const handleSelectRange = () => {
+    const startIdx = parseInt(selectionRange.start) - 1;
+    const endIdx = parseInt(selectionRange.end) - 1;
+    
+    if (isNaN(startIdx) || isNaN(endIdx) || startIdx < 0 || endIdx >= instituteStudentsForManagement.length || startIdx > endIdx) {
+      alert('Please enter a valid range (e.g., 1 to ' + instituteStudentsForManagement.length + ')');
+      return;
+    }
+
+    const studentsToSelect = instituteStudentsForManagement.slice(startIdx, endIdx + 1).map(s => s.id);
+    
+    setSelectedStudentsForDelete(prev => {
+      const newSelection = new Set([...prev, ...studentsToSelect]);
+      return Array.from(newSelection);
+    });
   };
 
   const handleAssignTestInModal = async () => {
@@ -4248,20 +4266,52 @@ const AdminDashboard = () => {
                   ) : (
                     <>
                       {/* Select All Checkbox */}
-                      <div className="flex items-center space-x-3 mb-3 p-3 bg-white rounded-lg">
-                        <input
-                          type="checkbox"
-                          checked={selectedStudentsForDelete.length === instituteStudentsForManagement.length && instituteStudentsForManagement.length > 0}
-                          onChange={() => toggleAllStudentsForDelete(instituteStudentsForManagement)}
-                          className="w-5 h-5 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-lavender"
-                        />
-                        <span className="text-sm font-bold text-shnoor-indigo">
-                          {selectedStudentsForDelete.length > 0 ? `${selectedStudentsForDelete.length} selected` : 'Select All'}
-                        </span>
+                      {/* Selection Controls */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 p-3 bg-white rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedStudentsForDelete.length === instituteStudentsForManagement.length && instituteStudentsForManagement.length > 0}
+                            onChange={() => toggleAllStudentsForDelete(instituteStudentsForManagement)}
+                            className="w-5 h-5 text-shnoor-indigo border-shnoor-mist rounded focus:ring-2 focus:ring-shnoor-lavender"
+                          />
+                          <span className="text-sm font-bold text-shnoor-indigo">
+                            {selectedStudentsForDelete.length > 0 ? `${selectedStudentsForDelete.length} selected` : 'Select All'}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-shnoor-indigoMedium">Select Range:</span>
+                          <input 
+                            type="number" 
+                            min="1"
+                            max={instituteStudentsForManagement.length}
+                            className="w-16 px-2 py-1 text-sm border border-shnoor-light rounded focus:ring-2 focus:ring-shnoor-lavender"
+                            placeholder="1"
+                            value={selectionRange.start}
+                            onChange={(e) => setSelectionRange({...selectionRange, start: e.target.value})}
+                          />
+                          <span className="text-sm text-shnoor-indigoMedium">to</span>
+                          <input 
+                            type="number" 
+                            min="1"
+                            max={instituteStudentsForManagement.length}
+                            className="w-16 px-2 py-1 text-sm border border-shnoor-light rounded focus:ring-2 focus:ring-shnoor-lavender"
+                            placeholder={instituteStudentsForManagement.length.toString()}
+                            value={selectionRange.end}
+                            onChange={(e) => setSelectionRange({...selectionRange, end: e.target.value})}
+                          />
+                          <button
+                            onClick={handleSelectRange}
+                            className="px-3 py-1 bg-shnoor-indigo hover:bg-shnoor-navy text-white text-sm rounded transition-colors"
+                          >
+                            Select
+                          </button>
+                        </div>
                       </div>
 
                       <div className="space-y-2 max-h-96 overflow-y-auto">
-                        {instituteStudentsForManagement.map((student) => (
+                        {instituteStudentsForManagement.map((student, index) => (
                           <div
                             key={student.id}
                             className={`flex items-center justify-between p-4 border rounded-xl hover:shadow-md transition-all ${selectedStudentsForDelete.includes(student.id)
@@ -4270,6 +4320,7 @@ const AdminDashboard = () => {
                               }`}
                           >
                             <div className="flex items-center space-x-3 flex-1">
+                              <span className="text-sm font-bold text-shnoor-indigo w-6">{index + 1}.</span>
                               <input
                                 type="checkbox"
                                 checked={selectedStudentsForDelete.includes(student.id)}
