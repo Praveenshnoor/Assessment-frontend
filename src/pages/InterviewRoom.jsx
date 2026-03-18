@@ -376,15 +376,18 @@ const InterviewRoom = () => {
       });
 
       // Initialize PeerJS pointing to our own backend signaling server
-      const backendHost = (import.meta.env.VITE_API_URL || 'http://localhost:5000')
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const isSecure = apiUrl.startsWith('https');
+      const backendHost = apiUrl
         .replace(/^https?:\/\//, '')
-        .replace(/\/$/, '');
-      const isSecure = (import.meta.env.VITE_API_URL || '').startsWith('https');
+        .replace(/\/$/, '')
+        .split(':')[0]; // strip port from host if present
+      const backendPort = isSecure ? 443 : 5000;
 
       const newPeer = new Peer(undefined, {
         host: backendHost,
         path: '/peerjs',
-        port: isSecure ? 443 : 5000,
+        port: backendPort,
         secure: isSecure,
         config: {
           iceServers: [
