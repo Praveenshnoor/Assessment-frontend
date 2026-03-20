@@ -106,13 +106,23 @@ export default function AdminJobApplicants() {
             : <span className="inline-block px-3 py-1 rounded-lg text-sm font-bold bg-shnoor-dangerLight text-shnoor-danger border border-shnoor-danger">Fail</span>;
     };
 
-    const getShortlistBadge = (status) => {
-        if (status === 'shortlisted') {
+    const getShortlistBadge = (r) => {
+        if (r.status === 'shortlisted') {
             return <span className="inline-block px-3 py-1 rounded-lg text-sm font-bold bg-shnoor-successLight text-shnoor-success border border-shnoor-success">Shortlisted</span>;
-        } else if (status === 'rejected') {
+        } else if (r.status === 'rejected') {
             return <span className="inline-block px-3 py-1 rounded-lg text-sm font-bold bg-shnoor-dangerLight text-shnoor-danger border border-shnoor-danger">Not Shortlisted</span>;
         }
-        return <span className="text-xs text-gray-400 italic">Pending</span>;
+        
+        // Dynamic fallback for un-updated rows
+        const totalViolations = Number(r.no_face_count || 0) + Number(r.multi_face_count || 0) + 
+                                Number(r.phone_count || 0) + Number(r.noise_count || 0) + Number(r.voice_count || 0);
+        const isFlagged = totalViolations > 5;
+
+        if (r.passed && !isFlagged) {
+            return <span className="inline-block px-3 py-1 rounded-lg text-sm font-bold bg-shnoor-successLight text-shnoor-success border border-shnoor-success">Shortlisted</span>;
+        } else {
+            return <span className="inline-block px-3 py-1 rounded-lg text-sm font-bold bg-shnoor-dangerLight text-shnoor-danger border border-shnoor-danger">Not Shortlisted</span>;
+        }
     };
 
     const handleOpenInterviewSchedule = (row) => {
@@ -499,7 +509,7 @@ export default function AdminJobApplicants() {
                                                             {getResultBadge(r.passed, r.percentage)}
                                                         </td>
                                                         <td className="px-4 py-4 text-center">
-                                                            {getShortlistBadge(r.status)}
+                                                            {getShortlistBadge(r)}
                                                         </td>
                                                         <td className="px-3 py-4 text-center">
                                                             <span className={`text-sm font-semibold ${r.no_face_count > 0 ? 'text-shnoor-danger' : 'text-shnoor-soft'}`}>
