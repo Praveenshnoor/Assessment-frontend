@@ -12,12 +12,13 @@ import * as XLSX from 'xlsx';
 import InterviewSchedule from '../../pages/admin/InterviewSchedule';
 
 const STATUS_CONFIG = {
-    submitted: { label: 'Submitted' },
-    screening: { label: 'Screening' },
-    assessment_assigned: { label: 'Assessment Assigned' },
-    assessment_completed: { label: 'Assessment Done' },
+    assessment_assigned: { label: 'Test Assigned' },
     shortlisted: { label: 'Shortlisted' },
-    rejected: { label: 'Rejected' }
+    rejected: { label: 'Rejected' },
+    // Legacy statuses — normalized in display
+    submitted: { label: 'Test Assigned' },
+    screening: { label: 'Test Assigned' },
+    assessment_completed: { label: 'Test Assigned' }
 };
 
 const adminHeaders = () => ({
@@ -77,17 +78,19 @@ export default function AdminJobApplicants() {
     }, [jobId, statusFilter]);
 
     const getAppStatusBadge = (status) => {
+        // Normalize legacy statuses to the 3 valid ones
+        const normalized = (status === 'submitted' || status === 'screening' || status === 'assessment_completed')
+            ? 'assessment_assigned'
+            : status;
+
         const colorMap = {
-            submitted: 'bg-shnoor-lavender text-shnoor-indigo border-shnoor-indigo',
-            screening: 'bg-shnoor-warningLight text-shnoor-warning border-shnoor-warning',
             assessment_assigned: 'bg-shnoor-lavender text-shnoor-indigo border-shnoor-indigo',
-            assessment_completed: 'bg-shnoor-navy text-white border-shnoor-navy',
             shortlisted: 'bg-shnoor-successLight text-shnoor-success border-shnoor-success',
             rejected: 'bg-shnoor-dangerLight text-shnoor-danger border-shnoor-danger',
         };
-        const label = STATUS_CONFIG[status]?.label || status;
+        const label = STATUS_CONFIG[normalized]?.label || normalized;
         return (
-            <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${colorMap[status] || 'bg-gray-100 text-gray-700 border-gray-300'}`}>
+            <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${colorMap[normalized] || 'bg-gray-100 text-gray-700 border-gray-300'}`}>
                 {label}
             </span>
         );
@@ -112,17 +115,7 @@ export default function AdminJobApplicants() {
         } else if (r.status === 'rejected') {
             return <span className="inline-block px-3 py-1 rounded-lg text-sm font-bold bg-shnoor-dangerLight text-shnoor-danger border border-shnoor-danger">Not Shortlisted</span>;
         }
-        
-        // Dynamic fallback for un-updated rows
-        const totalViolations = Number(r.no_face_count || 0) + Number(r.multi_face_count || 0) + 
-                                Number(r.phone_count || 0) + Number(r.noise_count || 0) + Number(r.voice_count || 0);
-        const isFlagged = totalViolations > 5;
-
-        if (r.passed && !isFlagged) {
-            return <span className="inline-block px-3 py-1 rounded-lg text-sm font-bold bg-shnoor-successLight text-shnoor-success border border-shnoor-success">Shortlisted</span>;
-        } else {
-            return <span className="inline-block px-3 py-1 rounded-lg text-sm font-bold bg-shnoor-dangerLight text-shnoor-danger border border-shnoor-danger">Not Shortlisted</span>;
-        }
+        return <span className="inline-block px-3 py-1 rounded-lg text-sm font-bold bg-gray-100 text-gray-500 border border-gray-300">Pending</span>;
     };
 
     const handleOpenInterviewSchedule = (row) => {
@@ -149,12 +142,14 @@ export default function AdminJobApplicants() {
     };
 
     const exportEnrolledStudents = () => {
-        // Prepare enrolled students data for export
+        const normalizeStatus = (s) =>
+            (s === 'submitted' || s === 'screening' || s === 'assessment_completed') ? 'assessment_assigned' : s;
+
         const exportData = enrolledStudents.map(r => ({
             'Student ID': r.student_id,
             'Name': r.full_name,
             'Email': r.email,
-            'Status': STATUS_CONFIG[r.status]?.label || r.status
+            'Status': STATUS_CONFIG[normalizeStatus(r.status)]?.label || r.status
         }));
 
         // Create workbook and worksheet
@@ -194,8 +189,7 @@ export default function AdminJobApplicants() {
                 'Date Attempted': formatDate(r.submitted_at),
                 'Score': r.obtained_marks !== null ? `${parseFloat(r.obtained_marks).toFixed(2)}/${parseFloat(r.total_marks).toFixed(2)} (${parseFloat(r.percentage).toFixed(1)}%)` : 'Not attempted',
                 'Test Status': r.passed ? 'Pass' : 'Fail',
-                'Application Status': r.status === 'shortlisted' ? 'Shortlisted' : r.status === 'rejected' ? 'Not Shortlisted' : 'Pending',
-                'No Face': r.no_face_count || 0,
+                'Application Status': r.status === 'shortlisted' ? 'Shortlisted' : r.status === 'rejected' ? 'Not Shortlisted' : 'Pending',                'No Face': r.no_face_count || 0,
                 'Multi Faces': r.multi_face_count || 0,
                 'Phone': r.phone_count || 0,
                 'Noise': r.noise_count || 0,
@@ -305,7 +299,7 @@ export default function AdminJobApplicants() {
                             </div>
                             <div className="bg-[#F8F8FB] border border-shnoor-indigo rounded-xl p-4">
                                 <p className="text-xs font-bold uppercase text-shnoor-indigo mb-1">In Progress</p>
-                                <p className="text-2xl font-bold text-shnoor-navy">{stats.assessment_assigned}</p>
+                                <p className="text-2xl font-bold text-shnoor-navy">{stats.in_progress}</p>
                             </div>
                             <div className="bg-shnoor-successLight border border-shnoor-success rounded-xl p-4">
                                 <p className="text-xs font-bold uppercase text-shnoor-success mb-1">Shortlisted</p>
