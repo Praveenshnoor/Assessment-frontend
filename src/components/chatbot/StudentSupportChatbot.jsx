@@ -24,13 +24,22 @@ const StudentSupportChatbot = () => {
   const [sendStatus, setSendStatus] = useState(null);
   const [conversationHistory, setConversationHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [showToastNotification, setShowToastNotification] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const processedNotificationsRef = useRef(new Set()); // Track which notifications we've processed
+
+  const mergeUniqueById = useCallback((prev, incoming) => {
+    if (!incoming || incoming.id === undefined || incoming.id === null) {
+      return prev;
+    }
+    if (prev.some((msg) => msg.id === incoming.id)) {
+      return prev;
+    }
+    return [...prev, incoming];
+  }, []);
 
   // Get student info from localStorage
   const studentName = localStorage.getItem('studentName') || 'Student';
@@ -42,7 +51,10 @@ const StudentSupportChatbot = () => {
   // Support socket for real-time notifications
   const { 
     notifications, 
+    unreadCount,
     markAllRead: socketMarkAllRead,
+    syncUnreadCount,
+    emitMarkRead,
     notificationPermission,
     requestPermission,
     isConnected
@@ -56,8 +68,8 @@ const StudentSupportChatbot = () => {
 
   // Debug: Log socket connection status
   useEffect(() => {
-    console.log('[StudentChatbot] Socket connection status:', isConnected);
-    console.log('[StudentChatbot] Student ID (rollNumber):', studentId);
+    console.warn('[StudentChatbot] Socket connection status:', isConnected);
+    console.warn('[StudentChatbot] Student ID (rollNumber):', studentId);
   }, [isConnected, studentId]);
 
   // Request notification permission on first user interaction
@@ -71,7 +83,7 @@ const StudentSupportChatbot = () => {
     }
   }, [notificationPermission, requestPermission]);
 
-  // Fetch unread count on mount
+  // Fetch unread count on mount and sync shared unread state.
   useEffect(() => {
     const fetchUnreadCount = async () => {
       if (!studentId) return;
@@ -87,7 +99,7 @@ const StudentSupportChatbot = () => {
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
-            setUnreadCount(data.count);
+            syncUnreadCount(data.count);
           }
         }
       } catch (error) {
@@ -96,31 +108,48 @@ const StudentSupportChatbot = () => {
     };
 
     fetchUnreadCount();
-    
-    // Poll every 60 seconds
-    const interval = setInterval(fetchUnreadCount, 60000);
-    return () => clearInterval(interval);
-  }, [studentId]);
+
+    return undefined;
+  }, [studentId, syncUnreadCount]);
 
   // Handle socket notifications for new admin replies
   useEffect(() => {
-    console.log('[StudentChatbot] Notifications changed:', notifications.length);
+    console.warn('[StudentChatbot] Notifications changed:', notifications.length);
     
     if (notifications.length > 0) {
       const latestNotification = notifications[0];
       const notificationId = latestNotification.id;
       
-      console.log('[StudentChatbot] Latest notification:', latestNotification);
-      console.log('[StudentChatbot] Already processed?', processedNotificationsRef.current.has(notificationId));
+      console.warn('[StudentChatbot] Latest notification:', latestNotification);
+      console.warn('[StudentChatbot] Already processed?', processedNotificationsRef.current.has(notificationId));
       
       // Only process if we haven't already processed this notification
       if (!latestNotification.read && !processedNotificationsRef.current.has(notificationId)) {
-        console.log('[StudentChatbot] Showing toast for new notification ID:', notificationId);
+        console.warn('[StudentChatbot] Showing toast for new notification ID:', notificationId);
         
         // Mark as processed
         processedNotificationsRef.current.add(notificationId);
         
-        setUnreadCount(prev => prev + 1);
+        if (
+          latestNotification.type === 'admin-reply' &&
+          latestNotification.message
+        ) {
+          setConversationHistory((prev) => mergeUniqueById(prev, {
+            id: latestNotification.id,
+            message: latestNotification.message,
+            image_path: latestNotification.image_path || null,
+            sender_type: 'admin',
+            created_at: latestNotification.createdAt || new Date().toISOString()
+          }));
+        }
+
+        const isChatOpen = isOpen && currentView === 'contact';
+        if (isChatOpen && latestNotification.type === 'admin-reply') {
+          socketMarkAllRead();
+          emitMarkRead();
+          syncUnreadCount(0);
+          return;
+        }
         
         // Show toast notification
         setToastMessage(latestNotification);
@@ -135,7 +164,7 @@ const StudentSupportChatbot = () => {
         return () => clearTimeout(timer);
       }
     }
-  }, [notifications]);
+  }, [notifications, isOpen, currentView, socketMarkAllRead, emitMarkRead, syncUnreadCount, mergeUniqueById]);
 
   // Mark messages as read when opening contact view
   const markMessagesAsRead = useCallback(async () => {
@@ -149,12 +178,13 @@ const StudentSupportChatbot = () => {
           'Authorization': `Bearer ${token}`
         }
       });
-      setUnreadCount(0);
       socketMarkAllRead();
+      syncUnreadCount(0);
+      emitMarkRead();
     } catch (error) {
       console.error('Error marking messages as read:', error);
     }
-  }, [studentId, socketMarkAllRead]);
+  }, [studentId, socketMarkAllRead, syncUnreadCount, emitMarkRead]);
 
   // Scroll to bottom of messages
   useEffect(() => {
@@ -187,7 +217,8 @@ const StudentSupportChatbot = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setConversationHistory(data.messages || []);
+          const unique = (data.messages || []).reduce((acc, msg) => mergeUniqueById(acc, msg), []);
+          setConversationHistory(unique);
         }
       }
     } catch (error) {
@@ -195,7 +226,7 @@ const StudentSupportChatbot = () => {
     } finally {
       setLoadingHistory(false);
     }
-  }, [studentId]);
+  }, [studentId, mergeUniqueById]);
 
   const handleOpen = () => {
     setIsOpen(true);
@@ -263,10 +294,12 @@ const StudentSupportChatbot = () => {
     const file = e.target.files[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
+        // eslint-disable-next-line no-alert
         alert('Please select an image file');
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
+        // eslint-disable-next-line no-alert
         alert('Image size should be less than 5MB');
         return;
       }
@@ -325,13 +358,13 @@ const StudentSupportChatbot = () => {
       if (data.success) {
         setSendStatus('success');
         // Add message to conversation history locally
-        setConversationHistory(prev => [...prev, {
+        setConversationHistory(prev => mergeUniqueById(prev, {
           id: data.data.id,
           message: newMessage.trim(),
           image_path: data.data.imagePath || null,
           sender_type: 'student',
           created_at: new Date().toISOString()
-        }]);
+        }));
         setNewMessage('');
         removeImage();
       } else {

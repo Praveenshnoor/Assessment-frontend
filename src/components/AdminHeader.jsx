@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Video, LogOut, Settings, MessageSquare, X } from 'lucide-react';
 import Button from './Button';
 import { useSupportSocket } from '../hooks/useSupportSocket';
@@ -8,13 +8,16 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
   const navigate = useNavigate();
-  const [unreadCount, setUnreadCount] = useState(0);
+  const location = useLocation();
   const [toastNotification, setToastNotification] = useState(null);
+  const shownToastIdsRef = useRef(new Set());
   
   // Use support socket for real-time notifications with browser notifications enabled
   const { 
     notifications, 
-    unreadCount: socketUnreadCount,
+    unreadCount,
+    syncUnreadCount,
+    markAllRead,
     notificationPermission,
     requestPermission
   } = useSupportSocket({ isAdmin: true, enabled: true, enableBrowserNotifications: true });
@@ -31,29 +34,44 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
     }
   }, [notificationPermission, requestPermission]);
 
-  // Show toast when new notification arrives
+  // Show toast only once per message id and never while viewing the messages page.
   useEffect(() => {
-    if (notifications.length > 0 && !notifications[0].read) {
-      const latestNotification = notifications[0];
-      setToastNotification(latestNotification);
-      
-      // Auto-hide toast after 5 seconds
-      const timer = setTimeout(() => {
-        setToastNotification(null);
-      }, 5000);
-      
-      return () => clearTimeout(timer);
+    if (location.pathname === '/admin/student-messages') {
+      setToastNotification(null);
+      return undefined;
     }
-  }, [notifications]);
 
-  // Update unread count when socket notifications change
-  useEffect(() => {
-    if (socketUnreadCount > 0) {
-      setUnreadCount(prev => prev + socketUnreadCount);
+    if (!(notifications.length > 0 && !notifications[0].read && notifications[0].type === 'student-message')) {
+      return undefined;
     }
-  }, [socketUnreadCount]);
 
-  // Fetch unread message count
+    const latestNotification = notifications[0];
+    const messageId = String(latestNotification.id ?? latestNotification.messageId ?? latestNotification.message_id ?? '');
+    if (!messageId) {
+      return undefined;
+    }
+
+    if (shownToastIdsRef.current.has(messageId)) {
+      return undefined;
+    }
+
+    shownToastIdsRef.current.add(messageId);
+    setToastNotification(latestNotification);
+
+    const timer = setTimeout(() => {
+      setToastNotification(null);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [notifications, location.pathname]);
+
+  const goToMessages = () => {
+    markAllRead();
+    setToastNotification(null);
+    navigate('/admin/student-messages');
+  };
+
+  // Fetch unread message count once and hydrate shared unread state.
   useEffect(() => {
     const fetchUnreadCount = async () => {
       try {
@@ -68,7 +86,7 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
 
         const data = await response.json();
         if (data.success) {
-          setUnreadCount(data.count);
+          syncUnreadCount(data.count);
         }
       } catch (err) {
         console.error('Error fetching unread count:', err);
@@ -76,11 +94,9 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
     };
 
     fetchUnreadCount();
-    
-    // Poll for new messages every 30 seconds
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
-  }, []);
+
+    return undefined;
+  }, [syncUnreadCount]);
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
@@ -108,7 +124,7 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
           <Button
             variant="primary"
             className="!h-10 !px-5 text-sm bg-shnoor-indigo hover:bg-[#6b6be5] hover:shadow-[0_0_15px_rgba(107,107,229,0.4)] hover:-translate-y-0.5 transition-all border-0 relative"
-            onClick={() => navigate('/admin/student-messages')}
+            onClick={goToMessages}
           >
             <MessageSquare size={16} className="mr-2" />
             Messages
@@ -153,7 +169,7 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
             className="bg-white rounded-xl shadow-2xl border border-gray-100 p-4 max-w-sm cursor-pointer hover:shadow-xl transition-shadow"
             onClick={() => {
               setToastNotification(null);
-              navigate('/admin/student-messages');
+              goToMessages();
             }}
           >
             <div className="flex items-start gap-3">

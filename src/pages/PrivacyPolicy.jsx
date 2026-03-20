@@ -1,13 +1,15 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button';
+import SEOHead from '../components/SEOHead';
+import SkipLink from '../components/SkipLink';
 import shnoorlogo1 from '../assets/shnoor-logo1.png';
 import shnoorLogo from '../assets/shnoor-logo.png';
 
 const SHIELD = 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z';
 
 const Icon = ({ d, cls = 'w-6 h-6', stroke = 2 }) => (
-    <svg className={cls} fill="none" stroke="currentColor" strokeWidth={stroke} viewBox="0 0 24 24">
+    <svg className={cls} fill="none" stroke="currentColor" strokeWidth={stroke} viewBox="0 0 24 24" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" d={d} />
     </svg>
 );
@@ -19,44 +21,53 @@ const PrivacyPolicy = () => {
 
     return (
         <div className="font-['Plus_Jakarta_Sans',sans-serif] text-shnoor-navy antialiased min-h-screen flex flex-col">
+            <SEOHead 
+                title="Privacy Policy - SHNOOR Assessments"
+                description="Read our privacy policy to understand how SHNOOR Assessments collects, uses, and protects your personal information."
+                canonical="https://assessments.shnoor.com/privacy-policy"
+            />
+            <SkipLink targetId="main-content" />
+            
             {/* ── 1. NAVBAR ──────────────────────────────────────────────────────── */}
-            <nav className="bg-white border-b border-shnoor-mist sticky top-0 z-50 shadow-sm">
-                <div className="max-w-[1280px] mx-auto px-8 flex items-center justify-between h-[72px]">
-                    <Link to="/" className="flex items-center gap-4 hover:opacity-90 transition-opacity">
-                        <img src={shnoorlogo1} alt="Shnoor" className="h-12 w-12 object-contain" />
-                        <div>
-                            <p className="font-bold text-shnoor-navy text-xl leading-tight">SHNOOR Assessments</p>
-                            <p className="text-[11px] text-shnoor-soft font-semibold uppercase tracking-widest">Secure Examination Portal</p>
+            <header role="banner">
+                <nav className="bg-white border-b border-shnoor-mist sticky top-0 z-50 shadow-sm" aria-label="Main navigation">
+                    <div className="max-w-[1280px] mx-auto px-8 flex items-center justify-between h-[72px]">
+                        <Link to="/" className="flex items-center gap-4 hover:opacity-90 transition-opacity">
+                            <img src={shnoorlogo1} alt="" className="h-12 w-12 object-contain" aria-hidden="true" />
+                            <div>
+                                <p className="font-bold text-shnoor-navy text-xl leading-tight">SHNOOR Assessments</p>
+                                <p className="text-[11px] text-shnoor-soft font-semibold uppercase tracking-widest">Secure Examination Portal</p>
+                            </div>
+                        </Link>
+                        <div className="flex items-center gap-6">
+                            <Link to="/login" className="text-base font-semibold text-shnoor-navy hover:text-shnoor-indigo transition-colors px-4 py-2">
+                                Sign In
+                            </Link>
+                            <Link to="/register">
+                                <Button variant="primary">Register Now</Button>
+                            </Link>
                         </div>
-                    </Link>
-                    <div className="flex items-center gap-6">
-                        <Link to="/login" className="text-base font-semibold text-shnoor-navy hover:text-shnoor-indigo transition-colors px-4 py-2">
-                            Sign In
-                        </Link>
-                        <Link to="/register">
-                            <Button variant="primary">Register Now</Button>
-                        </Link>
                     </div>
-                </div>
-            </nav>
+                </nav>
+            </header>
 
             {/* ── POLICY CONTENT ────────────────────────────────────────────────── */}
-            <main className="flex-grow bg-[#F8FAFC] py-16 px-8">
-                <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-shnoor-mist p-10 md:p-14">
-                    <div className="border-b border-shnoor-mist pb-8 mb-8">
+            <main id="main-content" className="flex-grow bg-[#F8FAFC] py-16 px-8" role="main">
+                <article className="max-w-4xl mx-auto bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-shnoor-mist p-10 md:p-14">
+                    <header className="border-b border-shnoor-mist pb-8 mb-8">
                         <h1 className="text-4xl font-extrabold text-shnoor-navy mb-4">Privacy Policy</h1>
                         <p className="text-lg text-shnoor-soft mb-4">Assessments Platform – assessments.shnoor.com</p>
                         <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 text-sm text-shnoor-soft font-medium bg-shnoor-lavender p-4 rounded-xl border border-shnoor-mist">
                             <span className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-shnoor-indigo"></div>
+                                <div className="w-2 h-2 rounded-full bg-shnoor-indigo" aria-hidden="true"></div>
                                 <strong className="text-shnoor-navy">Effective Date:</strong> February 25, 2026
                             </span>
                             <span className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-shnoor-indigo"></div>
+                                <div className="w-2 h-2 rounded-full bg-shnoor-indigo" aria-hidden="true"></div>
                                 <strong className="text-shnoor-navy">Version:</strong> 1.0
                             </span>
                         </div>
-                    </div>
+                    </header>
 
                     <div className="space-y-10 text-shnoor-soft leading-relaxed">
                         <section>
@@ -138,7 +149,7 @@ const PrivacyPolicy = () => {
                             <p>Email: <a href="mailto:info@shnoor.com" className="text-shnoor-indigo hover:underline font-medium">info@shnoor.com</a></p>
                         </section>
                     </div>
-                </div>
+                </article>
             </main>
 
             {/* ── 8. FOOTER ──────────────────────────────────────────────────────── */}

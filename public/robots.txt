@@ -1,0 +1,22 @@
+# Robots.txt for SHNOOR Assessments
+# https://assessments.shnoor.com/
+
+User-agent: *
+Allow: /
+
+# Allow crawling of public pages
+Allow: /login
+Allow: /register
+Allow: /privacy-policy
+Allow: /terms-and-conditions
+
+# Disallow crawling of authenticated areas
+Disallow: /dashboard
+Disallow: /test
+Disallow: /instructions
+Disallow: /result
+Disallow: /feedback
+Disallow: /admin
+
+# Sitemap location
+Sitemap: https://assessments.shnoor.com/sitemap.xml

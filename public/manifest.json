@@ -1,0 +1,19 @@
+{
+  "name": "SHNOOR Assessments",
+  "short_name": "SHNOOR",
+  "description": "Secure Examination Portal for SHNOOR Assessments",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#E0E0EF",
+  "theme_color": "#44448E",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "lang": "en"
+}

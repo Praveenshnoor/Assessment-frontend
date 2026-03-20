@@ -2,11 +2,12 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import SkipLink from '../components/SkipLink';
 import shnoorlogo1 from '../assets/shnoor-logo1.png';
 import shnoorLogo from '../assets/shnoor-logo.png';
 
-const Icon = ({ d, cls = 'w-6 h-6', stroke = 2 }) => (
-  <svg className={cls} fill="none" stroke="currentColor" strokeWidth={stroke} viewBox="0 0 24 24">
+const Icon = ({ d, cls = 'w-6 h-6', stroke = 2, ariaHidden = true }) => (
+  <svg className={cls} fill="none" stroke="currentColor" strokeWidth={stroke} viewBox="0 0 24 24" aria-hidden={ariaHidden} role="img">
     <path strokeLinecap="round" strokeLinejoin="round" d={d} />
   </svg>
 );
@@ -36,30 +37,35 @@ const FEATURES = [
 
 const LandingPage = () => (
   <div className="font-['Plus_Jakarta_Sans',sans-serif] text-shnoor-navy antialiased">
+    {/* Skip to main content link for accessibility */}
+    <SkipLink targetId="main-content" />
 
     {/* ── 1. NAVBAR ──────────────────────────────────────────────────────── */}
-    <nav className="bg-white border-b border-shnoor-mist sticky top-0 z-50 shadow-sm">
-      <div className="max-w-[1280px] mx-auto px-8 flex items-center justify-between h-[72px]">
-        <div className="flex items-center gap-4">
-          <img src={shnoorlogo1} alt="Shnoor" className="h-12 w-12 object-contain" />
-          <div>
-            <p className="font-bold text-shnoor-navy text-xl leading-tight">SHNOOR Assessments</p>
-            <p className="text-[11px] text-shnoor-soft font-semibold uppercase tracking-widest">Secure Examination Portal</p>
+    <header role="banner">
+      <nav className="bg-white border-b border-shnoor-mist sticky top-0 z-50 shadow-sm" aria-label="Main navigation">
+        <div className="max-w-[1280px] mx-auto px-8 flex items-center justify-between h-[72px]">
+          <div className="flex items-center gap-4">
+            <img src={shnoorlogo1} alt="" className="h-12 w-12 object-contain" aria-hidden="true" />
+            <div>
+              <p className="font-bold text-shnoor-navy text-xl leading-tight">SHNOOR Assessments</p>
+              <p className="text-[11px] text-shnoor-soft font-semibold uppercase tracking-widest">Secure Examination Portal</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-6">
+            <Link to="/login" className="text-base font-semibold text-shnoor-navy hover:text-shnoor-indigo transition-colors px-4 py-2">
+              Sign In
+            </Link>
+            <Link to="/register">
+              <Button variant="primary">Register Now</Button>
+            </Link>
           </div>
         </div>
-        <div className="flex items-center gap-6">
-          <Link to="/login" className="text-base font-semibold text-shnoor-navy hover:text-shnoor-indigo transition-colors px-4 py-2">
-            Sign In
-          </Link>
-          <Link to="/register">
-            <Button variant="primary">Register Now</Button>
-          </Link>
-        </div>
-      </div>
-    </nav>
+      </nav>
+    </header>
 
     {/* ── 2. HERO ────────────────────────────────────────────────────────── */}
-    <section className="bg-white py-16 px-8">
+    <main id="main-content" role="main">
+      <section className="bg-white py-16 px-8" aria-labelledby="hero-heading">
       <div className="max-w-[1280px] mx-auto grid lg:grid-cols-2 gap-16 items-center">
         {/* Left */}
         <div className="flex flex-col gap-6">
@@ -68,7 +74,7 @@ const LandingPage = () => (
             Student Assessment Portal
           </div>
 
-          <h1 className="text-5xl font-extrabold leading-[1.1]">
+          <h1 id="hero-heading" className="text-5xl font-extrabold leading-[1.1]">
             <span className="text-shnoor-navy">SHNOOR </span>
             <span className="text-shnoor-indigo">Recruitment Portal</span>
           </h1>
@@ -329,9 +335,10 @@ const LandingPage = () => (
         <p className="text-white/50 text-sm">Quick registration • Secure exams • Reliable platform</p>
       </div>
     </section>
+    </main>
 
     {/* ── 8. FOOTER ──────────────────────────────────────────────────────── */}
-    <footer className="bg-shnoor-navy pt-16 pb-8 px-8">
+    <footer className="bg-shnoor-navy pt-16 pb-8 px-8" role="contentinfo">
       <div className="max-w-[1280px] mx-auto">
         <div className="grid md:grid-cols-3 gap-12 mb-12">
           <div>
@@ -345,11 +352,11 @@ const LandingPage = () => (
           </div>
           <div>
             <p className="text-xs font-extrabold text-shnoor-mist uppercase tracking-widest mb-5">Contacts</p>
-            <ul className="flex flex-col gap-3 text-shnoor-soft">
-              <li><a href="mailto:info@shnoor.com" className="hover:text-white transition-colors">📧 info@shnoor.com (General)</a></li>
-              <li><a href="mailto:proc@shnoor.com" className="hover:text-white transition-colors">📧 proc@shnoor.com (Sales)</a></li>
-              <li><a href="tel:+919429694298" className="hover:text-white transition-colors">📞 +91-9429694298</a></li>
-              <li><a href="tel:+919041914601" className="hover:text-white transition-colors">📞 +91-9041914601</a></li>
+            <ul className="flex flex-col gap-3 text-shnoor-soft" aria-label="Contact information">
+              <li><a href="mailto:info@shnoor.com" className="hover:text-white transition-colors" aria-label="Email info@shnoor.com for general inquiries">📧 info@shnoor.com (General)</a></li>
+              <li><a href="mailto:proc@shnoor.com" className="hover:text-white transition-colors" aria-label="Email proc@shnoor.com for sales">📧 proc@shnoor.com (Sales)</a></li>
+              <li><a href="tel:+919429694298" className="hover:text-white transition-colors" aria-label="Call +91 9429694298">📞 +91-9429694298</a></li>
+              <li><a href="tel:+919041914601" className="hover:text-white transition-colors" aria-label="Call +91 9041914601">📞 +91-9041914601</a></li>
             </ul>
           </div>
           <div>

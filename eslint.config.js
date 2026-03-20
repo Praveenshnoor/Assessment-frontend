@@ -24,6 +24,12 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Production best practices
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-debugger': 'error',
+      'no-alert': 'warn',
+      // Accessibility rules (basic)
+      'jsx-a11y/alt-text': 'off', // Would need jsx-a11y plugin
     },
   },
 ])

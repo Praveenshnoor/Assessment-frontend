@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, MailOpen, Trash2, Image, Filter, RefreshCw, CheckCheck, Clock, User, AlertCircle, X, Send, Building, MessageCircle } from 'lucide-react';
 import AdminLayout from '../../components/AdminLayout';
+import { useSupportSocket } from '../../hooks/useSupportSocket';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -23,6 +24,58 @@ const StudentMessages = () => {
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 0 });
   
   const messagesEndRef = useRef(null);
+  const processedSocketEventsRef = useRef(new Set());
+
+  const dedupeById = useCallback((items = []) => {
+    const map = new Map();
+    items.forEach((item) => {
+      if (item?.id === undefined || item?.id === null) {
+        return;
+      }
+      if (!map.has(item.id)) {
+        map.set(item.id, item);
+      }
+    });
+    return Array.from(map.values());
+  }, []);
+
+  const buildUniqueThreads = useCallback((items = []) => {
+    const threadMap = new Map();
+
+    items.forEach((msg) => {
+      const threadKey = msg.student_id
+        ? `student-${msg.student_id}`
+        : `fallback-${msg.email || ''}-${msg.name || ''}-${msg.college || ''}`;
+
+      const current = threadMap.get(threadKey);
+      const msgTime = new Date(msg.created_at).getTime();
+      const currentTime = current ? new Date(current.created_at).getTime() : -1;
+
+      if (!current) {
+        threadMap.set(threadKey, { ...msg, _hasUnread: msg.status === 'unread' });
+        return;
+      }
+
+      const hasUnread = current._hasUnread || msg.status === 'unread';
+      if (msgTime >= currentTime) {
+        threadMap.set(threadKey, { ...msg, _hasUnread: hasUnread });
+      } else {
+        threadMap.set(threadKey, { ...current, _hasUnread: hasUnread });
+      }
+    });
+
+    return Array.from(threadMap.values())
+      .map((thread) => ({
+        ...thread,
+        status: thread._hasUnread ? 'unread' : 'read'
+      }))
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }, []);
+
+  const {
+    notifications,
+    syncUnreadCount
+  } = useSupportSocket({ isAdmin: true, enabled: true, enableBrowserNotifications: false });
 
   const fetchMessages = useCallback(async () => {
     try {
@@ -46,7 +99,8 @@ const StudentMessages = () => {
       const data = await response.json();
 
       if (data.success) {
-        setMessages(data.messages);
+        const uniqueRows = dedupeById(data.messages || []);
+        setMessages(buildUniqueThreads(uniqueRows));
         setColleges(data.colleges || []);
         setPagination(prev => ({
           ...prev,
@@ -61,7 +115,7 @@ const StudentMessages = () => {
     } finally {
       setLoading(false);
     }
-  }, [filter, selectedCollege, pagination.page, pagination.limit]);
+  }, [filter, selectedCollege, pagination.page, pagination.limit, dedupeById, buildUniqueThreads]);
 
   const fetchConversationThread = useCallback(async (messageId) => {
     try {
@@ -77,14 +131,14 @@ const StudentMessages = () => {
       const data = await response.json();
 
       if (data.success) {
-        setConversationThread(data.messages || []);
+        setConversationThread(dedupeById(data.messages || []));
       }
     } catch (err) {
       console.error('Error fetching thread:', err);
     } finally {
       setLoadingThread(false);
     }
-  }, []);
+  }, [dedupeById]);
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -100,6 +154,28 @@ const StudentMessages = () => {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [conversationThread]);
+
+  useEffect(() => {
+    if (!notifications.length) {
+      return;
+    }
+
+    const latest = notifications[0];
+    if (latest.type !== 'student-message') {
+      return;
+    }
+
+    if (processedSocketEventsRef.current.has(latest.id)) {
+      return;
+    }
+
+    processedSocketEventsRef.current.add(latest.id);
+    fetchMessages();
+
+    if (selectedMessage?.student_id && latest.studentId && String(selectedMessage.student_id) === String(latest.studentId)) {
+      fetchConversationThread(selectedMessage.id);
+    }
+  }, [notifications, fetchMessages, selectedMessage, fetchConversationThread]);
 
   const markAsRead = async (messageId) => {
     try {
@@ -118,13 +194,39 @@ const StudentMessages = () => {
             msg.id === messageId ? { ...msg, status: 'read', read_at: new Date().toISOString() } : msg
           )
         );
+        syncUnreadCount(Math.max(0, unreadCount - 1));
       }
     } catch (err) {
       console.error('Error marking as read:', err);
     }
   };
 
+  const markThreadAsRead = async (studentId) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_URL}/api/student-messages/thread/${encodeURIComponent(studentId)}/read`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setMessages(prev => prev.map(msg =>
+          String(msg.student_id) === String(studentId)
+            ? { ...msg, status: 'read', read_at: new Date().toISOString() }
+            : msg
+        ));
+        syncUnreadCount(Math.max(0, unreadCount - 1));
+      }
+    } catch (err) {
+      console.error('Error marking thread as read:', err);
+    }
+  };
+
   const deleteMessage = async (messageId) => {
+    // eslint-disable-next-line no-alert
     if (!window.confirm('Are you sure you want to delete this message?')) {
       return;
     }
@@ -163,10 +265,57 @@ const StudentMessages = () => {
 
       const data = await response.json();
       if (data.success) {
+        syncUnreadCount(0);
         fetchMessages();
       }
     } catch (err) {
       console.error('Error marking all as read:', err);
+    }
+  };
+
+  const deleteThread = async () => {
+    if (!selectedMessage) {
+      return;
+    }
+
+    // eslint-disable-next-line no-alert
+    if (!window.confirm('Delete complete chat history for this user?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('adminToken');
+
+      let response;
+      if (selectedMessage.student_id) {
+        response = await fetch(`${API_URL}/api/student-messages/thread/${encodeURIComponent(selectedMessage.student_id)}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      } else {
+        response = await fetch(`${API_URL}/api/student-messages/${selectedMessage.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setMessages(prev => prev.filter(msg => {
+          if (selectedMessage.student_id) {
+            return String(msg.student_id) !== String(selectedMessage.student_id);
+          }
+          return msg.id !== selectedMessage.id;
+        }));
+        setSelectedMessage(null);
+        setConversationThread([]);
+      }
+    } catch (err) {
+      console.error('Error deleting thread:', err);
     }
   };
 
@@ -196,18 +345,25 @@ const StudentMessages = () => {
 
       if (data.success) {
         // Add reply to conversation thread
-        setConversationThread(prev => [...prev, {
+        const optimisticReply = {
           id: data.data.id,
           message: replyMessage.trim(),
           sender_type: 'admin',
           created_at: data.data.createdAt
-        }]);
+        };
+        setConversationThread(prev => {
+          if (prev.some(msg => msg.id === optimisticReply.id)) {
+            return prev;
+          }
+          return [...prev, optimisticReply];
+        });
         setReplyMessage('');
       } else {
         throw new Error(data.message || 'Failed to send reply');
       }
     } catch (err) {
       console.error('Error sending reply:', err);
+      // eslint-disable-next-line no-alert
       alert('Failed to send reply. Please try again.');
     } finally {
       setSendingReply(false);
@@ -217,7 +373,11 @@ const StudentMessages = () => {
   const handleSelectMessage = async (msg) => {
     setSelectedMessage(msg);
     if (msg.status === 'unread') {
-      markAsRead(msg.id);
+      if (msg.student_id) {
+        markThreadAsRead(msg.student_id);
+      } else {
+        markAsRead(msg.id);
+      }
     }
     // Fetch conversation thread
     fetchConversationThread(msg.id);
@@ -465,9 +625,9 @@ const StudentMessages = () => {
                   </div>
                 </div>
                 <button
-                  onClick={() => deleteMessage(selectedMessage.id)}
+                  onClick={deleteThread}
                   className="p-2 text-shnoor-soft hover:text-red-600 hover:bg-white rounded-lg transition-colors"
-                  title="Delete"
+                  title="Delete complete chat history"
                 >
                   <Trash2 size={16} />
                 </button>

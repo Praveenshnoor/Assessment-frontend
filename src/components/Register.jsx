@@ -116,6 +116,7 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [institutes, setInstitutes] = useState([]);
   const [showInstituteDropdown, setShowInstituteDropdown] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const dropdownRef = useRef(null);
 
   // OTP-related states - COMMENTED OUT FOR NOW
@@ -648,9 +649,26 @@ const Register = () => {
           <ReviewRow label="Password" value="set" hidden />
         </ReviewSection>
 
+        {/* Terms and Conditions Checkbox */}
+        <div className="flex items-start gap-3 mt-2">
+          <input
+            type="checkbox"
+            id="termsAccepted"
+            checked={termsAccepted}
+            onChange={(e) => setTermsAccepted(e.target.checked)}
+            className="w-4 h-4 mt-0.5 text-shnoor-indigo border-shnoor-mist rounded focus:ring-shnoor-indigo focus:ring-2 cursor-pointer"
+          />
+          <label htmlFor="termsAccepted" className="text-sm text-shnoor-soft leading-relaxed cursor-pointer">
+            I agree to the{' '}
+            <Link to="/terms-and-conditions" target="_blank" className="text-shnoor-indigo font-semibold hover:text-shnoor-navy hover:underline transition-colors">
+              Terms and Conditions
+            </Link>
+          </label>
+        </div>
+
         {/* Disclaimer */}
         <p className="text-xs text-shnoor-soft text-center leading-relaxed">
-          By submitting, you confirm that all details are accurate and you agree to the platform's terms of use.
+          By submitting, you confirm that all details are accurate.
         </p>
       </div>
     );
@@ -795,7 +813,7 @@ const Register = () => {
                   </svg>
                 </Button>
               ) : (
-                <Button type="submit" variant="primary" className="flex-1 !h-[50px]" disabled={isLoading}>
+                <Button type="submit" variant="primary" className="flex-1 !h-[50px]" disabled={isLoading || !termsAccepted}>
                   {isLoading ? (
                     <>
                       <div className="w-5 h-5 border-[3px] border-white border-t-transparent rounded-full animate-spin" />
