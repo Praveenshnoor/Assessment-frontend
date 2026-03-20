@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { apiFetch } from '../config/api';
+import { useAdminAuth } from '../contexts/AdminAuthContext';
 import shnoorLogo from '../../public/favicon.png';
 import Button from './Button';
 import Badge from './Badge';
@@ -33,6 +34,7 @@ const LEFT_FEATURES = [
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { checkAuthStatus } = useAdminAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
@@ -89,6 +91,7 @@ const Login = () => {
             // Admin login successful
             localStorage.setItem('adminToken', adminData.token);
             localStorage.setItem('adminUser', JSON.stringify(adminData.admin));
+            await checkAuthStatus();
             navigate('/admin/dashboard');
             return;
           }
@@ -135,6 +138,7 @@ const Login = () => {
         if (role === 'admin') {
           localStorage.setItem('adminToken', token);
           localStorage.setItem('adminUser', JSON.stringify(user));
+          await checkAuthStatus();
           navigate('/admin/dashboard');
         } else {
           localStorage.setItem('studentAuthToken', token);
@@ -180,6 +184,7 @@ const Login = () => {
               // Admin login successful
               localStorage.setItem('adminToken', adminData.token);
               localStorage.setItem('adminUser', JSON.stringify(adminData.admin));
+              await checkAuthStatus();
               navigate('/admin/dashboard');
               return;
             }

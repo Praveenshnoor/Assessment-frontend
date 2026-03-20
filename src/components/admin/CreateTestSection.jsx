@@ -6,9 +6,15 @@ import { apiFetch } from '../../config/api';
 // const ENABLE_CODE_EXECUTION = false;
 
 const CreateTestSection = ({ onComplete, editingTest }) => {
+    const FALLBACK_DEFAULT_JOB_ROLE = 'General Assessment Candidate';
+    const FALLBACK_DEFAULT_JOB_DESCRIPTION = 'This assessment evaluates candidate readiness across core technical and problem-solving skills relevant to the role.';
     const [step, setStep] = useState('init'); // init, manual, bulk, success
     const [testTitle, setTestTitle] = useState('');
     const [jobRoles, setJobRoles] = useState([{ job_role: '', job_description: '' }]);
+    const [defaultJobConfig, setDefaultJobConfig] = useState({
+        job_role: FALLBACK_DEFAULT_JOB_ROLE,
+        job_description: FALLBACK_DEFAULT_JOB_DESCRIPTION
+    });
     const [duration, setDuration] = useState(60);
     const [maxAttempts, setMaxAttempts] = useState(1);
     const [passingPercentage, setPassingPercentage] = useState(50);
@@ -57,6 +63,48 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
 
     // Load test data when editing
     useEffect(() => {
+        const fetchDefaultJobConfig = async () => {
+            try {
+                const token = localStorage.getItem('adminToken');
+                const response = await apiFetch('api/settings', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+                if (response.ok && data.success && data.settings) {
+                    const configuredRole = (data.settings.default_test_job_role || '').trim();
+                    const configuredDescription = (data.settings.default_test_job_description || '').trim();
+
+                    const nextDefaults = {
+                        job_role: configuredRole || FALLBACK_DEFAULT_JOB_ROLE,
+                        job_description: configuredDescription || FALLBACK_DEFAULT_JOB_DESCRIPTION
+                    };
+
+                    setDefaultJobConfig(nextDefaults);
+
+                    // In create mode, prefill first role so admin can edit directly at creation time.
+                    if (!editingTest) {
+                        setJobRoles((prev) => {
+                            if (!Array.isArray(prev) || prev.length !== 1) return prev;
+                            const first = prev[0] || { job_role: '', job_description: '' };
+                            const isEmpty = !first.job_role?.trim() && !first.job_description?.trim();
+                            if (!isEmpty) return prev;
+                            return [{
+                                job_role: nextDefaults.job_role,
+                                job_description: nextDefaults.job_description
+                            }];
+                        });
+                    }
+                }
+            } catch (error) {
+                // Keep fallback defaults silently.
+            }
+        };
+
+        fetchDefaultJobConfig();
+
         const loadTestData = async () => {
             if (!editingTest) {
                 setIsEditMode(false);
@@ -720,7 +768,10 @@ const CreateTestSection = ({ onComplete, editingTest }) => {
     const resetForm = () => {
         setStep('init');
         setTestTitle('');
-        setJobRoles([{ job_role: '', job_description: '' }]);
+        setJobRoles([{
+            job_role: defaultJobConfig.job_role,
+            job_description: defaultJobConfig.job_description
+        }]);
         setDuration(60);
         setMaxAttempts(1);
         setPassingPercentage(50);
