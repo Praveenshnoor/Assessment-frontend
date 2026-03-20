@@ -29,6 +29,7 @@ const adminHeaders = () => ({
 export default function AdminJobApplicants() {
     const { jobId } = useParams();
     const navigate = useNavigate();
+    const [allTestResults, setAllTestResults] = useState([]); // unfiltered, for enrolled tab
     const [testResults, setTestResults] = useState([]);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -47,11 +48,19 @@ export default function AdminJobApplicants() {
             });
             const data = await res.json();
             if (data.success) {
+                // Always store the full unfiltered list for enrolled tab
+                setAllTestResults(data.data);
+
                 let filtered = data.data;
                 if (statusFilter === 'passed') {
                     filtered = data.data.filter(i => i.passed === true);
                 } else if (statusFilter === 'failed') {
                     filtered = data.data.filter(i => i.passed === false);
+                } else if (statusFilter === 'assessment_assigned') {
+                    // Also catch legacy statuses that map to "Test Assigned"
+                    filtered = data.data.filter(i =>
+                        ['assessment_assigned', 'submitted', 'screening', 'assessment_completed'].includes(i.status)
+                    );
                 } else if (statusFilter) {
                     filtered = data.data.filter(i => i.status === statusFilter);
                 }
@@ -233,9 +242,10 @@ export default function AdminJobApplicants() {
     };
 
     // ── Derive the two data groups ──────────────────────────────────────────────
+    // Enrolled students always from UNFILTERED data — filter only affects Assessment Results tab
     const enrolledStudents = (() => {
         const seen = new Set();
-        return testResults.filter(r => {
+        return allTestResults.filter(r => {
             const key = `${r.student_id}-${r.application_id}`;
             if (seen.has(key)) return false;
             seen.add(key);
@@ -243,9 +253,12 @@ export default function AdminJobApplicants() {
         });
     })();
 
+    // Assessment results tab uses filtered data, only rows with actual attempts
     const testResultRows = testResults.filter(r => r.test_id !== null && r.submitted_at !== null);
 
     // ── Tab config ──────────────────────────────────────────────────────────────
+    // Enrolled count always shows total (unfiltered), results count shows filtered
+    const allTestResultRows = allTestResults.filter(r => r.test_id !== null && r.submitted_at !== null);
     const tabs = [
         {
             id: 'enrolled',
@@ -257,7 +270,7 @@ export default function AdminJobApplicants() {
             id: 'results',
             label: 'Assessment Results',
             icon: ClipboardList,
-            count: testResultRows.length,
+            count: allTestResultRows.length,
         },
     ];
 
@@ -321,10 +334,11 @@ export default function AdminJobApplicants() {
                             className="w-full px-4 py-2 border border-shnoor-mist rounded-xl focus:outline-none focus:ring-2 focus:ring-shnoor-indigo text-sm"
                         >
                             <option value="">All Statuses</option>
-                            <option value="passed">Passed</option>
-                            <option value="failed">Failed</option>
+                            <option value="assessment_assigned">Test Assigned</option>
                             <option value="shortlisted">Shortlisted</option>
                             <option value="rejected">Rejected</option>
+                            <option value="passed">Passed (Assessment)</option>
+                            <option value="failed">Failed (Assessment)</option>
                         </select>
                     </div>
                 </div>
