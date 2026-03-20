@@ -8,7 +8,9 @@ const SystemSettingsTab = () => {
     const [settings, setSettings] = useState({
         retry_timer_minutes: 5,
         maintenance_mode: false,
-        maintenance_message: 'The system is currently undergoing scheduled maintenance. Please check back later.'
+        maintenance_message: 'The system is currently undergoing scheduled maintenance. Please check back later.',
+        default_test_job_role: 'General Assessment Candidate',
+        default_test_job_description: 'This assessment evaluates candidate readiness across core technical and problem-solving skills relevant to the role.'
     });
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -61,7 +63,9 @@ const SystemSettingsTab = () => {
                 body: JSON.stringify({
                     retry_timer_minutes: parseInt(settings.retry_timer_minutes, 10),
                     maintenance_mode: settings.maintenance_mode,
-                    maintenance_message: settings.maintenance_message
+                    maintenance_message: settings.maintenance_message,
+                    default_test_job_role: settings.default_test_job_role,
+                    default_test_job_description: settings.default_test_job_description
                 })
             });
             const data = await response.json();
@@ -187,6 +191,47 @@ const SystemSettingsTab = () => {
                                 </p>
                             </div>
                         )}
+                    </div>
+                </Card>
+
+                {/* Test Defaults Settings */}
+                <Card className="p-6 border border-shnoor-light shadow-sm">
+                    <div className="flex items-center mb-4 space-x-2 text-shnoor-indigo">
+                        <Save size={24} />
+                        <h3 className="text-lg font-bold">Assessment Defaults</h3>
+                    </div>
+                    <p className="text-sm text-shnoor-soft mb-6">
+                        Configure fallback values used when admins create or edit tests without entering Job Role or Job Description.
+                    </p>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-shnoor-navy mb-1">
+                                Default Job Role
+                            </label>
+                            <input
+                                type="text"
+                                name="default_test_job_role"
+                                value={settings.default_test_job_role || ''}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-shnoor-indigo outline-none transition-all"
+                                placeholder="e.g., General Assessment Candidate"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-shnoor-navy mb-1">
+                                Default Job Description
+                            </label>
+                            <textarea
+                                name="default_test_job_description"
+                                value={settings.default_test_job_description || ''}
+                                onChange={handleChange}
+                                rows="4"
+                                className="w-full px-4 py-2 border border-shnoor-mist rounded-lg focus:ring-2 focus:ring-shnoor-indigo focus:border-shnoor-indigo outline-none transition-all resize-none"
+                                placeholder="Default description shown when test-specific description is not provided"
+                            ></textarea>
+                        </div>
                     </div>
                 </Card>
             </div>
