@@ -311,8 +311,8 @@ export default function AdminJobApplicants() {
                                 <p className="text-2xl font-bold text-shnoor-navy">{stats.total_applications}</p>
                             </div>
                             <div className="bg-[#F8F8FB] border border-shnoor-indigo rounded-xl p-4">
-                                <p className="text-xs font-bold uppercase text-shnoor-indigo mb-1">In Progress</p>
-                                <p className="text-2xl font-bold text-shnoor-navy">{stats.in_progress}</p>
+                                <p className="text-xs font-bold uppercase text-shnoor-indigo mb-1">Attempted</p>
+                                <p className="text-2xl font-bold text-shnoor-navy">{stats.attempted_count || 0}</p>
                             </div>
                             <div className="bg-shnoor-successLight border border-shnoor-success rounded-xl p-4">
                                 <p className="text-xs font-bold uppercase text-shnoor-success mb-1">Shortlisted</p>
