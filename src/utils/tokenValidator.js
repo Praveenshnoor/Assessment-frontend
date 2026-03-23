@@ -16,9 +16,14 @@ export const isSessionToken = (token) => {
       console.log('[TokenValidator] Invalid JWT structure - not 3 parts');
       return false;
     }
-    
-    // Decode JWT payload
-    const payload = JSON.parse(atob(parts[1]));
+
+    // Decode JWT payload from base64url format.
+    const base64Url = parts[1];
+    const base64 = base64Url
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .padEnd(Math.ceil(base64Url.length / 4) * 4, '=');
+    const payload = JSON.parse(atob(base64));
     console.log('[TokenValidator] Token payload:', { 
       hasIat: payload.hasOwnProperty('iat'), 
       hasExp: payload.hasOwnProperty('exp'),
