@@ -1,10 +1,23 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail, MailOpen, Trash2, Image, Filter, RefreshCw, CheckCheck, Clock, User, AlertCircle, X, Send, Building, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Mail, MailOpen, Trash2, Image, Filter, RefreshCw, CheckCheck, Clock, User, AlertCircle, X, Send, Building, MessageCircle, Paperclip, Smile } from 'lucide-react';
 import AdminLayout from '../../components/AdminLayout';
 import { useSupportSocket } from '../../hooks/useSupportSocket';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const EMOJI_OPTIONS = [
+  '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😊', '🙂', '🙃', '😉', '😍', '🥰', '😘',
+  '😎', '🤩', '🥳', '🤗', '🤔', '🤝', '🙏', '👍', '👎', '👌', '👏', '🙌', '👋', '✌️', '🤞', '💪',
+  '✅', '❌', '⚠️', '🚫', '⏳', '⌛', '🕒', '🕔', '📝', '📌', '📎', '📍', '📣', '🔔', '🔕', '💡',
+  '📷', '🖼️', '📁', '📂', '🗂️', '🧾', '📊', '📈', '📉', '💬', '🗨️', '📨', '📩', '✉️', '📮', '📬',
+  '🌟', '⭐', '✨', '🔥', '💯', '🎯', '🎉', '🎊', '🏁', '🚀', '🧠', '🔍', '🔒', '🔓', '🛡️', '⚙️',
+  '❤️', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💖', '💬', '🙇', '🙋', '🤷', '😇', '😌', '😴',
+  '😐', '😑', '😶', '😬', '😮', '😯', '😲', '😳', '🥲', '😭', '😤', '😓', '😰', '😵', '🤯', '😇'
+];
+
+
+
 
 const showConfirm = (message) => {
   const confirmFn = globalThis?.['confirm'];
@@ -31,6 +44,9 @@ const StudentMessages = () => {
   const [loadingThread, setLoadingThread] = useState(false);
   const [replyMessage, setReplyMessage] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 0 });
@@ -293,7 +309,7 @@ const StudentMessages = () => {
   const sendReply = async (e) => {
     e.preventDefault();
     
-    if (!replyMessage.trim() || !selectedMessage) {
+    if ((!replyMessage.trim() && !selectedImage) || !selectedMessage) {
       return;
     }
 
@@ -302,7 +318,12 @@ const StudentMessages = () => {
     try {
       const token = localStorage.getItem('adminToken');
       const formData = new FormData();
-      formData.append('message', replyMessage.trim());
+      if (replyMessage.trim()) {
+        formData.append('message', replyMessage.trim());
+      }
+      if (selectedImage) {
+        formData.append('image', selectedImage);
+      }
 
       const response = await fetch(`${API_URL}/api/student-messages/${selectedMessage.id}/reply`, {
         method: 'POST',
@@ -318,11 +339,15 @@ const StudentMessages = () => {
         // Add reply to conversation thread
         setConversationThread(prev => [...prev, {
           id: data.data.id,
-          message: replyMessage.trim(),
+          message: replyMessage.trim() || '',
           sender_type: 'admin',
-          created_at: data.data.createdAt
+          created_at: data.data.createdAt || new Date().toISOString(),
+          image_path: data.data.image_path || (data.data.image ? `/uploads/${data.data.image}` : null)
         }]);
         setReplyMessage('');
+        setSelectedImage(null);
+        setImagePreview(null);
+        setShowEmojiPicker(false);
       } else {
         throw new Error(data.message || 'Failed to send reply');
       }
@@ -622,12 +647,12 @@ const StudentMessages = () => {
                   <div className="flex justify-start">
                     <div className="max-w-[80%]">
                       <div className="bg-white border border-shnoor-mist p-4 rounded-xl rounded-tl-none shadow-sm">
-                        <p className="text-shnoor-navy whitespace-pre-wrap">{selectedMessage.message}</p>
+                        {selectedMessage.message && <p className="text-shnoor-navy whitespace-pre-wrap">{selectedMessage.message}</p>}
                         {selectedMessage.image_path && (
                           <img
                             src={`${API_URL}${selectedMessage.image_path}`}
                             alt="Attachment"
-                            className="mt-3 max-w-full rounded-lg cursor-pointer hover:opacity-90"
+                            className={`${selectedMessage.message ? 'mt-3' : ''} max-w-full rounded-lg cursor-pointer hover:opacity-90`}
                             onClick={() => openImageModal(selectedMessage.image_path)}
                           />
                         )}
@@ -656,12 +681,12 @@ const StudentMessages = () => {
                                 : 'bg-white border border-shnoor-mist text-shnoor-navy rounded-tl-none'
                             }`}
                           >
-                            <p className="whitespace-pre-wrap">{msg.message}</p>
+                            {msg.message && <p className="whitespace-pre-wrap">{msg.message}</p>}
                             {msg.image_path && (
                               <img
                                 src={`${API_URL}${msg.image_path}`}
                                 alt="Attachment"
-                                className="mt-3 max-w-full rounded-lg cursor-pointer hover:opacity-90"
+                                className={`${msg.message ? 'mt-3' : ''} max-w-full rounded-lg cursor-pointer hover:opacity-90`}
                                 onClick={() => openImageModal(msg.image_path)}
                               />
                             )}
@@ -678,8 +703,74 @@ const StudentMessages = () => {
               </div>
 
               {/* Reply Input */}
-              <div className="border-t border-shnoor-mist p-4 bg-white flex-shrink-0">
+              <div className="border-t border-shnoor-mist p-4 bg-white flex-shrink-0 relative">
+                {/* Image Preview */}
+                {imagePreview && (
+                  <div className="mb-3 relative inline-block">
+                    <img src={imagePreview} alt="Preview" className="h-20 rounded-lg border border-shnoor-mist" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedImage(null);
+                        setImagePreview(null);
+                      }}
+                      className="absolute -top-2 -right-2 bg-white text-gray-500 hover:text-red-500 rounded-full p-0.5 shadow-sm border border-gray-100"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+                
+                {/* Emoji Picker */}
+                {showEmojiPicker && (
+                  <div className="absolute bottom-full mb-2 left-4 bg-white border border-shnoor-mist rounded-xl shadow-lg p-3 w-72 grid grid-cols-8 gap-2 z-10 max-h-48 overflow-y-auto">
+                    {EMOJI_OPTIONS.map(emoji => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => {
+                          setReplyMessage(prev => prev + emoji);
+                          setShowEmojiPicker(false);
+                        }}
+                        className="hover:bg-shnoor-lavender rounded p-1 text-xl transition-colors"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <form onSubmit={sendReply} className="flex items-end gap-3">
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className="p-2 text-shnoor-soft hover:text-shnoor-indigo rounded-lg hover:bg-shnoor-lavender transition-colors"
+                      title="Add Emoji"
+                    >
+                      <Smile size={20} />
+                    </button>
+                    <label className="p-2 text-shnoor-soft hover:text-shnoor-indigo rounded-lg hover:bg-shnoor-lavender transition-colors cursor-pointer" title="Attach Image">
+                      <Paperclip size={20} />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            if (file.size > 5 * 1024 * 1024) {
+                              showAlert('Image size should be less than 5MB');
+                              return;
+                            }
+                            setSelectedImage(file);
+                            setImagePreview(URL.createObjectURL(file));
+                          }
+                          e.target.value = null;
+                        }}
+                      />
+                    </label>
+                  </div>
                   <div className="flex-1">
                     <textarea
                       value={replyMessage}
@@ -697,8 +788,8 @@ const StudentMessages = () => {
                   </div>
                   <button
                     type="submit"
-                    disabled={sendingReply || !replyMessage.trim()}
-                    className="p-3 rounded-xl bg-shnoor-indigo text-white hover:bg-shnoor-navy transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={sendingReply || (!replyMessage.trim() && !selectedImage)}
+                    className="p-3 mb-2 rounded-xl bg-shnoor-indigo text-white hover:bg-shnoor-navy transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {sendingReply ? (
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
