@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../config/api';
-import shnoorLogo from '../../public/favicon.png';
+const shnoorLogo = '/favicon.png';
 import Button from './Button';
 import InputField from './InputField';
 

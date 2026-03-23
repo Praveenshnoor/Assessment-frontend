@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { apiFetch } from '../config/api';
 import Button from './Button';
-import Badge from './Badge';
 import InputField from './InputField';
 
-const shnoorLogo = '../../public/favicon.png';
+const shnoorLogo = '/favicon.png';
 
 // Eye icons
 const EyeOpen = () => (
