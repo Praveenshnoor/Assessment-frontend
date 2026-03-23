@@ -13,6 +13,15 @@ const softNavigate = (path) => {
   window.dispatchEvent(new PopStateEvent('popstate'));
 };
 
+const isAuthEndpoint = (endpoint) => {
+  const normalized = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return (
+    normalized.includes('/api/login') ||
+    normalized.includes('/api/register') ||
+    normalized.includes('/api/admin/login')
+  );
+};
+
 // Helper function to build full API URLs
 export const getApiUrl = (endpoint) => {
   // Remove leading slash if present to avoid double slashes
@@ -26,6 +35,7 @@ export const API_URL = API_BASE_URL;
 // Helper for fetch with automatic URL building and timeout
 export const apiFetch = async (endpoint, options = {}) => {
   const controller = new AbortController();
+  const shouldHandleGlobalRedirect = !options.skipGlobalErrorRedirect && !isAuthEndpoint(endpoint);
 
   // Don't apply tight timeouts to upload routes or report generations
   const isLongRequest = endpoint.includes('/upload') || endpoint.includes('/export') || endpoint.includes('/predict');
@@ -45,7 +55,7 @@ export const apiFetch = async (endpoint, options = {}) => {
     });
 
     // Check for maintenance mode (503 status)
-    if (response.status === 503 && !endpoint.includes('/settings/public')) {
+    if (shouldHandleGlobalRedirect && response.status === 503 && !endpoint.includes('/settings/public')) {
       try {
         const cloned = response.clone();
         const data = await cloned.json();
@@ -68,7 +78,7 @@ export const apiFetch = async (endpoint, options = {}) => {
     return response;
   } catch (error) {
     // Catch absolute network failures (server completely off) or aborts (timeouts)
-    if (error.name === 'TypeError' || error.name === 'AbortError') {
+    if (shouldHandleGlobalRedirect && (error.name === 'TypeError' || error.name === 'AbortError')) {
       if (
         !endpoint.includes('/settings/public') &&
         window.location.pathname !== '/server-down' &&

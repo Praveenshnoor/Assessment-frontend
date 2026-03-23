@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { apiFetch } from '../config/api';
-import shnoorLogo from '../../public/favicon.png';
 import Button from './Button';
 import Badge from './Badge';
 import InputField from './InputField';
+
+const shnoorLogo = '/favicon.png';
 
 // Eye icons
 const EyeOpen = () => (
@@ -77,6 +78,7 @@ const Login = () => {
         try {
           const adminResponse = await apiFetch('api/admin/login', {
             method: 'POST',
+            skipGlobalErrorRedirect: true,
             headers: {
               'Content-Type': 'application/json',
             },
@@ -112,6 +114,7 @@ const Login = () => {
         // Call backend to get user profile (admin or student)
         const response = await apiFetch('api/login', {
           method: 'POST',
+          skipGlobalErrorRedirect: true,
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${idToken}`
@@ -168,6 +171,7 @@ const Login = () => {
           try {
             const adminResponse = await apiFetch('api/admin/login', {
               method: 'POST',
+              skipGlobalErrorRedirect: true,
               headers: {
                 'Content-Type': 'application/json',
               },
