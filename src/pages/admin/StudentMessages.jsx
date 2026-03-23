@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, MailOpen, Trash2, Image, Filter, RefreshCw, CheckCheck, Clock, User, AlertCircle, X, Send, Building, MessageCircle } from 'lucide-react';
 import AdminLayout from '../../components/AdminLayout';
+import { useSupportSocket } from '../../hooks/useSupportSocket';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -35,6 +36,51 @@ const StudentMessages = () => {
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 0 });
   
   const messagesEndRef = useRef(null);
+  const selectedMessageRef = useRef(null);
+
+  // Keep ref in sync with state so socket handler always has latest value
+  useEffect(() => {
+    selectedMessageRef.current = selectedMessage;
+  }, [selectedMessage]);
+
+  // Real-time socket for new student messages
+  const { getSocket } = useSupportSocket({ isAdmin: true, enabled: true });
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleNewStudentMessage = (data) => {
+      // Update sidebar: bump preview + unread count for this student
+      setMessages(prev => {
+        const exists = prev.find(m => m.student_id === data.studentId);
+        if (exists) {
+          return prev.map(m =>
+            m.student_id === data.studentId
+              ? { ...m, message: data.messagePreview, unread_count: (parseInt(m.unread_count) || 0) + 1, created_at: data.createdAt }
+              : m
+          );
+        }
+        // New conversation not yet in list — refresh
+        return prev;
+      });
+
+      // If this conversation is currently open, append message to thread
+      const current = selectedMessageRef.current;
+      if (current && current.student_id === data.studentId) {
+        setConversationThread(prev => [...prev, {
+          id: data.id,
+          message: data.messagePreview,
+          sender_type: 'student',
+          created_at: data.createdAt,
+          image_path: data.hasImage ? null : null // image not available in preview
+        }]);
+      }
+    };
+
+    socket.on('support:new-student-message', handleNewStudentMessage);
+    return () => socket.off('support:new-student-message', handleNewStudentMessage);
+  }, [getSocket]);
 
   const fetchMessages = useCallback(async () => {
     try {
@@ -141,6 +187,14 @@ const StudentMessages = () => {
             : m
         )
       );
+      // Re-fetch unread count and update header badge
+      const countRes = await fetch(`${API_URL}/api/student-messages/unread-count`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const countData = await countRes.json();
+      if (countData.success && countData.count === 0) {
+        window.dispatchEvent(new Event('admin-messages-all-read'));
+      }
     } catch (err) {
       console.error('Error marking conversation as read:', err);
     }
@@ -228,6 +282,7 @@ const StudentMessages = () => {
 
       const data = await response.json();
       if (data.success) {
+        window.dispatchEvent(new Event('admin-messages-all-read'));
         fetchMessages();
       }
     } catch (err) {

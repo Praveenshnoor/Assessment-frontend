@@ -31,6 +31,12 @@ const StudentSupportChatbot = () => {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const processedNotificationsRef = useRef(new Set()); // Track which notifications we've processed
+  const currentViewRef = useRef(currentView);
+
+  // Keep ref in sync so socket handler always has latest view
+  useEffect(() => {
+    currentViewRef.current = currentView;
+  }, [currentView]);
 
   // Get student info from localStorage
   const studentName = localStorage.getItem('studentName') || 'Student';
@@ -45,7 +51,8 @@ const StudentSupportChatbot = () => {
     markAllRead: socketMarkAllRead,
     notificationPermission,
     requestPermission,
-    isConnected
+    isConnected,
+    getSocket
   } = useSupportSocket({
     isAdmin: false,
     rollNumber: studentId,
@@ -53,6 +60,52 @@ const StudentSupportChatbot = () => {
     enabled: !!studentId,
     enableBrowserNotifications: true
   });
+
+  // Mark messages as read when opening contact view
+  const markMessagesAsRead = useCallback(async () => {
+    if (!studentId) return;
+
+    try {
+      const token = localStorage.getItem('studentAuthToken');
+      await apiFetch('api/student-messages/mark-student-read', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      setUnreadCount(0);
+      socketMarkAllRead();
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  }, [studentId, socketMarkAllRead]);
+
+  // Real-time: append incoming admin replies to open conversation
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleAdminReply = (data) => {
+      setConversationHistory(prev => {
+        if (prev.find(m => m.id === data.id)) return prev;
+        return [...prev, {
+          id: data.id,
+          message: data.messagePreview,
+          sender_type: 'admin',
+          created_at: data.createdAt,
+          image_path: null
+        }];
+      });
+
+      // If contact view is open, mark as read immediately
+      if (currentViewRef.current === 'contact') {
+        markMessagesAsRead();
+      }
+    };
+
+    socket.on('support:new-admin-reply', handleAdminReply);
+    return () => socket.off('support:new-admin-reply', handleAdminReply);
+  }, [getSocket, markMessagesAsRead]);
 
   // Debug: Log socket connection status
   useEffect(() => {
@@ -75,96 +128,46 @@ const StudentSupportChatbot = () => {
   useEffect(() => {
     const fetchUnreadCount = async () => {
       if (!studentId) return;
-
       try {
         const token = localStorage.getItem('studentAuthToken');
         const response = await apiFetch('api/student-messages/student-unread-count', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
-
-        // Silently ignore 401 errors (token might be expired/invalid)
-        if (response.status === 401) {
-          return;
-        }
-
+        if (response.status === 401) return;
         if (response.ok) {
           const data = await response.json();
-          if (data.success) {
-            setUnreadCount(data.count);
-          }
+          if (data.success) setUnreadCount(data.count);
         }
       } catch (error) {
-        // Only log non-auth errors
-        if (!error.message?.includes('401')) {
-          console.error('Error fetching unread count:', error);
-        }
+        if (!error.message?.includes('401')) console.error('Error fetching unread count:', error);
       }
     };
-
     fetchUnreadCount();
-
-    // Poll every 60 seconds
     const interval = setInterval(fetchUnreadCount, 60000);
     return () => clearInterval(interval);
   }, [studentId]);
 
-  // Handle socket notifications for new admin replies
+  // Handle socket notifications for toast popups
   useEffect(() => {
-    console.log('[StudentChatbot] Notifications changed:', notifications.length);
-
     if (notifications.length > 0) {
       const latestNotification = notifications[0];
       const notificationId = latestNotification.id;
-
-      console.log('[StudentChatbot] Latest notification:', latestNotification);
-      console.log('[StudentChatbot] Already processed?', processedNotificationsRef.current.has(notificationId));
-
-      // Only process if we haven't already processed this notification
       if (!latestNotification.read && !processedNotificationsRef.current.has(notificationId)) {
-        console.log('[StudentChatbot] Showing toast for new notification ID:', notificationId);
-
-        // Mark as processed
         processedNotificationsRef.current.add(notificationId);
-
-        setUnreadCount(prev => prev + 1);
-
-        // Show toast notification
+        // Only bump unread count if contact view is NOT open (otherwise we auto-mark as read)
+        if (currentViewRef.current !== 'contact') {
+          setUnreadCount(prev => prev + 1);
+        }
         setToastMessage(latestNotification);
         setShowToastNotification(true);
-
-        // Auto-hide toast
         const timer = setTimeout(() => {
           setShowToastNotification(false);
           setToastMessage(null);
         }, 5000);
-
         return () => clearTimeout(timer);
       }
     }
   }, [notifications]);
-
-  // Mark messages as read when opening contact view
-  const markMessagesAsRead = useCallback(async () => {
-    if (!studentId) return;
-
-    try {
-      const token = localStorage.getItem('studentAuthToken');
-      await apiFetch('api/student-messages/mark-student-read', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      setUnreadCount(0);
-      socketMarkAllRead();
-    } catch (error) {
-      console.error('Error marking messages as read:', error);
-    }
-  }, [studentId, socketMarkAllRead]);
-
-  // Scroll to bottom of messages
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });

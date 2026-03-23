@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Video, LogOut, Settings, MessageSquare, X, Menu } from 'lucide-react';
 import Button from './Button';
@@ -12,6 +12,8 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [toastNotification, setToastNotification] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const shownNotificationsRef = useRef(new Set());
+  const socketCountReceivedRef = useRef(false);
 
   // Use support socket for real-time notifications with browser notifications enabled
   const {
@@ -24,7 +26,6 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
   // Request notification permission on first interaction if not granted
   useEffect(() => {
     if (notificationPermission === 'default') {
-      // Will be requested on first user interaction
       const handleClick = () => {
         requestPermission();
         document.removeEventListener('click', handleClick);
@@ -33,29 +34,38 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
     }
   }, [notificationPermission, requestPermission]);
 
-  // Show toast when new notification arrives
+  // Show toast only for new, unprocessed notifications and increment badge
   useEffect(() => {
-    if (notifications.length > 0 && !notifications[0].read) {
-      const latestNotification = notifications[0];
-      setToastNotification(latestNotification);
-
-      // Auto-hide toast after 5 seconds
-      const timer = setTimeout(() => {
-        setToastNotification(null);
-      }, 5000);
-
+    if (notifications.length === 0) return;
+    const latest = notifications[0];
+    if (!latest.read && !shownNotificationsRef.current.has(latest.id)) {
+      shownNotificationsRef.current.add(latest.id);
+      setUnreadCount(prev => prev + 1);
+      setToastNotification(latest);
+      const timer = setTimeout(() => setToastNotification(null), 5000);
       return () => clearTimeout(timer);
     }
   }, [notifications]);
 
-  // Update unread count when socket notifications change
+  // Listen for admin reading all messages (dispatched by StudentMessages page)
   useEffect(() => {
+    const handleAllRead = () => setUnreadCount(0);
+    window.addEventListener('admin-messages-all-read', handleAllRead);
+    return () => window.removeEventListener('admin-messages-all-read', handleAllRead);
+  }, []);
+
+  // Sync when socket reports unread count dropped to 0 (e.g. read from another tab)
+  useEffect(() => {
+    // Only sync after the socket has actually sent a count update (not the initial 0)
+    if (socketCountReceivedRef.current && socketUnreadCount === 0) {
+      setUnreadCount(0);
+    }
     if (socketUnreadCount > 0) {
-      setUnreadCount(prev => prev + socketUnreadCount);
+      socketCountReceivedRef.current = true;
     }
   }, [socketUnreadCount]);
 
-  // Fetch unread message count
+  // Fetch unread message count from DB (source of truth on load)
   useEffect(() => {
     const fetchUnreadCount = async () => {
       try {
@@ -63,22 +73,16 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
         if (!token) return;
 
         const response = await fetch(`${API_URL}/api/student-messages/unread-count`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        // Silently ignore 401 errors (token might be expired/invalid)
-        if (response.status === 401) {
-          return;
-        }
+        if (response.status === 401) return;
 
         const data = await response.json();
         if (data.success) {
           setUnreadCount(data.count);
         }
       } catch (err) {
-        // Only log non-auth errors
         if (!err.message?.includes('401')) {
           console.error('Error fetching unread count:', err);
         }
@@ -86,8 +90,6 @@ const AdminHeader = ({ title = "Dashboard", userName = "Admin" }) => {
     };
 
     fetchUnreadCount();
-
-    // Poll for new messages every 30 seconds
     const interval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(interval);
   }, []);

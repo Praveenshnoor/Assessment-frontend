@@ -213,6 +213,15 @@ export const useSupportSocket = ({
         }, true);
       });
 
+      // Real-time unread count update (when messages are marked read)
+      socket.on('support:unread-count-update', (data) => {
+        console.log('[SupportSocket] Unread count update:', data);
+        setUnreadCount(data.count);
+        if (data.count === 0) {
+          clearNotifications();
+        }
+      });
+
       // Listen for confirmation that we joined the room
       socket.on('admin:support-joined', (data) => {
         console.log('[SupportSocket] Admin support room joined:', data);
@@ -246,6 +255,7 @@ export const useSupportSocket = ({
         socket.off('disconnect');
         socket.off('connect_error');
         socket.off('support:new-student-message');
+        socket.off('support:unread-count-update');
         socket.off('support:new-admin-reply');
         socket.off('student:support-joined');
         socket.off('admin:support-joined');
