@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { apiFetch } from '../config/api';
-
-import shnoorLogo from '../../public/favicon.png';
 import Button from './Button';
 import Badge from './Badge';
 import InputField from './InputField';
+
+const shnoorLogo = '../../public/favicon.png';
 
 // Eye icons
 const EyeOpen = () => (
@@ -34,7 +34,6 @@ const LEFT_FEATURES = [
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
@@ -79,6 +78,7 @@ const Login = () => {
         try {
           const adminResponse = await apiFetch('api/admin/login', {
             method: 'POST',
+            skipGlobalErrorRedirect: true,
             headers: {
               'Content-Type': 'application/json',
             },
@@ -91,7 +91,6 @@ const Login = () => {
             // Admin login successful
             localStorage.setItem('adminToken', adminData.token);
             localStorage.setItem('adminUser', JSON.stringify(adminData.admin));
-
             navigate('/admin/dashboard');
             return;
           }
@@ -115,6 +114,7 @@ const Login = () => {
         // Call backend to get user profile (admin or student)
         const response = await apiFetch('api/login', {
           method: 'POST',
+          skipGlobalErrorRedirect: true,
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${idToken}`
@@ -138,7 +138,6 @@ const Login = () => {
         if (role === 'admin') {
           localStorage.setItem('adminToken', token);
           localStorage.setItem('adminUser', JSON.stringify(user));
-
           navigate('/admin/dashboard');
         } else {
           localStorage.setItem('studentAuthToken', token);
@@ -147,7 +146,7 @@ const Login = () => {
           localStorage.setItem('rollNumber', user.roll_number || '');
           localStorage.setItem('email', user.email || '');
           localStorage.setItem('institute', user.institute || '');
-
+          
           navigate('/dashboard', {
             replace: true,
             state: {
@@ -161,17 +160,18 @@ const Login = () => {
       } catch (firebaseError) {
         // If Firebase auth fails, try direct admin login (for admins not in Firebase)
         console.log('Firebase auth failed, trying direct admin login...');
-
+        
         if (firebaseError.code === 'auth/invalid-credential' || 
             firebaseError.code === 'auth/user-not-found' ||
             firebaseError.code === 'auth/wrong-password' ||
             firebaseError.message?.includes('Failed to fetch dynamically imported module') ||
             firebaseError.message?.includes('Loading chunk')) {
-
+          
           // Try direct admin login with bcrypt
           try {
             const adminResponse = await apiFetch('api/admin/login', {
               method: 'POST',
+              skipGlobalErrorRedirect: true,
               headers: {
                 'Content-Type': 'application/json',
               },
@@ -184,7 +184,6 @@ const Login = () => {
               // Admin login successful
               localStorage.setItem('adminToken', adminData.token);
               localStorage.setItem('adminUser', JSON.stringify(adminData.admin));
-
               navigate('/admin/dashboard');
               return;
             }
@@ -193,7 +192,7 @@ const Login = () => {
             throw firebaseError;
           }
         }
-
+        
         // If it's not an auth error, throw it
         throw firebaseError;
       }

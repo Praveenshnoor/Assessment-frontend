@@ -1,12 +1,26 @@
 // API Configuration
 // This ensures API calls work in both development and production
 
-import apiClient from '../utils/apiInterceptor';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000');
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Timeout for API requests (30 seconds for cold starts)
 const API_TIMEOUT = 30000;
+
+// Navigate inside SPA without forcing a full document reload.
+const softNavigate = (path) => {
+  if (window.location.pathname === path) return;
+  window.history.pushState({}, '', path);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+};
+
+const isAuthEndpoint = (endpoint) => {
+  const normalized = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return (
+    normalized.includes('/api/login') ||
+    normalized.includes('/api/register') ||
+    normalized.includes('/api/admin/login')
+  );
+};
 
 // Helper function to build full API URLs
 export const getApiUrl = (endpoint) => {
@@ -18,12 +32,10 @@ export const getApiUrl = (endpoint) => {
 // Export base URL for direct use
 export const API_URL = API_BASE_URL;
 
-// Export the configured axios client for authenticated requests
-export { apiClient };
-
-// Helper for fetch with automatic URL building and timeout (legacy support)
+// Helper for fetch with automatic URL building and timeout
 export const apiFetch = async (endpoint, options = {}) => {
   const controller = new AbortController();
+  const shouldHandleGlobalRedirect = !options.skipGlobalErrorRedirect && !isAuthEndpoint(endpoint);
 
   // Don't apply tight timeouts to upload routes or report generations
   const isLongRequest = endpoint.includes('/upload') || endpoint.includes('/export') || endpoint.includes('/predict');
@@ -43,7 +55,7 @@ export const apiFetch = async (endpoint, options = {}) => {
     });
 
     // Check for maintenance mode (503 status)
-    if (response.status === 503 && !endpoint.includes('/settings/public')) {
+    if (shouldHandleGlobalRedirect && response.status === 503 && !endpoint.includes('/settings/public')) {
       try {
         const cloned = response.clone();
         const data = await cloned.json();
@@ -53,7 +65,7 @@ export const apiFetch = async (endpoint, options = {}) => {
             // Let admins bypass maintenance
             if (!window.location.pathname.startsWith('/admin')) {
               sessionStorage.setItem('redirect_after_recovery', window.location.pathname + window.location.search);
-              window.location.href = '/maintenance';
+              softNavigate('/maintenance');
               return new Promise(() => { }); // prevent resolving so calling components don't crash
             }
           }
@@ -66,14 +78,14 @@ export const apiFetch = async (endpoint, options = {}) => {
     return response;
   } catch (error) {
     // Catch absolute network failures (server completely off) or aborts (timeouts)
-    if (error.name === 'TypeError' || error.name === 'AbortError') {
+    if (shouldHandleGlobalRedirect && (error.name === 'TypeError' || error.name === 'AbortError')) {
       if (
         !endpoint.includes('/settings/public') &&
         window.location.pathname !== '/server-down' &&
         window.location.pathname !== '/maintenance'
       ) {
         sessionStorage.setItem('redirect_after_recovery', window.location.pathname + window.location.search);
-        window.location.href = '/server-down';
+        softNavigate('/server-down');
         return new Promise(() => { }); // block execution
       }
     }
@@ -86,6 +98,5 @@ export const apiFetch = async (endpoint, options = {}) => {
 export default {
   getApiUrl,
   API_URL,
-  apiFetch,
-  apiClient
+  apiFetch
 };
