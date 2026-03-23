@@ -35,7 +35,7 @@ const ServerDown = () => {
                 // We navigate back to home or the previous page
                 const redirectUrl = sessionStorage.getItem('redirect_after_recovery') || '/';
                 sessionStorage.removeItem('redirect_after_recovery');
-                window.location.href = redirectUrl;
+                navigate(redirectUrl, { replace: true });
             }
         } catch (error) {
             // Still down

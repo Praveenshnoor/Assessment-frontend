@@ -6,6 +6,13 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 // Timeout for API requests (30 seconds for cold starts)
 const API_TIMEOUT = 30000;
 
+// Navigate inside SPA without forcing a full document reload.
+const softNavigate = (path) => {
+  if (window.location.pathname === path) return;
+  window.history.pushState({}, '', path);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+};
+
 // Helper function to build full API URLs
 export const getApiUrl = (endpoint) => {
   // Remove leading slash if present to avoid double slashes
@@ -48,7 +55,7 @@ export const apiFetch = async (endpoint, options = {}) => {
             // Let admins bypass maintenance
             if (!window.location.pathname.startsWith('/admin')) {
               sessionStorage.setItem('redirect_after_recovery', window.location.pathname + window.location.search);
-              window.location.href = '/maintenance';
+              softNavigate('/maintenance');
               return new Promise(() => { }); // prevent resolving so calling components don't crash
             }
           }
@@ -68,7 +75,7 @@ export const apiFetch = async (endpoint, options = {}) => {
         window.location.pathname !== '/maintenance'
       ) {
         sessionStorage.setItem('redirect_after_recovery', window.location.pathname + window.location.search);
-        window.location.href = '/server-down';
+        softNavigate('/server-down');
         return new Promise(() => { }); // block execution
       }
     }
