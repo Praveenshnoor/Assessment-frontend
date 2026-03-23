@@ -32,11 +32,16 @@ const StudentSupportChatbot = () => {
   const fileInputRef = useRef(null);
   const processedNotificationsRef = useRef(new Set()); // Track which notifications we've processed
   const currentViewRef = useRef(currentView);
+  const isOpenRef = useRef(isOpen);
 
-  // Keep ref in sync so socket handler always has latest view
+  // Keep refs in sync so socket handlers always have latest values
   useEffect(() => {
     currentViewRef.current = currentView;
   }, [currentView]);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
 
   // Get student info from localStorage
   const studentName = localStorage.getItem('studentName') || 'Student';
@@ -97,9 +102,11 @@ const StudentSupportChatbot = () => {
         }];
       });
 
-      // If contact view is open, mark as read immediately
-      if (currentViewRef.current === 'contact') {
+      // If contact view is open, mark as read immediately; otherwise bump unread count
+      if (isOpenRef.current && currentViewRef.current === 'contact') {
         markMessagesAsRead();
+      } else {
+        setUnreadCount(prev => prev + 1);
       }
     };
 
@@ -147,17 +154,13 @@ const StudentSupportChatbot = () => {
     return () => clearInterval(interval);
   }, [studentId]);
 
-  // Handle socket notifications for toast popups
+  // Handle socket notifications for toast popups only (count is managed by handleAdminReply)
   useEffect(() => {
     if (notifications.length > 0) {
       const latestNotification = notifications[0];
       const notificationId = latestNotification.id;
       if (!latestNotification.read && !processedNotificationsRef.current.has(notificationId)) {
         processedNotificationsRef.current.add(notificationId);
-        // Only bump unread count if contact view is NOT open (otherwise we auto-mark as read)
-        if (currentViewRef.current !== 'contact') {
-          setUnreadCount(prev => prev + 1);
-        }
         setToastMessage(latestNotification);
         setShowToastNotification(true);
         const timer = setTimeout(() => {
