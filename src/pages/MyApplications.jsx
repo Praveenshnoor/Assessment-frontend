@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, ArrowLeft, Briefcase, Loader2, RefreshCw, CheckCircle, Clock, FileText, AlertTriangle, XCircle, Trophy, PlayCircle, Award, ChevronDown } from 'lucide-react';
+import { LogOut, ArrowLeft, Briefcase, Loader2, RefreshCw, CheckCircle, Clock, FileText, AlertTriangle, XCircle, Trophy, PlayCircle, ChevronDown } from 'lucide-react';
 import { apiFetch } from '../config/api';
 
 const STATUS_CONFIG = {
@@ -75,6 +75,14 @@ export default function MyApplications({ isEmbedded = false }) {
                     'Authorization': `Bearer ${token}`
                 }
             });
+
+            // Handle 401 - Token expired or invalid
+            if (res.status === 401) {
+                console.log('Authentication token expired or invalid');
+                localStorage.clear();
+                navigate('/login');
+                return;
+            }
 
             const data = await res.json();
 
@@ -152,11 +160,28 @@ export default function MyApplications({ isEmbedded = false }) {
     };
 
     useEffect(() => {
-        setStudentName(localStorage.getItem('studentName') || 'Student');
-        setStudentId(localStorage.getItem('studentId') || '');
-        setInstitute(localStorage.getItem('institute') || '');
-        fetchApplications();
-    }, []);
+        const initialize = async () => {
+            // Validate token type - force re-login if old Firebase token
+            const { validateAndCleanupToken } = await import('../utils/tokenValidator');
+            if (!validateAndCleanupToken()) {
+                navigate('/login');
+                return;
+            }
+
+            const token = localStorage.getItem('studentAuthToken');
+            if (!token) {
+                navigate('/login');
+                return;
+            }
+
+            setStudentName(localStorage.getItem('studentName') || 'Student');
+            setStudentId(localStorage.getItem('studentId') || '');
+            setInstitute(localStorage.getItem('institute') || '');
+            fetchApplications();
+        };
+
+        initialize();
+    }, [navigate]);
 
     const handleLogout = () => {
         localStorage.clear();
