@@ -29,7 +29,7 @@ export default defineConfig({
           if (id.includes('firebase')) return 'vendor-firebase';
           if (id.includes('@tensorflow') || id.includes('@mediapipe')) return 'vendor-ml';
           if (id.includes('monaco-editor') || id.includes('@monaco-editor')) return 'vendor-editor';
-          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) return 'vendor-react';
+          if (id.includes('react-dom') || id.includes('react-router-dom') || id.match(/[/\\]react[/\\]/)) return 'vendor-react';
 
           return 'vendor';
         },
