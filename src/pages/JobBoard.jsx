@@ -5,18 +5,26 @@ import { LogOut, Briefcase, Building2, Clock, ArrowLeft, Loader2, RefreshCw, Sea
 import { apiFetch } from '../config/api';
 
 const fmtDeadline = (iso) =>
-    new Date(iso).toLocaleString('en-IN', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    iso
+        ? new Date(iso).toLocaleString('en-IN', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        })
+        : 'No deadline specified';
 
 const isExpiringSoon = (iso) => {
+    if (!iso) return false;
     const ms = new Date(iso) - new Date();
     return ms > 0 && ms < 3 * 24 * 60 * 60 * 1000; // within 3 days
+};
+
+const isRegistrationClosed = (iso) => {
+    if (!iso) return false;
+    return new Date(iso) < new Date();
 };
 
 
@@ -66,8 +74,8 @@ export default function JobBoard({ isEmbedded = false }) {
                 return;
             }
 
-            let allJobs = jobsData.data;
-            const allJobIds = new Set(jobsData.data.map(job => job.id));
+            let allJobs = Array.isArray(jobsData.data) ? [...jobsData.data] : [];
+            const allJobIds = new Set(allJobs.map(job => job.id));
 
             // Fetch enrolled jobs (if authenticated)
             const token = localStorage.getItem('studentAuthToken');
@@ -79,6 +87,12 @@ export default function JobBoard({ isEmbedded = false }) {
                         }
                     });
                     const enrolledData = await enrolledRes.json();
+
+                    if (enrolledRes.status === 401) {
+                        localStorage.clear();
+                        navigate('/login');
+                        return;
+                    }
 
                     if (enrolledData.success) {
                         const applicationsMap = new Map();
@@ -133,9 +147,9 @@ export default function JobBoard({ isEmbedded = false }) {
         const term = search.toLowerCase();
         setFiltered(
             jobs.filter(j =>
-                j.company_name.toLowerCase().includes(term) ||
-                j.job_role.toLowerCase().includes(term) ||
-                j.eligibility_criteria.toLowerCase().includes(term)
+                (j.company_name || '').toLowerCase().includes(term) ||
+                (j.job_role || '').toLowerCase().includes(term) ||
+                (j.eligibility_criteria || '').toLowerCase().includes(term)
             )
         );
     }, [search, jobs]);
@@ -329,7 +343,7 @@ export default function JobBoard({ isEmbedded = false }) {
                                                         ⚡ Closing Soon
                                                     </span>
                                                 )}
-                                                {!applications.has(job.id) && new Date(job.registration_deadline) < new Date() && (
+                                                {!applications.has(job.id) && isRegistrationClosed(job.registration_deadline) && (
                                                     <span className="bg-gray-100 text-gray-600 text-xs font-bold px-3 py-1 rounded-full border border-gray-300 whitespace-nowrap">
                                                         Registration Closed
                                                     </span>
@@ -355,7 +369,7 @@ export default function JobBoard({ isEmbedded = false }) {
                                         {/* Deadline banner - only show if not enrolled */}
                                         {!applications.has(job.id) && (
                                             <div className={`flex items-center space-x-2 px-4 py-3 rounded-lg text-sm font-semibold
-                                            ${new Date(job.registration_deadline) < new Date()
+                                            ${isRegistrationClosed(job.registration_deadline)
                                                     ? 'bg-gray-100 border border-gray-300 text-gray-600'
                                                     : isExpiringSoon(job.registration_deadline)
                                                         ? 'bg-shnoor-warningLight border border-shnoor-warningLight text-shnoor-warning'
@@ -363,7 +377,7 @@ export default function JobBoard({ isEmbedded = false }) {
                                                 }`}>
                                                 <Clock size={16} />
                                                 <span>
-                                                    {new Date(job.registration_deadline) < new Date()
+                                                    {isRegistrationClosed(job.registration_deadline)
                                                         ? `Registration closed on ${fmtDeadline(job.registration_deadline)}`
                                                         : `Deadline: ${fmtDeadline(job.registration_deadline)}`
                                                     }

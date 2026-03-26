@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm install --include=optional && vite build",
-    "build:prod": "npm install --include=optional && vite build --mode production",
+    "build": "vite build",
+    "build:prod": "vite build --mode production",
     "build:analyze": "vite build --mode production && npx vite-bundle-visualizer",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -29,10 +29,12 @@
     "react-router-dom": "^7.13.0",
     "react-select": "^5.10.2",
     "remark-gfm": "^4.0.1",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "xlsx": "0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@rollup/rollup-win32-x64-msvc": "4.60.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
@@ -49,11 +51,5 @@
   },
   "overrides": {
     "rollup": "4.52.4"
-  },
-  "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "4.52.4"
-  },
-  "engines": {
-    "node": ">=20.19.0"
   }
 }

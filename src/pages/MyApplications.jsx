@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, ArrowLeft, Briefcase, Loader2, RefreshCw, CheckCircle, Clock, FileText, AlertTriangle, XCircle, Trophy, PlayCircle, ChevronDown } from 'lucide-react';
+import { LogOut, ArrowLeft, Briefcase, Loader2, RefreshCw, CheckCircle, Clock, FileText, AlertTriangle, XCircle, Trophy, PlayCircle, Award, ChevronDown } from 'lucide-react';
 import { apiFetch } from '../config/api';
 
 const STATUS_CONFIG = {
@@ -76,14 +76,6 @@ export default function MyApplications({ isEmbedded = false }) {
                 }
             });
 
-            // Handle 401 - Token expired or invalid
-            if (res.status === 401) {
-                console.log('Authentication token expired or invalid');
-                localStorage.clear();
-                navigate('/login');
-                return;
-            }
-
             const data = await res.json();
 
             if (data.success) {
@@ -91,7 +83,7 @@ export default function MyApplications({ isEmbedded = false }) {
             } else {
                 setError(data.message || 'Failed to load applications');
             }
-        } catch (err) {
+        } catch {
             setError('Network error. Please check your connection.');
         } finally {
             setLoading(false);
@@ -113,12 +105,18 @@ export default function MyApplications({ isEmbedded = false }) {
                 }
             });
 
+            if (res.status === 401) {
+                localStorage.clear();
+                navigate('/login');
+                return;
+            }
+
             const data = await res.json();
             console.log('Tests response:', data);
 
             if (data.success) {
                 console.log('Setting tests:', data.tests);
-                setAppTests(prev => ({ ...prev, [applicationId]: data.tests }));
+                setAppTests(prev => ({ ...prev, [applicationId]: Array.isArray(data.tests) ? data.tests : [] }));
             } else {
                 console.error('Failed to fetch tests:', data.message);
             }
@@ -160,28 +158,11 @@ export default function MyApplications({ isEmbedded = false }) {
     };
 
     useEffect(() => {
-        const initialize = async () => {
-            // Validate token type - force re-login if old Firebase token
-            const { validateAndCleanupToken } = await import('../utils/tokenValidator');
-            if (!validateAndCleanupToken()) {
-                navigate('/login');
-                return;
-            }
-
-            const token = localStorage.getItem('studentAuthToken');
-            if (!token) {
-                navigate('/login');
-                return;
-            }
-
-            setStudentName(localStorage.getItem('studentName') || 'Student');
-            setStudentId(localStorage.getItem('studentId') || '');
-            setInstitute(localStorage.getItem('institute') || '');
-            fetchApplications();
-        };
-
-        initialize();
-    }, [navigate]);
+        setStudentName(localStorage.getItem('studentName') || 'Student');
+        setStudentId(localStorage.getItem('studentId') || '');
+        setInstitute(localStorage.getItem('institute') || '');
+        fetchApplications();
+    }, []);
 
     const handleLogout = () => {
         localStorage.clear();
@@ -425,8 +406,8 @@ export default function MyApplications({ isEmbedded = false }) {
                                                                         <div
                                                                             key={test.test_id}
                                                                             className={`border rounded-lg p-4 transition-all ${test.is_completed
-                                                                                ? 'border-shnoor-success bg-shnoor-successLight'
-                                                                                : 'border-shnoor-mist bg-white hover:shadow-md'
+                                                                                    ? 'border-shnoor-success bg-shnoor-successLight'
+                                                                                    : 'border-shnoor-mist bg-white hover:shadow-md'
                                                                                 }`}
                                                                         >
                                                                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

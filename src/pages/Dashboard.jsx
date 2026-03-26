@@ -1,10 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { LogOut, Clock, BookOpen, AlertCircle, FileText, X, Video } from 'lucide-react';
+import { LogOut, Clock, BookOpen, AlertCircle, FileText, X, Video, Briefcase } from 'lucide-react';
 import ExamSearchFilter from '../components/ExamSearchFilter';
 import StudentInterviews from '../components/StudentInterviews';
+import JobBoard from './JobBoard';
+import MyApplications from './MyApplications';
 import { apiFetch } from '../config/api';
 import shnoorLogo from '../assets/shnoor-logo1.png';
+
+const STUDENT_DASHBOARD_TABS = ['tests', 'interviews', 'job-board', 'my-applications'];
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -29,7 +33,10 @@ const Dashboard = () => {
   const [selectedTest, setSelectedTest] = useState(null);
   const [showJobModal, setShowJobModal] = useState(false);
   const [selectedJobRoleIndex, setSelectedJobRoleIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState('tests'); // 'tests' or 'interviews'
+  const [activeTab, setActiveTab] = useState(() => {
+    const savedTab = localStorage.getItem('studentDashboardTab');
+    return STUDENT_DASHBOARD_TABS.includes(savedTab) ? savedTab : 'tests';
+  });
 
   // Search, Filter, Sort States
   const [searchTerm, setSearchTerm] = useState('');
@@ -139,6 +146,10 @@ const Dashboard = () => {
     fetchData();
   }, [navigate]);
 
+  useEffect(() => {
+    localStorage.setItem('studentDashboardTab', activeTab);
+  }, [activeTab]);
+
   const handleLogout = () => {
     localStorage.clear();
     navigate('/login');
@@ -189,9 +200,10 @@ const Dashboard = () => {
         switch (filters.dateRange) {
           case 'today':
             return testDate.toDateString() === now.toDateString();
-          case 'week':
+          case 'week': {
             const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
             return testDate >= weekAgo;
+          }
           case 'month':
             return testDate.getMonth() === now.getMonth() && testDate.getFullYear() === now.getFullYear();
           case 'year':
@@ -412,6 +424,26 @@ const Dashboard = () => {
               <Video size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
               <span>Interviews</span>
             </button>
+            <button
+              onClick={() => setActiveTab('job-board')}
+              className={`flex items-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all text-sm sm:text-base ${activeTab === 'job-board'
+                ? 'bg-shnoor-indigo text-white'
+                : 'bg-white text-shnoor-indigoMedium hover:text-shnoor-navy hover:bg-shnoor-lavender'
+                }`}
+            >
+              <Briefcase size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
+              <span>Job Board</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('my-applications')}
+              className={`flex items-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all text-sm sm:text-base ${activeTab === 'my-applications'
+                ? 'bg-shnoor-indigo text-white'
+                : 'bg-white text-shnoor-indigoMedium hover:text-shnoor-navy hover:bg-shnoor-lavender'
+                }`}
+            >
+              <FileText size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
+              <span>My Applications</span>
+            </button>
           </div>
         </div>
 
@@ -615,28 +647,40 @@ const Dashboard = () => {
           <StudentInterviews />
         )}
 
+        {/* Job Board Tab */}
+        {activeTab === 'job-board' && (
+          <JobBoard isEmbedded />
+        )}
+
+        {/* My Applications Tab */}
+        {activeTab === 'my-applications' && (
+          <MyApplications isEmbedded />
+        )}
+
         {/* Info Section */}
-        <div className="mt-12 bg-shnoor-lavender border-2 border-shnoor-mist rounded-xl p-6 shadow-sm">
-          <h3 className="text-lg font-bold text-shnoor-navy mb-3">Important Instructions</h3>
-          <ul className="space-y-2 text-sm text-shnoor-indigoMedium">
-            <li className="flex items-start">
-              <span className="mr-2 text-shnoor-indigo font-bold">•</span>
-              Ensure you have a stable internet connection before starting
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2 text-shnoor-indigo font-bold">•</span>
-              All tests require fullscreen mode and prohibit tab switching
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2 text-shnoor-indigo font-bold">•</span>
-              Three warnings for tab switching will result in automatic submission
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2 text-shnoor-indigo font-bold">•</span>
-              Your progress is automatically saved - you can resume tests if interrupted
-            </li>
-          </ul>
-        </div>
+        {(activeTab === 'tests' || activeTab === 'interviews') && (
+          <div className="mt-12 bg-shnoor-lavender border-2 border-shnoor-mist rounded-xl p-6 shadow-sm">
+            <h3 className="text-lg font-bold text-shnoor-navy mb-3">Important Instructions</h3>
+            <ul className="space-y-2 text-sm text-shnoor-indigoMedium">
+              <li className="flex items-start">
+                <span className="mr-2 text-shnoor-indigo font-bold">•</span>
+                Ensure you have a stable internet connection before starting
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2 text-shnoor-indigo font-bold">•</span>
+                All tests require fullscreen mode and prohibit tab switching
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2 text-shnoor-indigo font-bold">•</span>
+                Three warnings for tab switching will result in automatic submission
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2 text-shnoor-indigo font-bold">•</span>
+                Your progress is automatically saved - you can resume tests if interrupted
+              </li>
+            </ul>
+          </div>
+        )}
       </main>
     </div>
   );
