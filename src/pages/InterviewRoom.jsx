@@ -1,13 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Video, VideoOff, Mic, MicOff, Monitor, MonitorOff, PhoneOff, MessageSquare, Send } from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, Monitor, MonitorOff, PhoneOff, MessageSquare, Send, Phone } from 'lucide-react';
 import Peer from 'peerjs';
 import { io } from 'socket.io-client';
 import { apiFetch } from '../config/api';
 
+const SOCKET_ENABLED = true;
+
 const InterviewRoom = () => {
   const { interviewId } = useParams();
   const navigate = useNavigate();
+  
+  // State management
   const [interview, setInterview] = useState(null);
   const [peer, setPeer] = useState(null);
   const [peerId, setPeerId] = useState('');
@@ -17,28 +21,128 @@ const InterviewRoom = () => {
   const [isAudioOn, setIsAudioOn] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('Connecting...');
-  const [notes, setNotes] = useState('');
-  const [adminJoined, setAdminJoined] = useState(false);
-  const [incomingCall, setIncomingCall] = useState(false); // Track if admin is calling
-  const [chatMessages, setChatMessages] = useState([]); // Chat messages
-  const [chatInput, setChatInput] = useState(''); // Current chat input
-  const chatEndRef = useRef(null); // For auto-scrolling chat
+  const [incomingCall, setIncomingCall] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [callState, setCallState] = useState('idle');
+  const [isCallInProgress, setIsCallInProgress] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [studentInRoom, setStudentInRoom] = useState(false);
+  const [adminInRoom, setAdminInRoom] = useState(false);
+  const [isInterviewTimeValid, setIsInterviewTimeValid] = useState(false);
+  const [timeUntilInterview, setTimeUntilInterview] = useState('');
 
+  // Refs
+  const chatEndRef = useRef(null);
   const localVideoRef = useRef(null);
+  const localVideoPipRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const localStreamRef = useRef(null);
   const screenStreamRef = useRef(null);
   const socketRef = useRef(null);
+  const isInterviewTimeValidRef = useRef(false); // ref to avoid stale closure in socket handlers
+  const isCallInProgressRef = useRef(false);     // ref to avoid stale closure in socket handlers
+  const callRef = useRef(null);                  // ref to avoid stale closure in socket handlers
+  const peerIdRef = useRef('');                  // ref so socket handlers always have latest peerId
 
   const isAdmin = !!localStorage.getItem('adminToken');
   const isStudent = !!localStorage.getItem('studentAuthToken') && !isAdmin;
   const role = isAdmin ? 'admin' : 'student';
 
+  // Enhanced helper function to ensure video plays
+  const ensureVideoPlays = async (videoElement, streamType) => {
+    if (!videoElement || !videoElement.srcObject) {
+      console.log(`${streamType} video: No element or stream`);
+      return false;
+    }
+
+    try {
+      if (!videoElement.paused) {
+        videoElement.pause();
+      }
+
+      // Mobile-specific video properties
+      videoElement.muted = streamType === 'Local' || streamType === 'Local-PIP';
+      videoElement.playsInline = true;
+      videoElement.autoplay = true;
+      videoElement.controls = false;
+      
+      // Additional properties for remote video
+      if (streamType === 'Remote') {
+        videoElement.style.objectFit = 'cover';
+        // For mobile browsers, ensure video is not muted for remote streams
+        videoElement.muted = false;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      if (videoElement.srcObject) {
+        await videoElement.play();
+        console.log(`${streamType} video playing successfully`);
+        console.log(`${streamType} video dimensions: ${videoElement.videoWidth}x${videoElement.videoHeight}`);
+        return true;
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log(`${streamType} video play aborted (stream changed)`);
+        return false;
+      }
+      console.error(`${streamType} video play error:`, error);
+      
+      // Mobile fallback - try to play without waiting
+      if (streamType === 'Remote' && videoElement.srcObject) {
+        try {
+          videoElement.play();
+        } catch (e) {
+          console.error('Mobile fallback play failed:', e);
+        }
+      }
+      return false;
+    }
+  };
   useEffect(() => {
-    fetchInterviewDetails();
-    initializeSocketAndPeer();
+    let isMounted = true;
+    
+    const initializeInterview = async () => {
+      if (!isMounted) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        
+        await fetchInterviewDetails();
+        await initializeSocketAndPeer();
+        
+        if (isAdmin && isMounted) {
+          const fallbackTimer = setTimeout(() => {
+            if (isMounted) {
+              console.log('Fallback: Enabling admin call button');
+              setAdminInRoom(true);
+            }
+          }, 5000);
+          
+          return () => {
+            clearTimeout(fallbackTimer);
+          };
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Interview initialization error:', err);
+          setError('Failed to initialize interview room. Please refresh and try again.');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeInterview();
 
     return () => {
+      isMounted = false;
       cleanup();
     };
   }, []);
@@ -50,6 +154,99 @@ const InterviewRoom = () => {
     }
   }, [chatMessages]);
 
+  // Ensure videos play when streams are available
+  useEffect(() => {
+    if (localStreamRef.current) {
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = localStreamRef.current;
+        const timeoutId = setTimeout(() => {
+          ensureVideoPlays(localVideoRef.current, 'Local');
+        }, 100);
+        
+        return () => clearTimeout(timeoutId);
+      }
+    }
+  }, [localStreamRef.current]);
+
+  // Separate effect for PIP video during calls
+  useEffect(() => {
+    if (call && localStreamRef.current && localVideoPipRef.current) {
+      localVideoPipRef.current.srcObject = localStreamRef.current;
+      setTimeout(() => {
+        ensureVideoPlays(localVideoPipRef.current, 'Local-PIP');
+      }, 150);
+    }
+  }, [call, localStreamRef.current]);
+
+  // Monitor interview time validity for students
+  useEffect(() => {
+    if (isStudent && interview?.scheduled_time) {
+      const interval = setInterval(() => {
+        checkInterviewTimeValidity(interview.scheduled_time);
+      }, 30000); // Check every 30 seconds
+      
+      return () => clearInterval(interval);
+    }
+  }, [interview?.scheduled_time, isStudent]);
+
+  // Keep refs in sync so socket handlers always read the latest values (stale closure fix)
+  useEffect(() => { isInterviewTimeValidRef.current = isInterviewTimeValid; }, [isInterviewTimeValid]);
+  useEffect(() => { isCallInProgressRef.current = isCallInProgress; }, [isCallInProgress]);
+  useEffect(() => { callRef.current = call; }, [call]);
+  useEffect(() => { peerIdRef.current = peerId; }, [peerId]);
+
+  // Update student room status when time becomes valid
+  useEffect(() => {
+    if (isStudent && isInterviewTimeValid && socketRef.current?.connected && !studentInRoom) {
+      // Automatically join the student to the room when time is valid
+      joinInterviewRoom();
+      console.log('Student automatically joined room - interview time is valid');
+    }
+  }, [isInterviewTimeValid, isStudent, studentInRoom]);
+
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteVideoRef.current.srcObject) {
+      const timeoutId = setTimeout(() => {
+        ensureVideoPlays(remoteVideoRef.current, 'Remote');
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+    // Apply any stream that arrived before the video element was mounted
+    if (remoteVideoRef.current && pendingRemoteStreamRef.current) {
+      const el = remoteVideoRef.current;
+      const stream = pendingRemoteStreamRef.current;
+      el.srcObject = stream;
+      el.muted = false;
+      el.playsInline = true;
+      el.autoplay = true;
+      el.play().catch(e => {
+        console.error('Pending stream play failed:', e);
+        setTimeout(() => el.play().catch(console.error), 500);
+      });
+      pendingRemoteStreamRef.current = null;
+    }
+  }, [call, remoteVideoRef.current?.srcObject]);
+
+  // Additional effect to monitor remote video stream
+  useEffect(() => {
+    if (call && remoteVideoRef.current) {
+      const video = remoteVideoRef.current;
+      
+      // Check if video has a stream but isn't playing
+      const checkVideoState = () => {
+        if (video.srcObject && video.paused) {
+          console.log('Remote video has stream but is paused, attempting to play');
+          video.play().catch(e => console.error('Failed to play remote video:', e));
+        }
+      };
+      
+      // Check every 2 seconds
+      const interval = setInterval(checkVideoState, 2000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [call]);
+
   const fetchInterviewDetails = async () => {
     try {
       const token = localStorage.getItem('adminToken') || localStorage.getItem('studentAuthToken');
@@ -60,25 +257,78 @@ const InterviewRoom = () => {
       const data = await response.json();
       if (response.ok && data.success) {
         setInterview(data.interview);
+        
+        // Check interview time validity for students
+        if (isStudent && data.interview?.scheduled_time) {
+          checkInterviewTimeValidity(data.interview.scheduled_time);
+        } else if (isStudent) {
+          // If no scheduled time, allow interview
+          setIsInterviewTimeValid(true);
+        } else {
+          // Admin can always join
+          setIsInterviewTimeValid(true);
+        }
       }
     } catch (error) {
       console.error('Fetch interview error:', error);
     }
   };
 
+  const checkInterviewTimeValidity = (scheduledTime) => {
+    const now = new Date();
+    const interviewStart = new Date(scheduledTime);
+    
+    const isValid = now >= interviewStart;
+    setIsInterviewTimeValid(isValid);
+    
+    if (!isValid) {
+      const timeUntilValid = interviewStart.getTime() - now.getTime();
+      const minutesUntil = Math.ceil(timeUntilValid / (1000 * 60));
+      const hoursUntil = Math.floor(minutesUntil / 60);
+      const remainingMinutes = minutesUntil % 60;
+      
+      let timeString = '';
+      if (hoursUntil > 0) {
+        timeString = `${hoursUntil}h ${remainingMinutes}m`;
+      } else {
+        timeString = `${minutesUntil}m`;
+      }
+      
+      setTimeUntilInterview(timeString);
+      setConnectionStatus(`Interview starts in ${timeString}`);
+      
+      // Set up a timer to check again when it becomes valid
+      const timeout = setTimeout(() => {
+        checkInterviewTimeValidity(scheduledTime);
+      }, Math.min(timeUntilValid, 60000)); // Check every minute or when valid
+      
+      return () => clearTimeout(timeout);
+    } else {
+      setTimeUntilInterview('');
+      setConnectionStatus('You can now join the interview room');
+    }
+  };
   const initializeSocketAndPeer = async () => {
     try {
-      // Initialize Socket.IO with proper configuration
-      const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      setLoading(true);
+      
+      if (socketRef.current && socketRef.current.connected) {
+        console.log('Socket already connected, skipping initialization');
+        setLoading(false);
+        return;
+      }
+      
+      // Initialize Socket.IO
+      const socketUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000');
+      console.log('Connecting to socket URL:', socketUrl);
+      
       const socket = io(socketUrl, {
-        transports: ['websocket', 'polling'],
+        transports: ['polling', 'websocket'], // polling first — avoids connection issues on load balancers
         reconnection: true,
         reconnectionDelay: 1000,
-        reconnectionAttempts: 5,
+        reconnectionAttempts: 10,
         withCredentials: false,
-        upgrade: true,
-        rememberUpgrade: true,
-        timeout: 20000, // Connection timeout
+        timeout: 20000,
         forceNew: false
       });
 
@@ -86,251 +336,385 @@ const InterviewRoom = () => {
 
       socket.on('connect', () => {
         console.log('Socket connected:', socket.id);
+        console.log('User role:', role, 'Interview ID:', interviewId);
         setConnectionStatus('Connected to server');
-
-        // Don't join with 'pending' peer ID - wait for actual peer ID
-        // The join will happen when PeerJS peer ID is ready
-
-        // If admin, mark as joined immediately
+        
         if (isAdmin) {
-          setAdminJoined(true);
+          setAdminInRoom(true);
+          setConnectionStatus('Ready to call student');
+          console.log('Admin connected - enabling call button');
+        } else if (isStudent) {
+          // Student will auto-join when time is valid
+          if (isInterviewTimeValid) {
+            setConnectionStatus('Joining interview room...');
+          } else {
+            setConnectionStatus(`Interview starts in ${timeUntilInterview}`);
+          }
+          console.log('Student connected - will auto-join when time is valid');
         }
+        
+        // Request room status after connecting
+        setTimeout(() => {
+          socket.emit('interview:get-room-status', { interviewId });
+        }, 1000);
       });
 
       socket.on('connect_error', (error) => {
         console.error('Socket connection error:', error);
         setConnectionStatus('Connection error');
+        setError('Failed to connect to interview server. Please check your internet connection.');
       });
 
       socket.on('disconnect', (reason) => {
         console.log('Socket disconnected:', reason);
         setConnectionStatus('Disconnected');
-
-        // Auto-reconnect if server disconnected us
+        
         if (reason === 'io server disconnect') {
           console.log('Server disconnected, attempting to reconnect...');
           socket.connect();
         }
       });
 
-      socket.on('connection-timeout', (data) => {
-        console.warn('Connection timeout:', data);
-        setConnectionStatus('Connection timeout - reconnecting...');
-        socket.connect();
+      // Initialize PeerJS pointing to our own backend signaling server
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const isSecure = apiUrl.startsWith('https');
+      const backendHost = apiUrl
+        .replace(/^https?:\/\//, '')
+        .replace(/\/$/, '')
+        .split(':')[0]; // strip port from host if present
+      const backendPort = isSecure ? 443 : 5000;
+
+      const newPeer = new Peer(undefined, {
+        host: backendHost,
+        path: '/peerjs',
+        port: backendPort,
+        secure: isSecure,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478' },
+            {
+              urls: [
+                'turn:openrelay.metered.ca:80',
+                'turn:openrelay.metered.ca:80?transport=tcp',
+                'turn:openrelay.metered.ca:443',
+                'turn:openrelay.metered.ca:443?transport=tcp',
+                'turns:openrelay.metered.ca:443'
+              ],
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            }
+          ],
+          iceTransportPolicy: 'all',
+          bundlePolicy: 'max-bundle',
+          rtcpMuxPolicy: 'require'
+        },
+        debug: 2
       });
-
-      // Initialize PeerJS
-      const newPeer = new Peer();
-
+      
       newPeer.on('open', (id) => {
         console.log('My peer ID:', id);
         setPeerId(id);
-        setConnectionStatus('Ready');
-
-        // Update interview room with peer ID
-        if (socket.connected) {
-          socket.emit('interview:join', {
-            interviewId,
-            peerId: id,
-            role
-          });
-
-          // Signal peer ID to other participant
-          socket.emit('interview:signal-peer', {
-            interviewId,
-            peerId: id
-          });
-        }
-      });
-
-      // Listen for other participant's peer ID
-      socket.on('interview:peer-available', (data) => {
-        console.log('Peer available:', data);
-        setRemotePeerId(data.peerId);
-        setConnectionStatus(`${data.role === 'admin' ? 'Interviewer' : 'Student'} is ready`);
-
-        // Track if admin joined
-        if (data.role === 'admin') {
-          setAdminJoined(true);
-        }
-      });
-
-      // Listen for peer joining
-      socket.on('interview:peer-joined', (data) => {
-        console.log('Peer joined:', data);
-        setRemotePeerId(data.peerId);
-        setConnectionStatus(`${data.role === 'admin' ? 'Interviewer' : 'Student'} joined`);
-
-        // Track if admin joined
-        if (data.role === 'admin') {
-          setAdminJoined(true);
-        }
-      });
-
-      // Listen for peer leaving
-      socket.on('interview:peer-left', (data) => {
-        console.log('Peer left:', data);
-        setRemotePeerId('');
-        setConnectionStatus(`${data.role === 'admin' ? 'Interviewer' : 'Student'} left`);
-
-        // Track if admin left
-        if (data.role === 'admin') {
-          setAdminJoined(false);
-        }
-
-        if (call) {
-          call.close();
-          setCall(null);
-        }
-      });
-
-      // Listen for admin starting call (student notification)
-      socket.on('interview:call-started', (data) => {
-        console.log('Admin started call:', data);
-        if (isStudent) {
-          // Show "Answer Call" button for student
-          setIncomingCall(true);
-          setConnectionStatus('Interviewer is calling...');
-
-          // Play notification sound
-          try {
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            if (AudioCtx) {
-              const ctx = new AudioCtx();
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.type = 'sine';
-              osc.frequency.value = 880;
-              gain.gain.value = 0.1;
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-              osc.start();
-              setTimeout(() => {
-                osc.stop();
-                ctx.close();
-              }, 1000);
-            }
-          } catch (e) {
-            console.error('Audio error:', e);
-          }
-        }
-      });
-
-      // Listen for student ready to receive call (admin side)
-      socket.on('interview:student-ready', async (data) => {
-        console.log('Student ready to receive call:', data);
-        if (isAdmin && data.peerId && peer && localStreamRef.current) {
-          // Initiate PeerJS call to student
-          try {
-            const outgoingCall = peer.call(data.peerId, localStreamRef.current);
-            setCall(outgoingCall);
-            setConnectionStatus('Connecting...');
-
-            outgoingCall.on('stream', (remoteStream) => {
-              console.log('Received remote stream from student');
-              if (remoteVideoRef.current) {
-                remoteVideoRef.current.srcObject = remoteStream;
-              }
-              setConnectionStatus('Connected');
+        setConnectionStatus(isAdmin ? 'Ready to call' : 'Ready');
+        
+        let retryCount = 0;
+        const maxRetries = 10;
+        
+        const emitPeerInfo = () => {
+          if (socket.connected) {
+            console.log('Emitting interview:join with peer ID:', id, 'Role:', role, 'Interview ID:', interviewId);
+            socket.emit('interview:join', {
+              interviewId,
+              peerId: id,
+              role
             });
-
-            outgoingCall.on('close', () => {
-              setConnectionStatus('Call ended');
-              setCall(null);
+            
+            socket.emit('interview:signal-peer', {
+              interviewId,
+              peerId: id
             });
-          } catch (error) {
-            console.error('Error calling student:', error);
-            setConnectionStatus('Failed to connect');
+          } else if (retryCount < maxRetries) {
+            retryCount++;
+            console.warn(`Socket not connected, retry ${retryCount}/${maxRetries} in 1000ms...`);
+            setTimeout(emitPeerInfo, 1000);
+          } else {
+            console.error('Socket connection failed after max retries');
+            setConnectionStatus('Connection failed - please refresh');
+            setError('Failed to join interview room. Please refresh and try again.');
           }
-        }
+        };
+        
+        emitPeerInfo();
       });
 
-      // Listen for chat messages
-      socket.on('interview:chat-message', (data) => {
-        console.log('Received chat message from server:', data);
-        setChatMessages(prev => {
-          console.log('Adding message to chat, current count:', prev.length);
-          return [...prev, data];
-        });
-      });
-
-      // Listen for chat sent confirmation
-      socket.on('interview:chat-sent', (data) => {
-        console.log('Chat message sent confirmation:', data);
-      });
-
-      newPeer.on('call', (incoming) => {
-        console.log('Receiving call...');
-        setConnectionStatus('Incoming call...');
-        answerCall(incoming);
-      });
+      setupSocketEventHandlers(socket, newPeer);
 
       newPeer.on('error', (err) => {
         console.error('Peer error:', err);
+        if (err.type === 'server-error' || err.message.includes('timeout')) {
+          console.error('PeerJS server connection failed. The public 0.peerjs.com server may be blocked or overwhelmed.');
+        }
         setConnectionStatus('Connection error - ' + err.type);
+        setError('WebRTC connection failed: ' + err.message);
       });
 
       setPeer(newPeer);
+      setLoading(false);
     } catch (error) {
       console.error('Initialize error:', error);
+      setError('Failed to initialize interview room: ' + error.message);
+      setLoading(false);
     }
   };
+  const setupSocketEventHandlers = (socket, peer) => {
+    // Store incoming PeerJS call — student answers it manually via answerIncomingCall()
+    peer.on('call', (incoming) => {
+      console.log('Incoming PeerJS call received, waiting for student to answer');
+      incomingCallRef.current = incoming;
+      // If student already clicked Answer (media ready), answer immediately
+      if (localStreamRef.current && !callRef.current) {
+        answerCall(incoming);
+      }
+    });
+
+    // Listen for peer joining
+    socket.on('interview:peer-joined', (data) => {
+      console.log('Peer joined:', data);
+      const peerIdString = typeof data.peerId === 'string' ? data.peerId : String(data.peerId);
+      
+      if (remotePeerId !== peerIdString) {
+        console.log('Setting remotePeerId to:', peerIdString);
+        setRemotePeerId(peerIdString);
+        
+        if (data.role === 'admin') {
+          setAdminInRoom(true);
+          setConnectionStatus('Interviewer joined');
+        } else {
+          setStudentInRoom(true);
+          setConnectionStatus('Student joined');
+        }
+      }
+    });
+
+    // Listen for existing participants when joining
+    socket.on('interview:existing-participants', (data) => {
+      console.log('Existing participants:', data);
+      if (data.participants && data.participants.length > 0) {
+        data.participants.forEach(participant => {
+          if (participant.role === 'admin' && isStudent) {
+            setAdminInRoom(true);
+            setRemotePeerId(participant.peerId);
+            console.log('Found existing admin in room');
+          } else if (participant.role === 'student' && isAdmin) {
+            setStudentInRoom(true);
+            setRemotePeerId(participant.peerId);
+            console.log('Found existing student in room');
+          }
+        });
+      }
+    });
+
+    // Listen for peer leaving
+    socket.on('interview:peer-left', (data) => {
+      console.log('Peer left:', data);
+      setRemotePeerId('');
+      
+      if (data.role === 'admin') {
+        setAdminInRoom(false);
+        setConnectionStatus('Interviewer left');
+      } else {
+        setStudentInRoom(false);
+        setConnectionStatus('Student left');
+      }
+      
+      if (callRef.current) {
+        callRef.current.close();
+        setCall(null);
+        setCallState('ended');
+      }
+    });
+
+    // Listen for room status response
+    socket.on('interview:room-status', (data) => {
+      console.log('Room status received:', data);
+      if (data.participants && data.participants.length > 0) {
+        data.participants.forEach(participant => {
+          if (participant.role === 'admin' && isStudent) {
+            setAdminInRoom(true);
+            setRemotePeerId(participant.peerId);
+            console.log('Room status: Admin is in room');
+          } else if (participant.role === 'student' && isAdmin) {
+            setStudentInRoom(true);
+            setRemotePeerId(participant.peerId);
+            console.log('Room status: Student is in room');
+          }
+        });
+      }
+    });
+    
+    // Listen for admin starting call — student shows incoming call UI
+    socket.on('interview:call-started', (data) => {
+      console.log('Interview call started event received:', data);
+      if (isStudent && isInterviewTimeValidRef.current) {
+        console.log('Showing incoming call UI');
+        setIncomingCall(true);
+        setCallState('ringing');
+        setConnectionStatus('Incoming call from interviewer...');
+      }
+    });
+
+    // Admin side: student-ready is no longer used for call initiation.
+    // Kept only for legacy compatibility — admin calls directly via startCall().
+
+    // Listen for student joining room (admin side)
+    socket.on('interview:student-joined-room', (data) => {
+      console.log('Student joined room:', data);
+      if (isAdmin) {
+        setStudentInRoom(true);
+        setConnectionStatus('Student joined - ready to call');
+      }
+    });
+
+    // Listen for chat messages
+    socket.on('interview:chat-message', (data) => {
+      console.log('Received chat message from server:', data);
+      setChatMessages(prev => {
+        const messageExists = prev.some(msg => 
+          msg.text === data.text && 
+          msg.timestamp === data.timestamp && 
+          msg.sender === data.sender
+        );
+        
+        if (messageExists) {
+          console.log('Duplicate message detected, skipping');
+          return prev;
+        }
+        
+        return [...prev, data];
+      });
+    });
+
+    // Listen for chat history
+    socket.on('interview:chat-history', (data) => {
+      console.log('Received chat history:', data);
+      if (data.success && data.messages) {
+        setChatMessages(data.messages.map(msg => ({
+          sender: msg.sender_type,
+          senderName: msg.sender_name,
+          text: msg.message,
+          timestamp: msg.created_at
+        })));
+      }
+    });
+
+    // Request chat history when joining
+    socket.emit('interview:get-chat-history', { interviewId });
+  };
+  const pendingRemoteStreamRef = useRef(null);
+  const incomingCallRef = useRef(null); // stores PeerJS incoming call until student clicks Answer
 
   const answerCall = async (incoming) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      localStreamRef.current = stream;
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
+      console.log('Student answering PeerJS call from admin');
+      
+      // Reuse existing stream if already acquired (e.g. from joinInterviewRoom)
+      if (!localStreamRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStreamRef.current = stream;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+          ensureVideoPlays(localVideoRef.current, 'Local');
+        }
       }
 
-      incoming.answer(stream);
-      setCall(incoming);
-      setIncomingCall(false); // Hide "Answer Call" button
-
+      // Register stream handler BEFORE answering so we never miss the event
       incoming.on('stream', (remoteStream) => {
-        console.log('Received remote stream');
+        console.log('Student received admin stream', {
+          id: remoteStream.id,
+          active: remoteStream.active,
+          videoTracks: remoteStream.getVideoTracks().length,
+          audioTracks: remoteStream.getAudioTracks().length,
+        });
+
+        // remoteVideoRef is only in the DOM after setCall(incoming) triggers a re-render.
+        // Store the stream and apply it once the element is available.
+        pendingRemoteStreamRef.current = remoteStream;
+
+        const applyStream = (el) => {
+          el.srcObject = remoteStream;
+          el.muted = false;
+          el.playsInline = true;
+          el.autoplay = true;
+          el.play().catch(e => {
+            console.error('Failed to play admin video:', e);
+            setTimeout(() => el.play().catch(console.error), 1000);
+          });
+        };
+
         if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = remoteStream;
+          applyStream(remoteVideoRef.current);
         }
-        setConnectionStatus('Connected');
+        // The useEffect below will also fire once remoteVideoRef mounts
       });
 
       incoming.on('close', () => {
+        console.log('Admin ended the call');
         setConnectionStatus('Call ended');
         setCall(null);
         setIncomingCall(false);
+        setCallState('ended');
+        pendingRemoteStreamRef.current = null;
       });
+
+      incoming.on('error', (error) => {
+        console.error('Call error:', error);
+        setConnectionStatus('Call failed');
+        setCallState('idle');
+      });
+
+      // Answer AFTER registering handlers
+      incoming.answer(localStreamRef.current);
+      setCall(incoming);
+      setIncomingCall(false);
+      setCallState('connected');
+      setConnectionStatus('Connected');
+
     } catch (error) {
-      console.error('Failed to get media:', error);
-      setConnectionStatus('Media access denied');
+      console.error('Failed to answer call:', error);
+      setConnectionStatus('Failed to access camera/microphone');
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        alert('Please allow camera and microphone access to join the call');
+      }
     }
   };
-
+  
   const answerIncomingCall = async () => {
     try {
       setIncomingCall(false);
       setConnectionStatus('Answering call...');
 
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      localStreamRef.current = stream;
-
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
+      // Get media first
+      if (!localStreamRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStreamRef.current = stream;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+          ensureVideoPlays(localVideoRef.current, 'Local');
+        }
       }
 
-      // Notify admin that student is ready to receive the call
-      if (socketRef.current && peerId) {
-        socketRef.current.emit('interview:student-ready', {
-          interviewId,
-          peerId
-        });
+      // If PeerJS call already arrived, answer it now
+      if (incomingCallRef.current) {
+        answerCall(incomingCallRef.current);
+        incomingCallRef.current = null;
+      } else {
+        // PeerJS call hasn't arrived yet — it will be answered when peer.on('call') fires
+        setConnectionStatus('Ready - waiting for connection...');
       }
-
-      setConnectionStatus('Ready - waiting for connection...');
-
-      // The PeerJS call will arrive automatically from admin
-      // The answerCall function will handle it when it arrives
     } catch (error) {
       console.error('Answer call error:', error);
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
@@ -339,63 +723,164 @@ const InterviewRoom = () => {
         alert('Failed to access camera/microphone');
       }
       setIncomingCall(true);
-      setConnectionStatus('Interviewer is calling...');
+      setConnectionStatus('Incoming call from interviewer...');
     }
   };
 
-  const startCall = async () => {
+  const joinInterviewRoom = async () => {
     try {
-      // Get media access first
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      localStreamRef.current = stream;
-
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
+      if (!isInterviewTimeValid) {
+        alert('Interview time has not started yet. Please wait.');
+        return;
       }
 
-      // Notify student that admin is calling (this will trigger dashboard notification and in-room notification)
-      if (isAdmin && socketRef.current) {
+      setConnectionStatus('Joining interview room...');
+      
+      // Get media access to prepare for call
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      localStreamRef.current = stream;
+      
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        ensureVideoPlays(localVideoRef.current, 'Local');
+      }
+      
+      // Mark student as in room
+      setStudentInRoom(true);
+      setConnectionStatus('Waiting for interviewer to start the call');
+      
+      // Notify admin that student has joined the room
+      if (socketRef.current && peerIdRef.current) {
+        socketRef.current.emit('interview:student-joined-room', {
+          interviewId,
+          peerId: peerIdRef.current,
+          studentId: interview?.student_id
+        });
+        // Do NOT emit student-ready here — student signals ready only when they click Answer
+      }
+      
+      console.log('Student joined interview room successfully and ready for calls');
+    } catch (error) {
+      console.error('Join room error:', error);
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        alert('Please allow camera and microphone access to join the interview room');
+      } else {
+        alert('Failed to access camera/microphone');
+      }
+      setConnectionStatus('Failed to join - please try again');
+    }
+  };
+
+  const remotePeerIdRef = useRef(''); // always-current remotePeerId for use in startCall
+  useEffect(() => { remotePeerIdRef.current = remotePeerId; }, [remotePeerId]);
+
+  const startCall = async () => {
+    try {
+      if (isCallInProgressRef.current || callRef.current) {
+        console.log('Call already in progress, ignoring duplicate request');
+        return;
+      }
+
+      if (!studentInRoom) {
+        alert('Please wait for student to join the interview room first');
+        return;
+      }
+
+      if (!remotePeerIdRef.current) {
+        alert('Cannot find student peer ID. Please wait a moment and try again.');
+        return;
+      }
+
+      setIsCallInProgress(true);
+      setCallState('calling');
+      setConnectionStatus('Starting call...');
+
+      // Get admin media
+      if (!localStreamRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStreamRef.current = stream;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+          ensureVideoPlays(localVideoRef.current, 'Local');
+        }
+      }
+
+      // Notify student via socket so they see the incoming call UI
+      if (socketRef.current) {
         socketRef.current.emit('interview:start-call', {
           interviewId,
           studentId: interview?.student_id
         });
-
-        setConnectionStatus('Calling student...');
       }
 
-      // If student is already in the room (remotePeerId exists), start PeerJS call immediately
-      if (remotePeerId) {
-        const outgoingCall = peer.call(remotePeerId, stream);
-        setCall(outgoingCall);
-        setConnectionStatus('Calling...');
-
-        outgoingCall.on('stream', (remoteStream) => {
-          console.log('Received remote stream');
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = remoteStream;
-          }
-          setConnectionStatus('Connected');
-        });
-
-        outgoingCall.on('close', () => {
-          setConnectionStatus('Call ended');
-          setCall(null);
-        });
-      } else {
-        // Student not in room yet, just wait for them to join and answer
-        setConnectionStatus('Waiting for student to answer...');
+      // Call student directly via PeerJS — no student-ready handshake needed
+      const peerInstance = peer; // capture current peer from state
+      if (!peerInstance) {
+        throw new Error('PeerJS not initialized');
       }
+
+      console.log('Admin calling student directly via PeerJS, remotePeerId:', remotePeerIdRef.current);
+      const outgoingCall = peerInstance.call(remotePeerIdRef.current, localStreamRef.current);
+      setCall(outgoingCall);
+      setConnectionStatus('Calling student...');
+
+      outgoingCall.on('stream', (remoteStream) => {
+        console.log('Admin received student stream:', {
+          videoTracks: remoteStream.getVideoTracks().length,
+          audioTracks: remoteStream.getAudioTracks().length
+        });
+
+        const applyRemoteStream = (el) => {
+          el.srcObject = remoteStream;
+          el.muted = false;
+          el.volume = 1.0;
+          el.playsInline = true;
+          el.autoplay = true;
+          // Use a user-gesture-safe play with retry
+          const tryPlay = () => el.play().catch(e => {
+            console.warn('Remote play blocked, retrying:', e.name);
+            setTimeout(tryPlay, 500);
+          });
+          tryPlay();
+        };
+
+        if (remoteVideoRef.current) {
+          applyRemoteStream(remoteVideoRef.current);
+          pendingRemoteStreamRef.current = null;
+        } else {
+          pendingRemoteStreamRef.current = remoteStream;
+        }
+        setConnectionStatus('Connected');
+        setCallState('connected');
+        setIsCallInProgress(false);
+      });
+
+      outgoingCall.on('close', () => {
+        setConnectionStatus('Call ended');
+        setCall(null);
+        setCallState('ended');
+        setIsCallInProgress(false);
+      });
+
+      outgoingCall.on('error', (err) => {
+        console.error('Outgoing call error:', err);
+        setConnectionStatus('Call failed');
+        setCallState('idle');
+        setIsCallInProgress(false);
+        setError('Call failed: ' + err.message);
+      });
+
     } catch (error) {
       console.error('Start call error:', error);
+      setCallState('idle');
+      setIsCallInProgress(false);
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-        alert('Please allow camera and microphone access to start the call');
+        setError('Please allow camera and microphone access to start the call');
       } else {
-        alert('Failed to access camera/microphone');
+        setError('Failed to start call: ' + error.message);
       }
-      setConnectionStatus('Ready');
     }
   };
-
   const toggleVideo = () => {
     if (localStreamRef.current) {
       const videoTrack = localStreamRef.current.getVideoTracks()[0];
@@ -418,10 +903,10 @@ const InterviewRoom = () => {
 
   const sendChatMessage = () => {
     if (!chatInput.trim() || !socketRef.current) {
-      console.log('Cannot send message:', {
-        hasInput: !!chatInput.trim(),
+      console.log('Cannot send message:', { 
+        hasInput: !!chatInput.trim(), 
         hasSocket: !!socketRef.current,
-        socketConnected: socketRef.current?.connected
+        socketConnected: socketRef.current?.connected 
       });
       return;
     }
@@ -436,11 +921,7 @@ const InterviewRoom = () => {
 
     console.log('Sending chat message:', message);
 
-    // Emit to server
     socketRef.current.emit('interview:send-chat', message);
-
-    // Add to local state immediately
-    setChatMessages(prev => [...prev, message]);
     setChatInput('');
   };
 
@@ -453,18 +934,15 @@ const InterviewRoom = () => {
 
   const toggleScreenShare = async () => {
     if (isScreenSharing) {
-      // Stop screen sharing and revert to camera
       if (screenStreamRef.current) {
         screenStreamRef.current.getTracks().forEach(track => track.stop());
         screenStreamRef.current = null;
       }
-
-      // Revert local video preview to camera
+      
       if (localStreamRef.current && localVideoRef.current) {
         localVideoRef.current.srcObject = localStreamRef.current;
       }
-
-      // Replace the video track being sent to the other person with camera track
+      
       if (call && call.peerConnection && localStreamRef.current) {
         const sender = call.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
         const cameraTrack = localStreamRef.current.getVideoTracks()[0];
@@ -473,20 +951,17 @@ const InterviewRoom = () => {
           console.log('Reverted to camera video');
         }
       }
-
+      
       setIsScreenSharing(false);
     } else {
-      // Start screen sharing
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         screenStreamRef.current = screenStream;
-
-        // Update local video preview to show screen
+        
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = screenStream;
         }
 
-        // Replace the video track being sent to the other person with screen track
         if (call && call.peerConnection) {
           const sender = call.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
           if (sender) {
@@ -495,7 +970,6 @@ const InterviewRoom = () => {
           }
         }
 
-        // Auto-stop when user stops sharing from browser UI
         screenStream.getVideoTracks()[0].onended = () => {
           toggleScreenShare();
         };
@@ -508,10 +982,31 @@ const InterviewRoom = () => {
     }
   };
 
+  const endCall = () => {
+    if (call) {
+      call.close();
+      setCall(null);
+      setCallState('ended');
+      setConnectionStatus('Call ended');
+    }
+    
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current = null;
+    }
+    
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(track => track.stop());
+      screenStreamRef.current = null;
+    }
+    
+    setIsScreenSharing(false);
+  };
+
   const endInterview = async () => {
     if (isAdmin) {
       const feedback = {
-        admin_notes: '', // Notes removed, using chat instead
+        admin_notes: '',
         technical_score: null,
         communication_score: null,
         recommendation: 'on_hold'
@@ -554,203 +1049,356 @@ const InterviewRoom = () => {
       peer.destroy();
     }
     if (socketRef.current) {
-      socketRef.current.emit('interview:leave', { interviewId });
       socketRef.current.disconnect();
     }
+    
+    setCall(null);
+    setCallState('idle');
+    setIsCallInProgress(false);
+    
+    if (isStudent) {
+      const token = localStorage.getItem('studentAuthToken');
+      apiFetch(`api/interviews/${interviewId}/leave`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).catch(() => {});
+    }
   };
-
-  if (!interview) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen bg-gray-900">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
+  if (!interview) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-900">
+        <div className="text-white">Interview not found</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-screen bg-gradient-to-b from-shnoor-navy via-gray-900 to-black flex flex-col overflow-hidden">
-      <div className="px-4 py-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-black/40 border-b border-white/10 flex-shrink-0 gap-3 sm:gap-0">
+    <div className="h-screen bg-gray-900 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-gray-800 border-b border-gray-700 flex-shrink-0 gap-3 sm:gap-0">
         <div className="w-full sm:w-auto">
-          <p className="text-[10px] sm:text-xs uppercase tracking-widest text-white/60">
-            {isAdmin ? 'Interviewer View' : 'Candidate View'}
-          </p>
-          <h1 className="text-white text-sm sm:text-lg font-semibold truncate max-w-full sm:max-w-md">
+          <h1 className="text-white text-base sm:text-lg font-semibold truncate">
             {interview.test_title || 'Interview'} • {interview.student_name}
           </h1>
-          <p className="text-xs sm:text-sm text-white/70">{connectionStatus}</p>
+          <p className="text-xs sm:text-sm text-gray-400 truncate">{connectionStatus}</p>
         </div>
-        <div className="flex items-center space-x-2 sm:space-x-3 self-end sm:self-auto">
-          <span className="text-[10px] sm:text-xs text-white/50 hidden sm:inline">
-            {remotePeerId ? 'Other participant ready' : 'Waiting...'}
-          </span>
+        <div className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
           {isAdmin && (
             <button
               onClick={endInterview}
-              className="px-2 py-1.5 sm:px-3 sm:py-1.5 text-xs sm:text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors whitespace-nowrap"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors flex-shrink-0"
             >
-              End<span className="hidden sm:inline"> Interview</span>
+              End Interview
             </button>
           )}
           <button
             onClick={leaveRoom}
-            className="px-2 py-1.5 sm:px-3 sm:py-1.5 text-xs sm:text-sm rounded-lg border border-white/20 text-white/90 hover:bg-white/10 transition-colors"
+            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700 transition-colors flex-shrink-0"
           >
-            Back
+            Leave
           </button>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col lg:flex-row items-stretch min-h-0">
-        <div className="flex-1 flex flex-col p-4 lg:p-6 space-y-4 max-w-5xl mx-auto min-h-0">
-          <div className="w-full max-w-4xl mx-auto rounded-2xl bg-black/40 border border-white/10 overflow-hidden relative aspect-video flex-shrink-0">
-            <video
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-              className="w-full h-full object-cover bg-black"
-            />
-            <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/60 text-xs text-white flex items-center space-x-2">
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              <span>{isAdmin ? interview.student_name : 'Interviewer'}</span>
-            </div>
-
-            {!call && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-                <p className="text-white/80 text-sm font-medium mb-2">
-                  {isStudent
-                    ? 'Waiting for interviewer to start the call'
-                    : 'Click "Call Student" to begin'}
-                </p>
-                <p className="text-white/60 text-xs max-w-md">
-                  {remotePeerId ? 'Other participant is ready' : 'Waiting for other participant...'}
-                </p>
-              </div>
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Video Area */}
+        <div className="flex-1 flex flex-col p-3 sm:p-6 space-y-3 sm:space-y-4 min-w-0">
+          {/* Main Video Area */}
+          <div className="flex-1 rounded-xl bg-gray-800 overflow-hidden relative">
+            {/* Remote Video (when in call) */}
+            {call && (
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                muted={false}
+                controls={false}
+                webkit-playsinline="true"
+                className="w-full h-full object-cover"
+                style={{ objectFit: 'cover' }}
+                onLoadedMetadata={() => {
+                  console.log('Remote video metadata loaded');
+                  if (remoteVideoRef.current) {
+                    console.log('Remote video dimensions:', {
+                      videoWidth: remoteVideoRef.current.videoWidth,
+                      videoHeight: remoteVideoRef.current.videoHeight,
+                      readyState: remoteVideoRef.current.readyState
+                    });
+                  }
+                }}
+                onCanPlay={() => {
+                  console.log('Remote video can play');
+                }}
+                onPlay={() => {
+                  console.log('Remote video started playing');
+                }}
+                onError={(e) => {
+                  console.error('Remote video error:', e);
+                }}
+              />
             )}
-          </div>
-
-          <div className="flex flex-col lg:flex-row items-center lg:items-stretch gap-4 max-w-4xl mx-auto w-full flex-shrink-0">
-            <div className="w-full lg:w-64 rounded-2xl bg-black/40 border border-white/10 overflow-hidden relative aspect-video max-h-40 flex-shrink-0">
+            
+            {/* Local Video Preview (when not in call) */}
+            {!call && (
               <video
                 ref={localVideoRef}
                 autoPlay
                 playsInline
-                muted
-                className="w-full h-full object-cover bg-black"
+                muted={true}
+                className="w-full h-full object-cover"
               />
-              <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/60 text-xs text-white">
-                {isAdmin ? 'You (Interviewer)' : 'You'} {isScreenSharing && '(Screen sharing)'}
-              </div>
+            )}
+            
+            {/* Video Label */}
+            <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-black/60 text-white text-sm">
+              {call ? (isAdmin ? interview.student_name : 'Interviewer') : 'You (Preview)'}
             </div>
 
-            <div className="flex-1 flex flex-col items-center space-y-3">
-              {!call && isAdmin && (
-                <button
-                  onClick={startCall}
-                  disabled={!adminJoined}
-                  className="px-6 py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold flex items-center space-x-2 shadow-lg shadow-emerald-500/30"
-                >
-                  <Video size={20} />
-                  <span>
-                    {!adminJoined
-                      ? 'Connecting...'
-                      : 'Call Student'}
-                  </span>
-                </button>
-              )}
-
-              {!call && isStudent && incomingCall && (
-                <button
-                  onClick={answerIncomingCall}
-                  className="px-6 py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold flex items-center space-x-2 shadow-lg shadow-emerald-500/30 animate-pulse"
-                >
-                  <Video size={20} />
-                  <span>Answer Call</span>
-                </button>
-              )}
-
-              {call && (
-                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-                  <button
-                    onClick={toggleVideo}
-                    className={`p-3 rounded-full ${isVideoOn
-                        ? 'bg-white/10 hover:bg-white/20'
-                        : 'bg-red-600 hover:bg-red-700'
-                      }`}
-                  >
-                    {isVideoOn ? (
-                      <Video className="text-white" size={22} />
-                    ) : (
-                      <VideoOff className="text-white" size={22} />
-                    )}
-                  </button>
-
-                  <button
-                    onClick={toggleAudio}
-                    className={`p-3 rounded-full ${isAudioOn
-                        ? 'bg-white/10 hover:bg-white/20'
-                        : 'bg-red-600 hover:bg-red-700'
-                      }`}
-                  >
-                    {isAudioOn ? (
-                      <Mic className="text-white" size={22} />
-                    ) : (
-                      <MicOff className="text-white" size={22} />
-                    )}
-                  </button>
-
-                  <button
-                    onClick={toggleScreenShare}
-                    className={`p-3 rounded-full ${isScreenSharing
-                        ? 'bg-blue-600 hover:bg-blue-700'
-                        : 'bg-white/10 hover:bg-white/20'
-                      }`}
-                  >
-                    {isScreenSharing ? (
-                      <MonitorOff className="text-white" size={22} />
-                    ) : (
-                      <Monitor className="text-white" size={22} />
-                    )}
-                  </button>
-
-                  <button
-                    onClick={isAdmin ? endInterview : leaveRoom}
-                    className="p-3 rounded-full bg-red-600 hover:bg-red-700"
-                  >
-                    <PhoneOff className="text-white" size={22} />
-                  </button>
+            {/* No Call State */}
+            {!call && callState === 'idle' && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                <div className="bg-black/60 rounded-xl p-8 max-w-md">
+                  {isStudent && !isInterviewTimeValid ? (
+                    <>
+                      <h3 className="text-white text-xl font-semibold mb-4">
+                        Interview Not Yet Started
+                      </h3>
+                      <p className="text-gray-300 text-sm mb-2">
+                        Interview starts in {timeUntilInterview}
+                      </p>
+                      <p className="text-gray-400 text-xs">
+                        Please wait until the scheduled time to join
+                      </p>
+                    </>
+                  ) : isStudent && isInterviewTimeValid && !studentInRoom ? (
+                    <>
+                      <h3 className="text-white text-xl font-semibold mb-4">
+                        Ready to Join Interview
+                      </h3>
+                      <p className="text-gray-300 text-sm mb-6">
+                        The interview time has arrived. Click below to join the interview room.
+                      </p>
+                      <button
+                        onClick={joinInterviewRoom}
+                        className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold flex items-center space-x-2 mx-auto"
+                      >
+                        <Video size={20} />
+                        <span>Join Interview Room</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-white text-xl font-semibold mb-4">
+                        {isStudent 
+                          ? 'Waiting for interviewer to start the call' 
+                          : 'Ready to start the interview'}
+                      </h3>
+                      <p className="text-gray-300 text-sm">
+                        {isAdmin 
+                          ? (studentInRoom ? 'Student is in the room' : 'Waiting for student to join...') 
+                          : (adminInRoom ? 'Interviewer is in the room' : 'Waiting for interviewer...')}
+                      </p>
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
+            )}
+
+            {/* Incoming Video Call Overlay (Student) */}
+            {incomingCall && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+                <div className="bg-gray-800 rounded-xl p-8 text-center">
+                  <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                    <Phone className="text-white" size={24} />
+                  </div>
+                  <h3 className="text-white text-xl font-semibold mb-2">Incoming Video Call</h3>
+                  <p className="text-gray-300 mb-6">Interviewer is calling you</p>
+                  <div className="flex space-x-4">
+                    <button
+                      onClick={answerIncomingCall}
+                      className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold flex items-center space-x-2"
+                    >
+                      <Phone size={20} />
+                      <span>Answer</span>
+                    </button>
+                    <button
+                      onClick={() => setIncomingCall(false)}
+                      className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Bottom Controls and Local Video */}
+          <div className="flex flex-col sm:flex-row items-center sm:items-end space-y-3 sm:space-y-0 sm:space-x-4">
+            {/* Local Video (Picture-in-Picture when in call) */}
+            {call && localStreamRef.current && (
+              <div className="w-32 h-24 sm:w-64 sm:h-36 rounded-lg bg-gray-800 overflow-hidden relative flex-shrink-0 self-end sm:self-auto shadow-lg z-10 bottom-16 sm:bottom-0 absolute sm:relative right-4 sm:right-0">
+                <video
+                  ref={localVideoPipRef}
+                  autoPlay
+                  playsInline
+                  muted={true}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute bottom-1 sm:bottom-2 left-1 sm:left-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-black/60 text-white text-[10px] sm:text-xs">
+                  You {isScreenSharing && '(Screen)'}
+                </div>
+              </div>
+            )}
+
+            {/* Controls */}
+            <div className="flex-1 flex justify-center w-full">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 sm:space-x-0">
+                {/* Call Button (Admin only) */}
+                {!call && isAdmin && (
+                  <button
+                    onClick={startCall}
+                    disabled={!adminInRoom || !studentInRoom || isCallInProgress}
+                    className="px-6 py-3 rounded-full bg-green-500 hover:bg-green-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold flex items-center space-x-2 shadow-lg"
+                  >
+                    <Phone size={20} />
+                    <span>
+                      {isCallInProgress 
+                        ? 'Calling...'
+                        : !studentInRoom 
+                          ? 'Waiting for student...' 
+                          : 'Call Student'}
+                    </span>
+                  </button>
+                )}
+
+                {/* Join Room Button (Student only, when time is valid but not joined) */}
+                {!call && isStudent && isInterviewTimeValid && !studentInRoom && (
+                  <button
+                    onClick={joinInterviewRoom}
+                    className="px-6 py-3 rounded-full bg-blue-500 hover:bg-blue-600 text-white font-semibold flex items-center space-x-2 shadow-lg"
+                  >
+                    <Video size={20} />
+                    <span>Join Interview Room</span>
+                  </button>
+                )}
+
+                {/* Student waiting message when time not valid */}
+                {!call && isStudent && !isInterviewTimeValid && (
+                  <div className="px-6 py-3 rounded-full bg-gray-600 text-white font-semibold flex items-center space-x-2">
+                    <div className="animate-pulse w-2 h-2 bg-yellow-400 rounded-full"></div>
+                    <span>Interview starts in {timeUntilInterview}</span>
+                  </div>
+                )}
+
+                {/* Student in room waiting for call */}
+                {!call && isStudent && studentInRoom && (
+                  <div className="px-6 py-3 rounded-full bg-green-600 text-white font-semibold flex items-center space-x-2">
+                    <div className="animate-pulse w-2 h-2 bg-green-300 rounded-full"></div>
+                    <span>Waiting for interviewer to call</span>
+                  </div>
+                )}
+
+                {/* Video Controls (only show when in call) */}
+                {call && (
+                  <>
+                    <button
+                      onClick={toggleVideo}
+                      className={`p-3 rounded-full ${
+                        isVideoOn
+                          ? 'bg-gray-700 hover:bg-gray-600'
+                          : 'bg-red-600 hover:bg-red-700'
+                      } text-white`}
+                    >
+                      {isVideoOn ? <Video size={20} /> : <VideoOff size={20} />}
+                    </button>
+
+                    <button
+                      onClick={toggleAudio}
+                      className={`p-3 rounded-full ${
+                        isAudioOn
+                          ? 'bg-gray-700 hover:bg-gray-600'
+                          : 'bg-red-600 hover:bg-red-700'
+                      } text-white`}
+                    >
+                      {isAudioOn ? <Mic size={20} /> : <MicOff size={20} />}
+                    </button>
+
+                    <button
+                      onClick={toggleScreenShare}
+                      className={`p-3 rounded-full ${
+                        isScreenSharing
+                          ? 'bg-blue-600 hover:bg-blue-700'
+                          : 'bg-gray-700 hover:bg-gray-600'
+                      } text-white`}
+                    >
+                      {isScreenSharing ? <MonitorOff size={20} /> : <Monitor size={20} />}
+                    </button>
+
+                    <button
+                      onClick={endCall}
+                      className="p-2 sm:p-3 rounded-full bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      <PhoneOff size={18} className="sm:w-5 sm:h-5" />
+                    </button>
+                  </>
+                )}
+
+                {/* Chat Toggle */}
+                <button
+                  onClick={() => setShowChat(!showChat)}
+                  className={`p-2 sm:p-3 rounded-full ${showChat ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
+                >
+                  <MessageSquare size={18} className="sm:w-5 sm:h-5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
-
-        {(isAdmin || isStudent) && (
-          <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-white/10 bg-black/40 flex flex-col h-1/2 lg:h-full flex-shrink-0 lg:flex-shrink">
-            <div className="px-5 py-3 sm:py-4 border-b border-white/10 flex items-center space-x-2 flex-shrink-0">
-              <MessageSquare className="text-white/70" size={18} />
+        {/* Chat Sidebar */}
+        {showChat && (
+          <div className="absolute inset-0 sm:relative sm:inset-auto sm:w-80 h-full border-l border-gray-700 bg-gray-800 flex flex-col z-50">
+            <div className="px-4 py-3 border-b border-gray-700 flex items-center space-x-2">
+              <MessageSquare className="text-gray-400" size={18} />
               <span className="text-sm font-semibold text-white">Chat</span>
+              <button
+                onClick={() => setShowChat(false)}
+                className="ml-auto text-gray-400 hover:text-white"
+              >
+                ×
+              </button>
             </div>
-
-            {/* Chat messages - Fixed height with scroll */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+            
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {chatMessages.length === 0 ? (
-                <div className="text-center text-white/40 text-sm mt-8">
+                <div className="text-center text-gray-400 text-sm mt-8">
                   No messages yet. Start the conversation!
                 </div>
               ) : (
                 chatMessages.map((msg, index) => (
                   <div
                     key={index}
-                    className={`flex flex-col ${(isAdmin && msg.sender === 'admin') || (isStudent && msg.sender === 'student')
+                    className={`flex flex-col ${
+                      (isAdmin && msg.sender === 'admin') || (isStudent && msg.sender === 'student')
                         ? 'items-end'
                         : 'items-start'
-                      }`}
+                    }`}
                   >
                     <div
-                      className={`max-w-[85%] rounded-lg px-3 py-2 ${(isAdmin && msg.sender === 'admin') || (isStudent && msg.sender === 'student')
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-white/10 text-white'
-                        }`}
+                      className={`max-w-[85%] rounded-lg px-3 py-2 ${
+                        (isAdmin && msg.sender === 'admin') || (isStudent && msg.sender === 'student')
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-700 text-white'
+                      }`}
                     >
                       <p className="text-xs font-semibold mb-1 opacity-80">
                         {msg.senderName}
@@ -771,29 +1419,36 @@ const InterviewRoom = () => {
               <div ref={chatEndRef} />
             </div>
 
-            {/* Chat input - Fixed at bottom */}
-            <div className="p-4 border-t border-white/10 flex-shrink-0">
+            {/* Chat Input */}
+            <div className="p-4 border-t border-gray-700">
               <div className="flex items-end space-x-2">
                 <textarea
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyPress={handleChatKeyPress}
                   placeholder="Type a message..."
-                  className="flex-1 px-3 py-2 bg-black/40 text-white rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 border border-white/10 text-sm max-h-24"
+                  className="flex-1 px-3 py-2 bg-gray-700 text-white rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 border-0 text-sm max-h-24"
                   rows="2"
                 />
                 <button
                   onClick={sendChatMessage}
                   disabled={!chatInput.trim()}
-                  className="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white flex items-center justify-center h-[60px] w-[60px] flex-shrink-0"
+                  className="px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white flex items-center justify-center"
                 >
-                  <Send size={18} />
+                  <Send size={16} />
                 </button>
               </div>
             </div>
           </div>
         )}
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+          {error}
+        </div>
+      )}
     </div>
   );
 };

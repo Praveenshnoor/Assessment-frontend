@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getApiUrl } from '../config/api';
 
 const Maintenance = () => {
+    const navigate = useNavigate();
     const [message, setMessage] = useState('');
 
     useEffect(() => {
@@ -22,7 +24,7 @@ const Maintenance = () => {
                     if (data.settings && !data.settings.maintenance_mode) {
                         const redirectUrl = sessionStorage.getItem('redirect_after_recovery') || '/';
                         sessionStorage.removeItem('redirect_after_recovery');
-                        window.location.href = redirectUrl;
+                        navigate(redirectUrl, { replace: true });
                     }
                 }
             } catch (error) {
@@ -31,7 +33,7 @@ const Maintenance = () => {
         }, 60000); // Check every minute
 
         return () => clearInterval(interval);
-    }, []);
+    }, [navigate]);
 
     return (
         <div className="min-h-screen bg-shnoor-lavender flex flex-col items-center justify-center px-4">

@@ -492,9 +492,9 @@ const Dashboard = () => {
                           key={test.id}
                           className={`${cardBgColor} border-2 ${cardBorderColor} rounded-xl p-6 ${cardOpacity} ${test.isAvailable && !test.alreadyTaken ? 'hover:shadow-[0_8px_30px_rgba(14,14,39,0.08)] hover:border-shnoor-indigo' : ''} transition-all duration-200`}
                         >
-                          <div className="flex justify-between items-start mb-4">
-                            <div>
-                              <div className="flex items-center gap-2 mb-2">
+                          <div className="flex justify-between items-start mb-4 gap-3">
+                            <div className="flex-1">
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
                                 <span className={`inline-block px-3 py-1 ${test.isMockTest
                                   ? 'bg-shnoor-successLight text-shnoor-success'
                                   : test.testStatus === 'expired' || test.alreadyTaken
@@ -511,7 +511,7 @@ const Dashboard = () => {
                                   </span>
                                 )}
                               </div>
-                              <h3 className="text-lg font-bold text-shnoor-navy">{test.title}</h3>
+                              <h3 className="text-lg font-bold text-shnoor-navy break-words">{test.title}</h3>
                               {test.isMockTest && (
                                 <p className="text-xs text-shnoor-success mt-1">Practice test to get familiar with the platform</p>
                               )}
@@ -536,7 +536,7 @@ const Dashboard = () => {
                                 </span>
                               )}
                             </div>
-                            <BookOpen className={test.alreadyTaken || !test.isAvailable ? 'text-shnoor-mist' : test.testStatus === 'upcoming' ? 'text-shnoor-warning' : 'text-shnoor-indigo'} size={24} />
+                            <BookOpen className={`flex-shrink-0 mt-1 ${test.alreadyTaken || !test.isAvailable ? 'text-shnoor-mist' : test.testStatus === 'upcoming' ? 'text-shnoor-warning' : 'text-shnoor-indigo'}`} size={24} />
                           </div>
 
                           <div className="space-y-2 mb-6">
