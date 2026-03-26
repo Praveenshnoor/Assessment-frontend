@@ -15,6 +15,7 @@ const LoadingFallback = () => (
 // Lazy loaded routes
 const Login = React.lazy(() => import('./components/Login'));
 const Register = React.lazy(() => import('./components/Register'));
+const ForgotPassword = React.lazy(() => import('./components/ForgotPassword'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Instructions = React.lazy(() => import('./pages/Instructions'));
 const TestScreen = React.lazy(() => import('./pages/TestScreen'));
@@ -63,6 +64,7 @@ function App() {
               <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/admin/login" element={<Navigate to="/login" replace />} />
               <Route path="/server-down" element={<ServerDown />} />
               <Route path="/maintenance" element={<Maintenance />} />

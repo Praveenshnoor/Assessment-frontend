@@ -1,12 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { LogOut, Clock, BookOpen, AlertCircle, FileText, X, Video, Briefcase, ClipboardList } from 'lucide-react';import ExamSearchFilter from '../components/ExamSearchFilter';
+import { LogOut, Clock, BookOpen, AlertCircle, FileText, X, Video } from 'lucide-react';
+import ExamSearchFilter from '../components/ExamSearchFilter';
 import StudentInterviews from '../components/StudentInterviews';
-import StudentSupportChatbot from '../components/chatbot/StudentSupportChatbot';
-import JobBoard from './JobBoard';
-import MyApplications from './MyApplications';
-import shnoorLogo from '../assets/shnoor-logo1.png';
 import { apiFetch } from '../config/api';
+import shnoorLogo from '../assets/shnoor-logo1.png';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -148,7 +146,6 @@ const Dashboard = () => {
 
   const handleTakeTest = (testId) => {
     localStorage.setItem('selectedTestId', testId);
-    localStorage.removeItem('currentApplicationId');
     navigate('/instructions');
   };
 
@@ -415,26 +412,6 @@ const Dashboard = () => {
               <Video size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
               <span>Interviews</span>
             </button>
-            <button
-              onClick={() => setActiveTab('job-board')}
-              className={`flex items-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all text-sm sm:text-base ${activeTab === 'job-board'
-                ? 'bg-shnoor-indigo text-white'
-                : 'bg-white text-shnoor-indigoMedium hover:text-shnoor-navy hover:bg-shnoor-lavender'
-                }`}
-            >
-              <Briefcase size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
-              <span>Job Board</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('my-applications')}
-              className={`flex items-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all text-sm sm:text-base ${activeTab === 'my-applications'
-                ? 'bg-shnoor-indigo text-white'
-                : 'bg-white text-shnoor-indigoMedium hover:text-shnoor-navy hover:bg-shnoor-lavender'
-                }`}
-            >
-              <ClipboardList size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
-              <span>My Applications</span>
-            </button>
           </div>
         </div>
 
@@ -515,9 +492,9 @@ const Dashboard = () => {
                           key={test.id}
                           className={`${cardBgColor} border-2 ${cardBorderColor} rounded-xl p-6 ${cardOpacity} ${test.isAvailable && !test.alreadyTaken ? 'hover:shadow-[0_8px_30px_rgba(14,14,39,0.08)] hover:border-shnoor-indigo' : ''} transition-all duration-200`}
                         >
-                          <div className="flex justify-between items-start mb-4">
-                            <div>
-                              <div className="flex items-center gap-2 mb-2">
+                          <div className="flex justify-between items-start mb-4 gap-3">
+                            <div className="flex-1">
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
                                 <span className={`inline-block px-3 py-1 ${test.isMockTest
                                   ? 'bg-shnoor-successLight text-shnoor-success'
                                   : test.testStatus === 'expired' || test.alreadyTaken
@@ -534,7 +511,7 @@ const Dashboard = () => {
                                   </span>
                                 )}
                               </div>
-                              <h3 className="text-lg font-bold text-shnoor-navy">{test.title}</h3>
+                              <h3 className="text-lg font-bold text-shnoor-navy break-words">{test.title}</h3>
                               {test.isMockTest && (
                                 <p className="text-xs text-shnoor-success mt-1">Practice test to get familiar with the platform</p>
                               )}
@@ -559,7 +536,7 @@ const Dashboard = () => {
                                 </span>
                               )}
                             </div>
-                            <BookOpen className={test.alreadyTaken || !test.isAvailable ? 'text-shnoor-mist' : test.testStatus === 'upcoming' ? 'text-shnoor-warning' : 'text-shnoor-indigo'} size={24} />
+                            <BookOpen className={`flex-shrink-0 mt-1 ${test.alreadyTaken || !test.isAvailable ? 'text-shnoor-mist' : test.testStatus === 'upcoming' ? 'text-shnoor-warning' : 'text-shnoor-indigo'}`} size={24} />
                           </div>
 
                           <div className="space-y-2 mb-6">
@@ -638,16 +615,6 @@ const Dashboard = () => {
           <StudentInterviews />
         )}
 
-        {/* Job Board Tab */}
-        {activeTab === 'job-board' && (
-          <JobBoard isEmbedded={true} />
-        )}
-
-        {/* My Applications Tab */}
-        {activeTab === 'my-applications' && (
-          <MyApplications isEmbedded={true} />
-        )}
-
         {/* Info Section */}
         <div className="mt-12 bg-shnoor-lavender border-2 border-shnoor-mist rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-bold text-shnoor-navy mb-3">Important Instructions</h3>
@@ -671,9 +638,6 @@ const Dashboard = () => {
           </ul>
         </div>
       </main>
-
-      {/* Student Support Chatbot */}
-      <StudentSupportChatbot />
     </div>
   );
 };

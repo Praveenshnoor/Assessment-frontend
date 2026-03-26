@@ -243,11 +243,11 @@ export default function AdminJobOpenings() {
             )}
 
             {/* Header card */}
-            <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-mist p-8">
-                <div className="flex items-center justify-between">
+            <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-mist p-4 sm:p-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
-                        <h2 className="text-2xl font-bold text-shnoor-navy flex items-center">
-                            <Briefcase className="mr-3 text-shnoor-indigo" size={28} />
+                        <h2 className="text-xl sm:text-2xl font-bold text-shnoor-navy flex items-center">
+                            <Briefcase className="mr-3 text-shnoor-indigo shrink-0" size={28} />
                             Job Openings &amp; Off-Campus Hiring
                         </h2>
                         <p className="text-sm text-shnoor-indigoMedium mt-1">
@@ -256,7 +256,7 @@ export default function AdminJobOpenings() {
                     </div>
                     <button
                         onClick={() => { setShowForm(!showForm); setForm(EMPTY_FORM); }}
-                        className="flex items-center space-x-2 px-5 py-3 bg-shnoor-indigo hover:bg-shnoor-navy text-white rounded-xl font-semibold transition-all shadow-[0_8px_30px_rgba(14,14,39,0.1)] hover:shadow-[0_8px_30px_rgba(14,14,39,0.18)] transform hover:-translate-y-0.5"
+                        className="w-full sm:w-auto flex items-center justify-center space-x-2 px-5 py-3 bg-shnoor-indigo hover:bg-shnoor-navy text-white rounded-xl font-semibold transition-all shadow-[0_8px_30px_rgba(14,14,39,0.1)] hover:shadow-[0_8px_30px_rgba(14,14,39,0.18)] transform hover:-translate-y-0.5"
                     >
                         {showForm ? <X size={20} /> : <Plus size={20} />}
                         <span>{showForm ? 'Cancel' : 'Post New Job'}</span>
@@ -379,34 +379,33 @@ export default function AdminJobOpenings() {
                     <div className="divide-y divide-shnoor-mist">
                         {jobs.map(job => (
                             <div key={job.id} className="px-8 py-6">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="flex-1 min-w-0">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div className="flex-1 min-w-0 w-full">
                                         <div className="flex items-center space-x-3 flex-wrap gap-y-2">
                                             <h3 className="text-lg font-bold text-shnoor-navy truncate">{job.job_role}</h3>
-                                            <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                                                job.is_published
+                                            <span className={`text-xs font-semibold px-3 py-1 rounded-full shrink-0 ${job.is_published
                                                     ? 'bg-emerald-100 text-emerald-700'
                                                     : 'bg-amber-100 text-amber-700'
-                                            }`}>
+                                                }`}>
                                                 {job.is_published ? '✓ Published' : '● Draft'}
                                             </span>
                                         </div>
-                                        <div className="flex items-center space-x-4 mt-1 text-sm text-shnoor-indigoMedium flex-wrap gap-y-1">
+                                        <div className="flex items-center space-x-4 mt-2 text-sm text-shnoor-indigoMedium flex-wrap gap-y-2">
                                             <span className="flex items-center">
-                                                <Building2 size={14} className="mr-1" />
-                                                {job.company_name}
+                                                <Building2 size={14} className="mr-1 shrink-0" />
+                                                <span className="truncate">{job.company_name}</span>
                                             </span>
                                             <span className="flex items-center">
-                                                <Clock size={14} className="mr-1" />
+                                                <Clock size={14} className="mr-1 shrink-0" />
                                                 Deadline: {fmtDate(job.registration_deadline)}
                                             </span>
                                             {job.is_published && (
-                                                <span className="flex items-center text-emerald-600">
-                                                    <CheckCircle size={14} className="mr-1" />
+                                                <span className="flex items-center text-emerald-600 break-words">
+                                                    <CheckCircle size={14} className="mr-1 shrink-0" />
                                                     {job.emails_sent ?? 0} emails sent
                                                     {parseInt(job.emails_failed) > 0 && (
                                                         <span className="ml-2 text-red-500 flex items-center">
-                                                            <XCircle size={14} className="mr-1" />
+                                                            <XCircle size={14} className="mr-1 shrink-0" />
                                                             {job.emails_failed} failed
                                                         </span>
                                                     )}
@@ -416,7 +415,7 @@ export default function AdminJobOpenings() {
                                     </div>
 
                                     {/* Actions */}
-                                    <div className="flex items-center space-x-2 shrink-0">
+                                    <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
                                         <button
                                             onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}
                                             title="Toggle details"
@@ -554,11 +553,10 @@ export default function AdminJobOpenings() {
                                             return (
                                                 <div
                                                     key={test.id}
-                                                    className={`flex items-center justify-between rounded-xl p-4 transition-all ${
-                                                        isLinked 
+                                                    className={`flex items-center justify-between rounded-xl p-4 transition-all ${isLinked
                                                             ? 'bg-shnoor-successLight border-2 border-shnoor-success shadow-sm'
                                                             : 'bg-white border border-shnoor-mist hover:border-shnoor-indigo hover:shadow-md'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <div className="flex-1">
                                                         <div className="flex items-center space-x-2 mb-1">
@@ -570,16 +568,15 @@ export default function AdminJobOpenings() {
                                                         </p>
                                                     </div>
                                                     <button
-                                                        onClick={() => isLinked 
+                                                        onClick={() => isLinked
                                                             ? handleUnlinkTest(showTestLinkModal, test.id)
                                                             : handleLinkTest(showTestLinkModal, test.id)
                                                         }
                                                         disabled={linkingTest}
-                                                        className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50 shadow-sm hover:shadow-md ${
-                                                            isLinked
+                                                        className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50 shadow-sm hover:shadow-md ${isLinked
                                                                 ? 'bg-shnoor-success hover:opacity-90 text-white'
                                                                 : 'bg-shnoor-indigo hover:bg-[#4d4d9c] text-white'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {linkingTest ? (
                                                             <>

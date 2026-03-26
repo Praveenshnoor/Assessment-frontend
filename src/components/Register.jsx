@@ -151,7 +151,7 @@ const Register = () => {
     setFormData(p => ({ ...p, [name]: value }));
     if (errors[name]) setErrors(p => ({ ...p, [name]: '' }));
     setApiError('');
-    
+
     // Reset OTP state if email is changed after OTP was sent - COMMENTED OUT
     // if (name === 'email' && isOtpSent) {
     //   setIsOtpSent(false);
@@ -220,7 +220,7 @@ const Register = () => {
   //     setIsOtpSent(true);
   //     setApiError(''); // Clear any previous errors
   //     startResendTimer();
-      
+
   //   } catch (error) {
   //     console.error('Send OTP error:', error);
   //     setApiError(error.message || 'Failed to send verification code. Please try again.');
@@ -256,7 +256,7 @@ const Register = () => {
 
   //     startResendTimer();
   //     setOtp(''); // Clear OTP input
-      
+
   //   } catch (error) {
   //     console.error('Resend OTP error:', error);
   //     setOtpError(error.message || 'Failed to resend verification code.');
@@ -321,7 +321,7 @@ const Register = () => {
 
     setIsLoading(true);
     let firebaseUser = null;
-    
+
     try {
       // COMMENTED OUT - Step 1: Verify OTP
       // const otpResponse = await apiFetch('api/verify-otp', {
@@ -364,7 +364,7 @@ const Register = () => {
         }),
       });
       const data = await response.json();
-      
+
       if (!response.ok) {
         // Backend registration failed - delete Firebase user
         if (firebaseUser) {
@@ -377,7 +377,7 @@ const Register = () => {
         }
         throw new Error(data.message || 'Registration failed');
       }
-      
+
       // Success - navigate to login
       navigate('/login', { state: { message: 'Registration successful. Please sign in to begin.' } });
     } catch (error) {
@@ -392,7 +392,7 @@ const Register = () => {
         // Backend or other errors
         setApiError(error.message || 'Unable to complete registration. Please try again.');
       }
-      
+
       // Jump back to account step on error
       if (error.code || error.message) {
         setStep(2);
@@ -507,7 +507,7 @@ const Register = () => {
           <InputField label="Email Address" type="email" name="email" placeholder="student@institution.edu" required
             value={formData.email} onChange={handleChange} disabled={isLoading} autoComplete="email" />
           <FieldError msg={errors.email} />
-          
+
           {/* COMMENTED OUT - Verify Email Button - Show only if OTP not sent */}
           {/* {!isOtpSent && (
             <button
@@ -799,10 +799,10 @@ const Register = () => {
             {renderStep()}
 
             {/* Navigation */}
-            <div className={`flex gap-3 mt-8 ${step === 0 ? 'justify-end' : 'justify-between'}`}>
+            <div className={`flex flex-col-reverse sm:flex-row gap-3 mt-8 ${step === 0 ? 'justify-end' : 'justify-between'}`}>
               {step > 0 && (
                 <Button type="button" onClick={goBack} disabled={isLoading}
-                  className="h-[50px] px-6 rounded-lg font-semibold text-shnoor-navy border-2 border-shnoor-mist hover:border-shnoor-indigo hover:bg-shnoor-lavender transition-all flex items-center gap-2">
+                  className="w-full sm:w-auto h-[50px] px-6 rounded-lg font-semibold text-shnoor-navy border-2 border-shnoor-mist hover:border-shnoor-indigo hover:bg-shnoor-lavender transition-all flex items-center justify-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                   </svg>
@@ -811,14 +811,14 @@ const Register = () => {
               )}
 
               {step < TOTAL_STEPS - 1 ? (
-                <Button type="submit" variant="primary" className="flex-1 !h-[50px]">
+                <Button type="submit" variant="primary" className="w-full sm:flex-1 !h-[50px]">
                   Continue
                   <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </Button>
               ) : (
-                <Button type="submit" variant="primary" className="flex-1 !h-[50px]" disabled={isLoading || !termsAccepted}>
+                <Button type="submit" variant="primary" className="w-full sm:flex-1 !h-[50px]" disabled={isLoading || !termsAccepted}>
                   {isLoading ? (
                     <>
                       <div className="w-5 h-5 border-[3px] border-white border-t-transparent rounded-full animate-spin" />
@@ -878,7 +878,7 @@ const Register = () => {
             <div className="px-6 py-4 overflow-y-auto max-h-[calc(90vh-120px)]">
               <div className="prose prose-sm max-w-none text-shnoor-navy">
                 <h3 className="text-lg font-bold text-shnoor-navy mb-4">SHNOOR Assessment Platform - Terms of Service</h3>
-                
+
                 <div className="space-y-4 text-sm leading-relaxed">
                   <section>
                     <h4 className="font-semibold text-shnoor-indigo mb-2">1. Acceptance of Terms</h4>

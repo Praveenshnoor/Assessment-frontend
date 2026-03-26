@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { apiFetch } from '../config/api';
+import { useAdminAuth } from '../contexts/AdminAuthContext';
 import Button from './Button';
+import Badge from './Badge';
 import InputField from './InputField';
 
 const shnoorLogo = '/favicon.png';
@@ -33,6 +35,7 @@ const LEFT_FEATURES = [
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { setAdminSession } = useAdminAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
@@ -40,6 +43,7 @@ const Login = () => {
   const [apiError, setApiError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const submitLockRef = useRef(false);
 
   useEffect(() => {
     if (location.state?.message) {
@@ -62,8 +66,12 @@ const Login = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
+
+    // Guard against duplicate submits from rapid clicks/Enter key.
+    if (isLoading || submitLockRef.current) return;
+    submitLockRef.current = true;
+
     setApiError('');
     setSuccessMessage('');
 
@@ -72,35 +80,42 @@ const Login = () => {
     setIsLoading(true);
 
     try {
+      const adminLogin = async () => {
+        const adminResponse = await apiFetch('api/admin/login', {
+          method: 'POST',
+          skipGlobalErrorRedirect: true,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: email.trim(), password }),
+        });
+
+        const adminData = await adminResponse.json();
+
+        if (adminResponse.ok && adminData.success) {
+          setAdminSession(adminData.admin, adminData.token);
+          navigate('/admin/dashboard', { replace: true });
+          return true;
+        }
+
+        return false;
+      };
+
       // For admin emails, try direct admin login first (more reliable)
       if (email.includes('@admin') || email.includes('admin@') || email.toLowerCase().includes('admin')) {
         try {
-          const adminResponse = await apiFetch('api/admin/login', {
-            method: 'POST',
-            skipGlobalErrorRedirect: true,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email: email.trim(), password }),
-          });
-
-          const adminData = await adminResponse.json();
-
-          if (adminResponse.ok && adminData.success) {
-            // Admin login successful
-            localStorage.setItem('adminToken', adminData.token);
-            localStorage.setItem('adminUser', JSON.stringify(adminData.admin));
-            navigate('/admin/dashboard');
+          const adminLoginSuccess = await adminLogin();
+          if (adminLoginSuccess) {
             return;
           }
-        } catch (adminError) {
-          console.log('Direct admin login failed, trying Firebase...');
+        } catch (_adminError) {
+          // Continue to Firebase flow for student accounts or fallback admin auth.
         }
       }
 
       // Step 1: Try Firebase Authentication (for both admin and student)
       try {
-        const { signInWithEmailAndPassword, auth } = await import('../config/firebase');
+        const { auth, signInWithEmailAndPassword } = await import('../config/firebase');
         const userCredential = await signInWithEmailAndPassword(
           auth,
           email.trim(),
@@ -135,10 +150,12 @@ const Login = () => {
 
         // Store JWT session token and redirect based on role
         if (role === 'admin') {
-          localStorage.setItem('adminToken', token);
-          localStorage.setItem('adminUser', JSON.stringify(user));
-          navigate('/admin/dashboard');
+          setAdminSession(user, token);
+          navigate('/admin/dashboard', { replace: true });
         } else {
+          // Ensure stale admin session data doesn't interfere with student routes.
+          localStorage.removeItem('adminToken');
+          localStorage.removeItem('adminUser');
           localStorage.setItem('studentAuthToken', token);
           localStorage.setItem('studentId', user.id.toString());
           localStorage.setItem('studentName', user.full_name || '');
@@ -158,8 +175,6 @@ const Login = () => {
 
       } catch (firebaseError) {
         // If Firebase auth fails, try direct admin login (for admins not in Firebase)
-        console.log('Firebase auth failed, trying direct admin login...');
-        
         if (firebaseError.code === 'auth/invalid-credential' || 
             firebaseError.code === 'auth/user-not-found' ||
             firebaseError.code === 'auth/wrong-password' ||
@@ -168,25 +183,11 @@ const Login = () => {
           
           // Try direct admin login with bcrypt
           try {
-            const adminResponse = await apiFetch('api/admin/login', {
-              method: 'POST',
-              skipGlobalErrorRedirect: true,
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ email: email.trim(), password }),
-            });
-
-            const adminData = await adminResponse.json();
-
-            if (adminResponse.ok && adminData.success) {
-              // Admin login successful
-              localStorage.setItem('adminToken', adminData.token);
-              localStorage.setItem('adminUser', JSON.stringify(adminData.admin));
-              navigate('/admin/dashboard');
+            const adminLoginSuccess = await adminLogin();
+            if (adminLoginSuccess) {
               return;
             }
-          } catch (adminError) {
+          } catch (_adminError) {
             // Admin login also failed, throw original Firebase error
             throw firebaseError;
           }
@@ -217,11 +218,12 @@ const Login = () => {
       }
     } finally {
       setIsLoading(false);
+      submitLockRef.current = false;
     }
   };
 
   return (
-    <main className="min-h-screen w-full flex font-['Plus_Jakarta_Sans',sans-serif]">
+    <main className="min-h-[100dvh] w-full flex flex-col lg:flex-row font-['Plus_Jakarta_Sans',sans-serif]">
       {/* ── LEFT PANEL (dark) ─────────────────────────────── */}
       <div className="hidden lg:flex lg:w-[45%] flex-col justify-between bg-shnoor-navy px-14 py-12 relative overflow-hidden">
         {/* Decorative gradient orbs */}
@@ -270,7 +272,7 @@ const Login = () => {
       </div>
 
       {/* ── RIGHT PANEL (white form) ───────────────────────── */}
-      <div className="flex-1 flex items-center justify-center bg-white px-6 py-12 overflow-auto">
+      <div className="flex-1 flex items-center justify-center bg-white px-4 sm:px-6 py-6 sm:py-10 lg:py-12 min-h-[100dvh] lg:min-h-screen overflow-auto">
         <div className="w-full max-w-[440px]">
           {/* Mobile brand header */}
           <div className="flex items-center gap-3 mb-8 lg:hidden">
@@ -307,7 +309,15 @@ const Login = () => {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleSubmit();
+            }}
+            noValidate
+            className="flex flex-col gap-5"
+          >
             <div>
               <InputField
                 label="Email Address"
@@ -355,10 +365,10 @@ const Login = () => {
               {errors.password && <p className="text-xs text-shnoor-danger mt-1">{errors.password}</p>}
             </div>
 
-            <Button 
-              type="submit" 
-              variant="primary" 
-              className="w-full !h-[52px] text-base" 
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full !h-[52px] text-base"
               disabled={isLoading}
             >
               {isLoading && <div className="w-5 h-5 border-[3px] border-white border-t-transparent rounded-full animate-spin" />}

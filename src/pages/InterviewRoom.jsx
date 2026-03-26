@@ -10,7 +10,7 @@ const SOCKET_ENABLED = true;
 const InterviewRoom = () => {
   const { interviewId } = useParams();
   const navigate = useNavigate();
-  
+
   // State management
   const [interview, setInterview] = useState(null);
   const [peer, setPeer] = useState(null);
@@ -68,16 +68,16 @@ const InterviewRoom = () => {
       videoElement.playsInline = true;
       videoElement.autoplay = true;
       videoElement.controls = false;
-      
+
       // Additional properties for remote video
       if (streamType === 'Remote') {
         videoElement.style.objectFit = 'cover';
         // For mobile browsers, ensure video is not muted for remote streams
         videoElement.muted = false;
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       if (videoElement.srcObject) {
         await videoElement.play();
         console.log(`${streamType} video playing successfully`);
@@ -90,7 +90,7 @@ const InterviewRoom = () => {
         return false;
       }
       console.error(`${streamType} video play error:`, error);
-      
+
       // Mobile fallback - try to play without waiting
       if (streamType === 'Remote' && videoElement.srcObject) {
         try {
@@ -104,17 +104,17 @@ const InterviewRoom = () => {
   };
   useEffect(() => {
     let isMounted = true;
-    
+
     const initializeInterview = async () => {
       if (!isMounted) return;
-      
+
       try {
         setLoading(true);
         setError(null);
-        
+
         await fetchInterviewDetails();
         await initializeSocketAndPeer();
-        
+
         if (isAdmin && isMounted) {
           const fallbackTimer = setTimeout(() => {
             if (isMounted) {
@@ -122,7 +122,7 @@ const InterviewRoom = () => {
               setAdminInRoom(true);
             }
           }, 5000);
-          
+
           return () => {
             clearTimeout(fallbackTimer);
           };
@@ -162,7 +162,7 @@ const InterviewRoom = () => {
         const timeoutId = setTimeout(() => {
           ensureVideoPlays(localVideoRef.current, 'Local');
         }, 100);
-        
+
         return () => clearTimeout(timeoutId);
       }
     }
@@ -184,7 +184,7 @@ const InterviewRoom = () => {
       const interval = setInterval(() => {
         checkInterviewTimeValidity(interview.scheduled_time);
       }, 30000); // Check every 30 seconds
-      
+
       return () => clearInterval(interval);
     }
   }, [interview?.scheduled_time, isStudent]);
@@ -231,7 +231,7 @@ const InterviewRoom = () => {
   useEffect(() => {
     if (call && remoteVideoRef.current) {
       const video = remoteVideoRef.current;
-      
+
       // Check if video has a stream but isn't playing
       const checkVideoState = () => {
         if (video.srcObject && video.paused) {
@@ -239,10 +239,10 @@ const InterviewRoom = () => {
           video.play().catch(e => console.error('Failed to play remote video:', e));
         }
       };
-      
+
       // Check every 2 seconds
       const interval = setInterval(checkVideoState, 2000);
-      
+
       return () => clearInterval(interval);
     }
   }, [call]);
@@ -257,7 +257,7 @@ const InterviewRoom = () => {
       const data = await response.json();
       if (response.ok && data.success) {
         setInterview(data.interview);
-        
+
         // Check interview time validity for students
         if (isStudent && data.interview?.scheduled_time) {
           checkInterviewTimeValidity(data.interview.scheduled_time);
@@ -277,31 +277,31 @@ const InterviewRoom = () => {
   const checkInterviewTimeValidity = (scheduledTime) => {
     const now = new Date();
     const interviewStart = new Date(scheduledTime);
-    
+
     const isValid = now >= interviewStart;
     setIsInterviewTimeValid(isValid);
-    
+
     if (!isValid) {
       const timeUntilValid = interviewStart.getTime() - now.getTime();
       const minutesUntil = Math.ceil(timeUntilValid / (1000 * 60));
       const hoursUntil = Math.floor(minutesUntil / 60);
       const remainingMinutes = minutesUntil % 60;
-      
+
       let timeString = '';
       if (hoursUntil > 0) {
         timeString = `${hoursUntil}h ${remainingMinutes}m`;
       } else {
         timeString = `${minutesUntil}m`;
       }
-      
+
       setTimeUntilInterview(timeString);
       setConnectionStatus(`Interview starts in ${timeString}`);
-      
+
       // Set up a timer to check again when it becomes valid
       const timeout = setTimeout(() => {
         checkInterviewTimeValidity(scheduledTime);
       }, Math.min(timeUntilValid, 60000)); // Check every minute or when valid
-      
+
       return () => clearTimeout(timeout);
     } else {
       setTimeUntilInterview('');
@@ -311,17 +311,17 @@ const InterviewRoom = () => {
   const initializeSocketAndPeer = async () => {
     try {
       setLoading(true);
-      
+
       if (socketRef.current && socketRef.current.connected) {
         console.log('Socket already connected, skipping initialization');
         setLoading(false);
         return;
       }
-      
+
       // Initialize Socket.IO
       const socketUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000');
       console.log('Connecting to socket URL:', socketUrl);
-      
+
       const socket = io(socketUrl, {
         transports: ['polling', 'websocket'], // polling first — avoids connection issues on load balancers
         reconnection: true,
@@ -338,7 +338,7 @@ const InterviewRoom = () => {
         console.log('Socket connected:', socket.id);
         console.log('User role:', role, 'Interview ID:', interviewId);
         setConnectionStatus('Connected to server');
-        
+
         if (isAdmin) {
           setAdminInRoom(true);
           setConnectionStatus('Ready to call student');
@@ -352,7 +352,7 @@ const InterviewRoom = () => {
           }
           console.log('Student connected - will auto-join when time is valid');
         }
-        
+
         // Request room status after connecting
         setTimeout(() => {
           socket.emit('interview:get-room-status', { interviewId });
@@ -368,7 +368,7 @@ const InterviewRoom = () => {
       socket.on('disconnect', (reason) => {
         console.log('Socket disconnected:', reason);
         setConnectionStatus('Disconnected');
-        
+
         if (reason === 'io server disconnect') {
           console.log('Server disconnected, attempting to reconnect...');
           socket.connect();
@@ -415,15 +415,15 @@ const InterviewRoom = () => {
         },
         debug: 2
       });
-      
+
       newPeer.on('open', (id) => {
         console.log('My peer ID:', id);
         setPeerId(id);
         setConnectionStatus(isAdmin ? 'Ready to call' : 'Ready');
-        
+
         let retryCount = 0;
         const maxRetries = 10;
-        
+
         const emitPeerInfo = () => {
           if (socket.connected) {
             console.log('Emitting interview:join with peer ID:', id, 'Role:', role, 'Interview ID:', interviewId);
@@ -432,7 +432,7 @@ const InterviewRoom = () => {
               peerId: id,
               role
             });
-            
+
             socket.emit('interview:signal-peer', {
               interviewId,
               peerId: id
@@ -447,7 +447,7 @@ const InterviewRoom = () => {
             setError('Failed to join interview room. Please refresh and try again.');
           }
         };
-        
+
         emitPeerInfo();
       });
 
@@ -485,11 +485,11 @@ const InterviewRoom = () => {
     socket.on('interview:peer-joined', (data) => {
       console.log('Peer joined:', data);
       const peerIdString = typeof data.peerId === 'string' ? data.peerId : String(data.peerId);
-      
+
       if (remotePeerId !== peerIdString) {
         console.log('Setting remotePeerId to:', peerIdString);
         setRemotePeerId(peerIdString);
-        
+
         if (data.role === 'admin') {
           setAdminInRoom(true);
           setConnectionStatus('Interviewer joined');
@@ -522,7 +522,7 @@ const InterviewRoom = () => {
     socket.on('interview:peer-left', (data) => {
       console.log('Peer left:', data);
       setRemotePeerId('');
-      
+
       if (data.role === 'admin') {
         setAdminInRoom(false);
         setConnectionStatus('Interviewer left');
@@ -530,7 +530,7 @@ const InterviewRoom = () => {
         setStudentInRoom(false);
         setConnectionStatus('Student left');
       }
-      
+
       if (callRef.current) {
         callRef.current.close();
         setCall(null);
@@ -555,7 +555,7 @@ const InterviewRoom = () => {
         });
       }
     });
-    
+
     // Listen for admin starting call — student shows incoming call UI
     socket.on('interview:call-started', (data) => {
       console.log('Interview call started event received:', data);
@@ -583,17 +583,17 @@ const InterviewRoom = () => {
     socket.on('interview:chat-message', (data) => {
       console.log('Received chat message from server:', data);
       setChatMessages(prev => {
-        const messageExists = prev.some(msg => 
-          msg.text === data.text && 
-          msg.timestamp === data.timestamp && 
+        const messageExists = prev.some(msg =>
+          msg.text === data.text &&
+          msg.timestamp === data.timestamp &&
           msg.sender === data.sender
         );
-        
+
         if (messageExists) {
           console.log('Duplicate message detected, skipping');
           return prev;
         }
-        
+
         return [...prev, data];
       });
     });
@@ -620,7 +620,7 @@ const InterviewRoom = () => {
   const answerCall = async (incoming) => {
     try {
       console.log('Student answering PeerJS call from admin');
-      
+
       // Reuse existing stream if already acquired (e.g. from joinInterviewRoom)
       if (!localStreamRef.current) {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -691,7 +691,7 @@ const InterviewRoom = () => {
       }
     }
   };
-  
+
   const answerIncomingCall = async () => {
     try {
       setIncomingCall(false);
@@ -735,20 +735,20 @@ const InterviewRoom = () => {
       }
 
       setConnectionStatus('Joining interview room...');
-      
+
       // Get media access to prepare for call
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       localStreamRef.current = stream;
-      
+
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
         ensureVideoPlays(localVideoRef.current, 'Local');
       }
-      
+
       // Mark student as in room
       setStudentInRoom(true);
       setConnectionStatus('Waiting for interviewer to start the call');
-      
+
       // Notify admin that student has joined the room
       if (socketRef.current && peerIdRef.current) {
         socketRef.current.emit('interview:student-joined-room', {
@@ -758,7 +758,7 @@ const InterviewRoom = () => {
         });
         // Do NOT emit student-ready here — student signals ready only when they click Answer
       }
-      
+
       console.log('Student joined interview room successfully and ready for calls');
     } catch (error) {
       console.error('Join room error:', error);
@@ -903,10 +903,10 @@ const InterviewRoom = () => {
 
   const sendChatMessage = () => {
     if (!chatInput.trim() || !socketRef.current) {
-      console.log('Cannot send message:', { 
-        hasInput: !!chatInput.trim(), 
+      console.log('Cannot send message:', {
+        hasInput: !!chatInput.trim(),
         hasSocket: !!socketRef.current,
-        socketConnected: socketRef.current?.connected 
+        socketConnected: socketRef.current?.connected
       });
       return;
     }
@@ -938,11 +938,11 @@ const InterviewRoom = () => {
         screenStreamRef.current.getTracks().forEach(track => track.stop());
         screenStreamRef.current = null;
       }
-      
+
       if (localStreamRef.current && localVideoRef.current) {
         localVideoRef.current.srcObject = localStreamRef.current;
       }
-      
+
       if (call && call.peerConnection && localStreamRef.current) {
         const sender = call.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
         const cameraTrack = localStreamRef.current.getVideoTracks()[0];
@@ -951,13 +951,13 @@ const InterviewRoom = () => {
           console.log('Reverted to camera video');
         }
       }
-      
+
       setIsScreenSharing(false);
     } else {
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         screenStreamRef.current = screenStream;
-        
+
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = screenStream;
         }
@@ -989,17 +989,17 @@ const InterviewRoom = () => {
       setCallState('ended');
       setConnectionStatus('Call ended');
     }
-    
+
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
       localStreamRef.current = null;
     }
-    
+
     if (screenStreamRef.current) {
       screenStreamRef.current.getTracks().forEach(track => track.stop());
       screenStreamRef.current = null;
     }
-    
+
     setIsScreenSharing(false);
   };
 
@@ -1051,17 +1051,17 @@ const InterviewRoom = () => {
     if (socketRef.current) {
       socketRef.current.disconnect();
     }
-    
+
     setCall(null);
     setCallState('idle');
     setIsCallInProgress(false);
-    
+
     if (isStudent) {
       const token = localStorage.getItem('studentAuthToken');
       apiFetch(`api/interviews/${interviewId}/leave`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
-      }).catch(() => {});
+      }).catch(() => { });
     }
   };
   if (loading) {
@@ -1083,25 +1083,25 @@ const InterviewRoom = () => {
   return (
     <div className="h-screen bg-gray-900 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 flex items-center justify-between bg-gray-800 border-b border-gray-700 flex-shrink-0">
-        <div>
-          <h1 className="text-white text-lg font-semibold">
+      <div className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-gray-800 border-b border-gray-700 flex-shrink-0 gap-3 sm:gap-0">
+        <div className="w-full sm:w-auto">
+          <h1 className="text-white text-base sm:text-lg font-semibold truncate">
             {interview.test_title || 'Interview'} • {interview.student_name}
           </h1>
-          <p className="text-sm text-gray-400">{connectionStatus}</p>
+          <p className="text-xs sm:text-sm text-gray-400 truncate">{connectionStatus}</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
           {isAdmin && (
             <button
               onClick={endInterview}
-              className="px-4 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors flex-shrink-0"
             >
               End Interview
             </button>
           )}
           <button
             onClick={leaveRoom}
-            className="px-4 py-2 text-sm rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700 transition-colors"
+            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700 transition-colors flex-shrink-0"
           >
             Leave
           </button>
@@ -1109,9 +1109,9 @@ const InterviewRoom = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Video Area */}
-        <div className="flex-1 flex flex-col p-6 space-y-4">
+        <div className="flex-1 flex flex-col p-3 sm:p-6 space-y-3 sm:space-y-4 min-w-0">
           {/* Main Video Area */}
           <div className="flex-1 rounded-xl bg-gray-800 overflow-hidden relative">
             {/* Remote Video (when in call) */}
@@ -1146,7 +1146,7 @@ const InterviewRoom = () => {
                 }}
               />
             )}
-            
+
             {/* Local Video Preview (when not in call) */}
             {!call && (
               <video
@@ -1157,7 +1157,7 @@ const InterviewRoom = () => {
                 className="w-full h-full object-cover"
               />
             )}
-            
+
             {/* Video Label */}
             <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-black/60 text-white text-sm">
               {call ? (isAdmin ? interview.student_name : 'Interviewer') : 'You (Preview)'}
@@ -1198,13 +1198,13 @@ const InterviewRoom = () => {
                   ) : (
                     <>
                       <h3 className="text-white text-xl font-semibold mb-4">
-                        {isStudent 
-                          ? 'Waiting for interviewer to start the call' 
+                        {isStudent
+                          ? 'Waiting for interviewer to start the call'
                           : 'Ready to start the interview'}
                       </h3>
                       <p className="text-gray-300 text-sm">
-                        {isAdmin 
-                          ? (studentInRoom ? 'Student is in the room' : 'Waiting for student to join...') 
+                        {isAdmin
+                          ? (studentInRoom ? 'Student is in the room' : 'Waiting for student to join...')
                           : (adminInRoom ? 'Interviewer is in the room' : 'Waiting for interviewer...')}
                       </p>
                     </>
@@ -1242,10 +1242,10 @@ const InterviewRoom = () => {
             )}
           </div>
           {/* Bottom Controls and Local Video */}
-          <div className="flex items-end space-x-4">
+          <div className="flex flex-col sm:flex-row items-center sm:items-end space-y-3 sm:space-y-0 sm:space-x-4">
             {/* Local Video (Picture-in-Picture when in call) */}
             {call && localStreamRef.current && (
-              <div className="w-64 h-36 rounded-lg bg-gray-800 overflow-hidden relative flex-shrink-0">
+              <div className="w-32 h-24 sm:w-64 sm:h-36 rounded-lg bg-gray-800 overflow-hidden relative flex-shrink-0 self-end sm:self-auto shadow-lg z-10 bottom-16 sm:bottom-0 absolute sm:relative right-4 sm:right-0">
                 <video
                   ref={localVideoPipRef}
                   autoPlay
@@ -1253,15 +1253,15 @@ const InterviewRoom = () => {
                   muted={true}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/60 text-white text-xs">
+                <div className="absolute bottom-1 sm:bottom-2 left-1 sm:left-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-black/60 text-white text-[10px] sm:text-xs">
                   You {isScreenSharing && '(Screen)'}
                 </div>
               </div>
             )}
 
             {/* Controls */}
-            <div className="flex-1 flex justify-center">
-              <div className="flex items-center space-x-4">
+            <div className="flex-1 flex justify-center w-full">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 sm:space-x-0">
                 {/* Call Button (Admin only) */}
                 {!call && isAdmin && (
                   <button
@@ -1271,10 +1271,10 @@ const InterviewRoom = () => {
                   >
                     <Phone size={20} />
                     <span>
-                      {isCallInProgress 
+                      {isCallInProgress
                         ? 'Calling...'
-                        : !studentInRoom 
-                          ? 'Waiting for student...' 
+                        : !studentInRoom
+                          ? 'Waiting for student...'
                           : 'Call Student'}
                     </span>
                   </button>
@@ -1312,42 +1312,39 @@ const InterviewRoom = () => {
                   <>
                     <button
                       onClick={toggleVideo}
-                      className={`p-3 rounded-full ${
-                        isVideoOn
+                      className={`p-3 rounded-full ${isVideoOn
                           ? 'bg-gray-700 hover:bg-gray-600'
                           : 'bg-red-600 hover:bg-red-700'
-                      } text-white`}
+                        } text-white`}
                     >
                       {isVideoOn ? <Video size={20} /> : <VideoOff size={20} />}
                     </button>
 
                     <button
                       onClick={toggleAudio}
-                      className={`p-3 rounded-full ${
-                        isAudioOn
+                      className={`p-3 rounded-full ${isAudioOn
                           ? 'bg-gray-700 hover:bg-gray-600'
                           : 'bg-red-600 hover:bg-red-700'
-                      } text-white`}
+                        } text-white`}
                     >
                       {isAudioOn ? <Mic size={20} /> : <MicOff size={20} />}
                     </button>
 
                     <button
                       onClick={toggleScreenShare}
-                      className={`p-3 rounded-full ${
-                        isScreenSharing
+                      className={`p-3 rounded-full ${isScreenSharing
                           ? 'bg-blue-600 hover:bg-blue-700'
                           : 'bg-gray-700 hover:bg-gray-600'
-                      } text-white`}
+                        } text-white`}
                     >
                       {isScreenSharing ? <MonitorOff size={20} /> : <Monitor size={20} />}
                     </button>
 
                     <button
                       onClick={endCall}
-                      className="p-3 rounded-full bg-red-600 hover:bg-red-700 text-white"
+                      className="p-2 sm:p-3 rounded-full bg-red-600 hover:bg-red-700 text-white"
                     >
-                      <PhoneOff size={20} />
+                      <PhoneOff size={18} className="sm:w-5 sm:h-5" />
                     </button>
                   </>
                 )}
@@ -1355,9 +1352,9 @@ const InterviewRoom = () => {
                 {/* Chat Toggle */}
                 <button
                   onClick={() => setShowChat(!showChat)}
-                  className="p-3 rounded-full bg-gray-700 hover:bg-gray-600 text-white"
+                  className={`p-2 sm:p-3 rounded-full ${showChat ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
                 >
-                  <MessageSquare size={20} />
+                  <MessageSquare size={18} className="sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
@@ -1365,7 +1362,7 @@ const InterviewRoom = () => {
         </div>
         {/* Chat Sidebar */}
         {showChat && (
-          <div className="w-80 border-l border-gray-700 bg-gray-800 flex flex-col">
+          <div className="absolute inset-0 sm:relative sm:inset-auto sm:w-80 h-full border-l border-gray-700 bg-gray-800 flex flex-col z-50">
             <div className="px-4 py-3 border-b border-gray-700 flex items-center space-x-2">
               <MessageSquare className="text-gray-400" size={18} />
               <span className="text-sm font-semibold text-white">Chat</span>
@@ -1376,7 +1373,7 @@ const InterviewRoom = () => {
                 ×
               </button>
             </div>
-            
+
             {/* Chat Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {chatMessages.length === 0 ? (
@@ -1387,18 +1384,16 @@ const InterviewRoom = () => {
                 chatMessages.map((msg, index) => (
                   <div
                     key={index}
-                    className={`flex flex-col ${
-                      (isAdmin && msg.sender === 'admin') || (isStudent && msg.sender === 'student')
+                    className={`flex flex-col ${(isAdmin && msg.sender === 'admin') || (isStudent && msg.sender === 'student')
                         ? 'items-end'
                         : 'items-start'
-                    }`}
+                      }`}
                   >
                     <div
-                      className={`max-w-[85%] rounded-lg px-3 py-2 ${
-                        (isAdmin && msg.sender === 'admin') || (isStudent && msg.sender === 'student')
+                      className={`max-w-[85%] rounded-lg px-3 py-2 ${(isAdmin && msg.sender === 'admin') || (isStudent && msg.sender === 'student')
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-700 text-white'
-                      }`}
+                        }`}
                     >
                       <p className="text-xs font-semibold mb-1 opacity-80">
                         {msg.senderName}

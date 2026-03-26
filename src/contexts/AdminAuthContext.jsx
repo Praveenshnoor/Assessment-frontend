@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const AdminAuthContext = createContext();
@@ -18,24 +18,27 @@ export const AdminAuthProvider = ({ children }) => {
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-  // Check if admin is authenticated on app load
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
+  const checkAuthStatus = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true);
+    }
 
-  const checkAuthStatus = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      
+
       if (!token) {
-        setLoading(false);
+        setAdmin(null);
+        setIsAuthenticated(false);
+        if (!silent) {
+          setLoading(false);
+        }
         return;
       }
 
       // Add retry logic for token validation
       let retries = 2;
       let response;
-      
+
       while (retries > 0) {
         try {
           response = await axios.post(
@@ -75,9 +78,52 @@ export const AdminAuthProvider = ({ children }) => {
       setAdmin(null);
       setIsAuthenticated(false);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  };
+  }, [API_BASE_URL]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('adminToken');
+    const adminUser = localStorage.getItem('adminUser');
+
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    if (adminUser) {
+      try {
+        const parsedAdmin = JSON.parse(adminUser);
+        setAdmin(parsedAdmin);
+        setIsAuthenticated(true);
+        setLoading(false);
+        checkAuthStatus({ silent: true });
+        return;
+      } catch (_error) {
+        localStorage.removeItem('adminUser');
+      }
+    }
+
+    checkAuthStatus();
+  }, [checkAuthStatus]);
+
+  const setAdminSession = useCallback((nextAdmin, token) => {
+    if (token) {
+      localStorage.setItem('adminToken', token);
+    }
+    if (nextAdmin) {
+      localStorage.setItem('adminUser', JSON.stringify(nextAdmin));
+      setAdmin(nextAdmin);
+      setIsAuthenticated(true);
+      return;
+    }
+
+    localStorage.removeItem('adminUser');
+    setAdmin(null);
+    setIsAuthenticated(false);
+  }, []);
 
   const login = async (email, password) => {
     try {
@@ -88,14 +134,14 @@ export const AdminAuthProvider = ({ children }) => {
 
       if (response.data.success) {
         const { token, admin } = response.data;
-        
+
         // Store token
         localStorage.setItem('adminToken', token);
-        
+
         // Update state
         setAdmin(admin);
         setIsAuthenticated(true);
-        
+
         return { success: true };
       } else {
         return { success: false, message: response.data.message };
@@ -112,7 +158,7 @@ export const AdminAuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      
+
       if (token) {
         // Call logout endpoint
         await axios.post(
@@ -131,8 +177,8 @@ export const AdminAuthProvider = ({ children }) => {
     } finally {
       // Clear local state and storage
       localStorage.removeItem('adminToken');
-      setAdmin(null);
-      setIsAuthenticated(false);
+      localStorage.removeItem('adminUser');
+      setAdminSession(null);
     }
   };
 
@@ -143,6 +189,7 @@ export const AdminAuthProvider = ({ children }) => {
     login,
     logout,
     checkAuthStatus,
+    setAdminSession,
   };
 
   return (
