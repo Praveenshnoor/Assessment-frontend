@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "build:prod": "vite build --mode production",
+    "build": "npm install --include=optional && vite build",
+    "build:prod": "npm install --include=optional && vite build --mode production",
     "build:analyze": "vite build --mode production && npx vite-bundle-visualizer",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -49,6 +49,7 @@
     "vite-plugin-compression": "^0.5.1"
   },
   "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.60.0",
     "@rollup/rollup-win32-x64-msvc": "4.60.0"
   }
 }
