@@ -75,7 +75,10 @@ const Login = () => {
     setApiError('');
     setSuccessMessage('');
 
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      submitLockRef.current = false;
+      return;
+    }
 
     setIsLoading(true);
 
@@ -84,48 +87,32 @@ const Login = () => {
         const adminResponse = await apiFetch('api/admin/login', {
           method: 'POST',
           skipGlobalErrorRedirect: true,
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: email.trim(), password }),
         });
-
         const adminData = await adminResponse.json();
-
         if (adminResponse.ok && adminData.success) {
           setAdminSession(adminData.admin, adminData.token);
           navigate('/admin/dashboard', { replace: true });
           return true;
         }
-
         return false;
       };
 
-      // For admin emails, try direct admin login first (more reliable)
-      if (email.includes('@admin') || email.includes('admin@') || email.toLowerCase().includes('admin')) {
-        try {
-          const adminLoginSuccess = await adminLogin();
-          if (adminLoginSuccess) {
-            return;
-          }
-        } catch (_adminError) {
-          // Continue to Firebase flow for student accounts or fallback admin auth.
-        }
+      // Step 1: Always try admin login first (admins use JWT/bcrypt, not Firebase)
+      try {
+        const adminLoginSuccess = await adminLogin();
+        if (adminLoginSuccess) return;
+      } catch (_adminError) {
+        // Not an admin or network error, continue to Firebase
       }
 
-      // Step 1: Try Firebase Authentication (for both admin and student)
+      // Step 2: Try Firebase Authentication (for students)
       try {
         const { auth, signInWithEmailAndPassword } = await import('../config/firebase');
-        const userCredential = await signInWithEmailAndPassword(
-          auth,
-          email.trim(),
-          password
-        );
-
-        // Get Firebase ID token
+        const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
         const idToken = await userCredential.user.getIdToken();
 
-        // Call backend to get user profile (admin or student)
         const response = await apiFetch('api/login', {
           method: 'POST',
           skipGlobalErrorRedirect: true,
@@ -141,19 +128,13 @@ const Login = () => {
           throw new Error(data.message || 'Authentication failed');
         }
 
-        // Extract user data, role, and JWT session token
         const { user, token, role } = data;
+        if (!user || !token || !role) throw new Error('Session data incomplete');
 
-        if (!user || !token || !role) {
-          throw new Error('Session data incomplete');
-        }
-
-        // Store JWT session token and redirect based on role
         if (role === 'admin') {
           setAdminSession(user, token);
           navigate('/admin/dashboard', { replace: true });
         } else {
-          // Ensure stale admin session data doesn't interfere with student routes.
           localStorage.removeItem('adminToken');
           localStorage.removeItem('adminUser');
           localStorage.setItem('studentAuthToken', token);
@@ -162,38 +143,11 @@ const Login = () => {
           localStorage.setItem('rollNumber', user.roll_number || '');
           localStorage.setItem('email', user.email || '');
           localStorage.setItem('institute', user.institute || '');
-          
-          navigate('/dashboard', {
-            replace: true,
-            state: {
-              studentId: user.id,
-              studentName: user.full_name
-            }
-          });
+          navigate('/dashboard', { replace: true, state: { studentId: user.id, studentName: user.full_name } });
         }
-        return; // Success, exit function
+        return;
 
       } catch (firebaseError) {
-        // If Firebase auth fails, try direct admin login (for admins not in Firebase)
-        if (firebaseError.code === 'auth/invalid-credential' || 
-            firebaseError.code === 'auth/user-not-found' ||
-            firebaseError.code === 'auth/wrong-password' ||
-            firebaseError.message?.includes('Failed to fetch dynamically imported module') ||
-            firebaseError.message?.includes('Loading chunk')) {
-          
-          // Try direct admin login with bcrypt
-          try {
-            const adminLoginSuccess = await adminLogin();
-            if (adminLoginSuccess) {
-              return;
-            }
-          } catch (_adminError) {
-            // Admin login also failed, throw original Firebase error
-            throw firebaseError;
-          }
-        }
-        
-        // If it's not an auth error, throw it
         throw firebaseError;
       }
 
@@ -363,6 +317,11 @@ const Login = () => {
                 {showPassword ? <EyeOff /> : <EyeOpen />}
               </button>
               {errors.password && <p className="text-xs text-shnoor-danger mt-1">{errors.password}</p>}
+              <div className="text-right mt-1">
+                <Link to="/forgot-password" className="text-xs text-shnoor-indigo hover:text-shnoor-navy transition-colors">
+                  Forgot password?
+                </Link>
+              </div>
             </div>
 
             <Button
