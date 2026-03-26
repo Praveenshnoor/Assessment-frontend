@@ -83,7 +83,7 @@ export default function MyApplications({ isEmbedded = false }) {
             } else {
                 setError(data.message || 'Failed to load applications');
             }
-        } catch (err) {
+        } catch {
             setError('Network error. Please check your connection.');
         } finally {
             setLoading(false);
@@ -105,12 +105,18 @@ export default function MyApplications({ isEmbedded = false }) {
                 }
             });
 
+            if (res.status === 401) {
+                localStorage.clear();
+                navigate('/login');
+                return;
+            }
+
             const data = await res.json();
             console.log('Tests response:', data);
 
             if (data.success) {
                 console.log('Setting tests:', data.tests);
-                setAppTests(prev => ({ ...prev, [applicationId]: data.tests }));
+                setAppTests(prev => ({ ...prev, [applicationId]: Array.isArray(data.tests) ? data.tests : [] }));
             } else {
                 console.error('Failed to fetch tests:', data.message);
             }

@@ -8,6 +8,7 @@ const StudentInterviews = () => {
   const navigate = useNavigate();
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [incomingBanner, setIncomingBanner] = useState(null); // { id, test_title, institute_name }
   const socketRef = useRef(null);
   const studentIdRef = useRef(null);
@@ -15,11 +16,17 @@ const StudentInterviews = () => {
   useEffect(() => {
     fetchInterviews();
     initializeSocket();
-
+    
+    // Set up periodic refresh to update time-based logic
+    const refreshInterval = setInterval(() => {
+      setInterviews(prev => [...prev]); // Force re-render to update time-based logic
+    }, 30000); // Check every 30 seconds
+    
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
+      clearInterval(refreshInterval);
     };
   }, []);
 
@@ -35,7 +42,7 @@ const StudentInterviews = () => {
 
     socket.on('connect', () => {
       console.log('Student dashboard socket connected');
-
+      
       // Join student-specific room if we have student ID
       if (studentIdRef.current) {
         socket.emit('student:join-dashboard', { studentId: studentIdRef.current });
@@ -46,13 +53,13 @@ const StudentInterviews = () => {
     socket.on('interview:incoming-call', (data) => {
       console.log('Incoming call notification:', data);
       const { interviewId, testTitle, instituteName } = data;
-
-      setIncomingBanner({
-        id: interviewId,
+      
+      setIncomingBanner({ 
+        id: interviewId, 
         test_title: testTitle,
         institute_name: instituteName
       });
-
+      
       // Play notification sound
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -74,7 +81,7 @@ const StudentInterviews = () => {
       } catch (e) {
         console.error('Audio error:', e);
       }
-
+      
       // Refresh interviews list
       fetchInterviews();
     });
@@ -86,30 +93,49 @@ const StudentInterviews = () => {
 
   const fetchInterviews = async () => {
     try {
+      setError('');
+      const token = localStorage.getItem('studentAuthToken');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
       const response = await apiFetch('api/interviews/my-interviews', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('studentAuthToken')}`
+          'Authorization': `Bearer ${token}`
         }
       });
 
+      if (response.status === 401) {
+        localStorage.clear();
+        navigate('/login');
+        return;
+      }
+
       const data = await response.json();
-      if (data.success) {
-        setInterviews(data.interviews);
+      if (!response.ok || !data.success) {
+        setInterviews([]);
+        setError(data.message || 'Failed to load interviews. Please try again.');
+        return;
+      }
 
-        // Store student ID for socket room joining
-        if (data.student_id && !studentIdRef.current) {
-          studentIdRef.current = data.student_id;
+      setInterviews(Array.isArray(data.interviews) ? data.interviews : []);
 
-          // Join student room if socket is already connected
-          if (socketRef.current && socketRef.current.connected) {
-            socketRef.current.emit('student:join-dashboard', {
-              studentId: studentIdRef.current
-            });
-          }
+      // Store student ID for socket room joining
+      if (data.student_id && !studentIdRef.current) {
+        studentIdRef.current = data.student_id;
+
+        // Join student room if socket is already connected
+        if (socketRef.current && socketRef.current.connected) {
+          socketRef.current.emit('student:join-dashboard', {
+            studentId: studentIdRef.current
+          });
         }
       }
     } catch (error) {
       console.error('Fetch interviews error:', error);
+      setInterviews([]);
+      setError('Unable to load interviews right now. Please check your connection and retry.');
     } finally {
       setLoading(false);
     }
@@ -120,16 +146,20 @@ const StudentInterviews = () => {
   };
 
   const formatDateTime = (datetime) => {
+    if (!datetime) {
+      return { date: 'Date TBD', time: 'Time TBD' };
+    }
+
     // Convert UTC datetime to IST for display
     const date = new Date(datetime);
-
+    
     // Format in IST timezone
     return {
-      date: date.toLocaleDateString('en-IN', {
+      date: date.toLocaleDateString('en-IN', { 
         timeZone: 'Asia/Kolkata',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
       }),
       time: date.toLocaleTimeString('en-IN', {
         timeZone: 'Asia/Kolkata',
@@ -150,13 +180,21 @@ const StudentInterviews = () => {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
+  // Student can join when scheduled time arrives OR when admin has started the call
   const canJoinInterview = (interview) => {
     if (!interview) return false;
+    
+    // If interview is in progress, always allow joining
     if (interview.status === 'in_progress') return true;
-    if (interview.status !== 'scheduled') return false;
-    const t = new Date(interview.scheduled_time).getTime();
-    if (Number.isNaN(t)) return false;
-    return Date.now() >= t;
+    
+    // If interview is scheduled, check if the scheduled time has arrived
+    if (interview.status === 'scheduled' && interview.scheduled_time) {
+      const now = new Date();
+      const interviewStart = new Date(interview.scheduled_time);
+      return now >= interviewStart;
+    }
+    
+    return false;
   };
 
   if (loading) {
@@ -167,7 +205,25 @@ const StudentInterviews = () => {
     );
   }
 
-  if (interviews.length === 0) {
+  if (error) {
+    return (
+      <div className="bg-shnoor-dangerLight border border-shnoor-dangerLight text-shnoor-danger rounded-2xl p-6 text-center">
+        <h3 className="text-lg font-bold mb-2">Unable to Load Interviews</h3>
+        <p className="text-sm mb-4">{error}</p>
+        <button
+          onClick={fetchInterviews}
+          className="px-4 py-2 bg-shnoor-danger text-white rounded-lg font-semibold hover:opacity-90 transition-opacity"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const upcomingInterviews = interviews.filter((interview) => interview.status === 'scheduled' || interview.status === 'in_progress');
+  const pastInterviews = interviews.filter((interview) => interview.status !== 'scheduled' && interview.status !== 'in_progress');
+
+  if (upcomingInterviews.length === 0 && pastInterviews.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border border-shnoor-light p-12 text-center">
         <Calendar className="mx-auto h-16 w-16 text-shnoor-mist mb-4" />
@@ -177,9 +233,6 @@ const StudentInterviews = () => {
     );
   }
 
-  const upcomingInterviews = interviews.filter(i => i.status === 'scheduled' || i.status === 'in_progress');
-  const pastInterviews = interviews.filter(i => i.status === 'completed');
-
   return (
     <div className="space-y-6">
       {incomingBanner && (
@@ -187,7 +240,7 @@ const StudentInterviews = () => {
           <div className="flex-1">
             <p className="text-sm font-bold text-emerald-800">📞 Incoming Interview Call</p>
             <p className="text-xs text-emerald-700/80 mt-1">
-              {incomingBanner.test_title || 'Interview'}
+              {incomingBanner.test_title || 'Interview'} 
               {incomingBanner.institute_name && ` • ${incomingBanner.institute_name}`}
             </p>
           </div>
@@ -241,7 +294,7 @@ const StudentInterviews = () => {
                           </span>
                         )}
                       </div>
-
+                      
                       <div className="space-y-2 text-sm text-shnoor-indigoMedium">
                         <p className="flex items-center">
                           <Calendar className="w-4 h-4 mr-2 text-shnoor-indigo" />
@@ -259,31 +312,62 @@ const StudentInterviews = () => {
                         )}
                       </div>
 
-                      {canJoin && (
+                      {interview.status === 'in_progress' && (
                         <div className="mt-3 flex items-center text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg">
                           <AlertCircle size={16} className="mr-2" />
-                          <span className="font-medium">You can join now!</span>
+                          <span className="font-medium">Your interviewer is calling. You can join now.</span>
                         </div>
                       )}
+                      {interview.status === 'scheduled' && (() => {
+                        if (!interview.scheduled_time) {
+                          return (
+                            <div className="mt-3 flex items-center text-sm text-shnoor-soft bg-shnoor-mist/20 px-3 py-2 rounded-lg">
+                              <AlertCircle size={16} className="mr-2" />
+                              <span className="font-medium">Interview schedule will be shared shortly.</span>
+                            </div>
+                          );
+                        }
+
+                        const now = new Date();
+                        const interviewStart = new Date(interview.scheduled_time);
+                        const canJoinNow = now >= interviewStart;
+                        
+                        if (canJoinNow) {
+                          return (
+                            <div className="mt-3 flex items-center text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
+                              <AlertCircle size={16} className="mr-2" />
+                              <span className="font-medium">Interview time has arrived. You can join the room now.</span>
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <div className="mt-3 flex items-center text-sm text-shnoor-soft bg-shnoor-mist/20 px-3 py-2 rounded-lg">
+                              <AlertCircle size={16} className="mr-2" />
+                              <span className="font-medium">Wait here. You can join when the scheduled time arrives.</span>
+                            </div>
+                          );
+                        }
+                      })()}
                     </div>
 
                     <div className="w-full sm:w-auto sm:ml-4 flex-shrink-0">
                       <button
                         onClick={() => canJoin && joinInterview(interview.id)}
                         disabled={!canJoin}
-                        className={`w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-colors shadow-[0_8px_30px_rgba(14,14,39,0.06)] ${canJoin
+                        className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-colors shadow-[0_8px_30px_rgba(14,14,39,0.06)] ${
+                          canJoin
                             ? 'bg-shnoor-indigo hover:bg-shnoor-navy text-white hover:shadow-[0_8px_30px_rgba(14,14,39,0.12)]'
                             : 'bg-shnoor-mist/40 text-shnoor-indigoMedium cursor-not-allowed'
-                          }`}
+                        }`}
                       >
                         <Video size={20} />
-                        <span>
-                          {interview.status === 'in_progress'
-                            ? 'Answer Live Call'
-                            : canJoin
-                              ? 'Join Call'
-                              : 'Not started'}
-                        </span>
+                        <span>{
+                          interview.status === 'in_progress' 
+                            ? 'Answer Live Call' 
+                            : canJoin 
+                              ? 'Join Interview Room'
+                              : 'Waiting for call'
+                        }</span>
                       </button>
                     </div>
                   </div>
@@ -297,7 +381,7 @@ const StudentInterviews = () => {
       {/* Past Interviews */}
       {pastInterviews.length > 0 && (
         <div>
-          <h2 className="text-2xl font-bold text-shnoor-navy mb-4">Past Interviews</h2>
+          <h2 className="text-2xl font-bold text-shnoor-navy mb-4">Interview History</h2>
           <div className="grid gap-4">
             {pastInterviews.map((interview) => {
               const { date, time } = formatDateTime(interview.scheduled_time);
@@ -314,10 +398,10 @@ const StudentInterviews = () => {
                           {interview.test_title}
                         </h3>
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(interview.status)}`}>
-                          COMPLETED
+                          {(interview.status || 'completed').replace('_', ' ').toUpperCase()}
                         </span>
                       </div>
-
+                      
                       <div className="space-y-2 text-sm text-shnoor-indigoMedium">
                         <p className="flex items-center">
                           <Calendar className="w-4 h-4 mr-2 text-shnoor-indigo" />

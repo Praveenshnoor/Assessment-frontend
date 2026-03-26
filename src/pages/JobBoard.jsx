@@ -5,18 +5,26 @@ import { LogOut, Briefcase, Building2, Clock, ArrowLeft, Loader2, RefreshCw, Sea
 import { apiFetch } from '../config/api';
 
 const fmtDeadline = (iso) =>
-    new Date(iso).toLocaleString('en-IN', {
+    iso
+        ? new Date(iso).toLocaleString('en-IN', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
-    });
+        })
+        : 'No deadline specified';
 
 const isExpiringSoon = (iso) => {
+    if (!iso) return false;
     const ms = new Date(iso) - new Date();
     return ms > 0 && ms < 3 * 24 * 60 * 60 * 1000; // within 3 days
+};
+
+const isRegistrationClosed = (iso) => {
+    if (!iso) return false;
+    return new Date(iso) < new Date();
 };
 
 
@@ -66,8 +74,8 @@ export default function JobBoard({ isEmbedded = false }) {
                 return;
             }
 
-            let allJobs = jobsData.data;
-            const allJobIds = new Set(jobsData.data.map(job => job.id));
+            let allJobs = Array.isArray(jobsData.data) ? [...jobsData.data] : [];
+            const allJobIds = new Set(allJobs.map(job => job.id));
 
             // Fetch enrolled jobs (if authenticated)
             const token = localStorage.getItem('studentAuthToken');
@@ -79,6 +87,12 @@ export default function JobBoard({ isEmbedded = false }) {
                         }
                     });
                     const enrolledData = await enrolledRes.json();
+
+                    if (enrolledRes.status === 401) {
+                        localStorage.clear();
+                        navigate('/login');
+                        return;
+                    }
 
                     if (enrolledData.success) {
                         const applicationsMap = new Map();
@@ -133,9 +147,9 @@ export default function JobBoard({ isEmbedded = false }) {
         const term = search.toLowerCase();
         setFiltered(
             jobs.filter(j =>
-                j.company_name.toLowerCase().includes(term) ||
-                j.job_role.toLowerCase().includes(term) ||
-                j.eligibility_criteria.toLowerCase().includes(term)
+                (j.company_name || '').toLowerCase().includes(term) ||
+                (j.job_role || '').toLowerCase().includes(term) ||
+                (j.eligibility_criteria || '').toLowerCase().includes(term)
             )
         );
     }, [search, jobs]);
@@ -309,114 +323,114 @@ export default function JobBoard({ isEmbedded = false }) {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                             {filtered.map(job => (
-                            <div
-                                key={job.id}
-                                className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border-2 border-shnoor-indigo overflow-hidden transition-all duration-200 hover:shadow-[0_8px_30px_rgba(14,14,39,0.08)]"
-                            >
-                                {/* Card header */}
-                                <div className="bg-shnoor-lavender/50 border-b border-shnoor-mist px-6 py-5">
-                                    <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-3">
-                                        <div className="w-full sm:w-auto">
-                                            <h2 className="text-xl font-bold text-shnoor-navy break-words">{job.job_role}</h2>
-                                            <p className="flex items-center space-x-1.5 mt-1 text-shnoor-indigoMedium text-sm flex-wrap">
-                                                <Building2 size={14} className="shrink-0" />
-                                                <span className="break-words">{job.company_name}</span>
-                                            </p>
-                                        </div>
-                                        <div className="flex flex-wrap gap-2 shrink-0 w-full sm:w-auto mt-1 sm:mt-0">
-                                            {!applications.has(job.id) && isExpiringSoon(job.registration_deadline) && (
-                                                <span className="bg-shnoor-warningLight text-shnoor-warning text-xs font-bold px-3 py-1 rounded-full border border-shnoor-warning whitespace-nowrap">
-                                                    ⚡ Closing Soon
-                                                </span>
-                                            )}
-                                            {!applications.has(job.id) && new Date(job.registration_deadline) < new Date() && (
-                                                <span className="bg-gray-100 text-gray-600 text-xs font-bold px-3 py-1 rounded-full border border-gray-300 whitespace-nowrap">
-                                                    Registration Closed
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Card body */}
-                                <div className="px-6 py-5 space-y-4">
-                                    <div>
-                                        <p className="text-xs font-bold uppercase tracking-wider text-shnoor-indigoMedium mb-1">Job Description</p>
-                                        <p className="text-sm text-shnoor-navy whitespace-pre-wrap leading-relaxed">{job.job_description}</p>
-                                    </div>
-
-                                    <div className="h-px bg-shnoor-mist" />
-
-                                    <div>
-                                        <p className="text-xs font-bold uppercase tracking-wider text-shnoor-indigoMedium mb-1">Eligibility Criteria</p>
-                                        <p className="text-sm text-shnoor-navy whitespace-pre-wrap leading-relaxed">{job.eligibility_criteria}</p>
-                                    </div>
-
-                                    {/* Deadline banner - only show if not enrolled */}
-                                    {!applications.has(job.id) && (
-                                        <div className={`flex items-center space-x-2 px-4 py-3 rounded-lg text-sm font-semibold
-                                            ${new Date(job.registration_deadline) < new Date()
-                                                ? 'bg-gray-100 border border-gray-300 text-gray-600'
-                                                : isExpiringSoon(job.registration_deadline)
-                                                ? 'bg-shnoor-warningLight border border-shnoor-warningLight text-shnoor-warning'
-                                                : 'bg-shnoor-lavender border border-shnoor-mist text-shnoor-indigo'
-                                            }`}>
-                                            <Clock size={16} />
-                                            <span>
-                                                {new Date(job.registration_deadline) < new Date()
-                                                    ? `Registration closed on ${fmtDeadline(job.registration_deadline)}`
-                                                    : `Deadline: ${fmtDeadline(job.registration_deadline)}`
-                                                }
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {/* Enroll / Status buttons */}
-                                    {applications.has(job.id) ? (
-                                        <div className="space-y-3">
-                                            <div className="w-full py-3 bg-shnoor-successLight border-2 border-shnoor-success text-shnoor-success rounded-lg font-bold text-center flex items-center justify-center space-x-2">
-                                                <CheckCircle size={20} />
-                                                <span>Enrolled</span>
+                                <div
+                                    key={job.id}
+                                    className="bg-white rounded-xl shadow-[0_8px_30px_rgba(14,14,39,0.06)] border-2 border-shnoor-indigo overflow-hidden transition-all duration-200 hover:shadow-[0_8px_30px_rgba(14,14,39,0.08)]"
+                                >
+                                    {/* Card header */}
+                                    <div className="bg-shnoor-lavender/50 border-b border-shnoor-mist px-6 py-5">
+                                        <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-3">
+                                            <div className="w-full sm:w-auto">
+                                                <h2 className="text-xl font-bold text-shnoor-navy break-words">{job.job_role}</h2>
+                                                <p className="flex items-center space-x-1.5 mt-1 text-shnoor-indigoMedium text-sm flex-wrap">
+                                                    <Building2 size={14} className="shrink-0" />
+                                                    <span className="break-words">{job.company_name}</span>
+                                                </p>
                                             </div>
+                                            <div className="flex flex-wrap gap-2 shrink-0 w-full sm:w-auto mt-1 sm:mt-0">
+                                                {!applications.has(job.id) && isExpiringSoon(job.registration_deadline) && (
+                                                    <span className="bg-shnoor-warningLight text-shnoor-warning text-xs font-bold px-3 py-1 rounded-full border border-shnoor-warning whitespace-nowrap">
+                                                        ⚡ Closing Soon
+                                                    </span>
+                                                )}
+                                                {!applications.has(job.id) && isRegistrationClosed(job.registration_deadline) && (
+                                                    <span className="bg-gray-100 text-gray-600 text-xs font-bold px-3 py-1 rounded-full border border-gray-300 whitespace-nowrap">
+                                                        Registration Closed
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                            {applications.get(job.id).total_tests > applications.get(job.id).completed_tests && (
+                                    {/* Card body */}
+                                    <div className="px-6 py-5 space-y-4">
+                                        <div>
+                                            <p className="text-xs font-bold uppercase tracking-wider text-shnoor-indigoMedium mb-1">Job Description</p>
+                                            <p className="text-sm text-shnoor-navy whitespace-pre-wrap leading-relaxed">{job.job_description}</p>
+                                        </div>
+
+                                        <div className="h-px bg-shnoor-mist" />
+
+                                        <div>
+                                            <p className="text-xs font-bold uppercase tracking-wider text-shnoor-indigoMedium mb-1">Eligibility Criteria</p>
+                                            <p className="text-sm text-shnoor-navy whitespace-pre-wrap leading-relaxed">{job.eligibility_criteria}</p>
+                                        </div>
+
+                                        {/* Deadline banner - only show if not enrolled */}
+                                        {!applications.has(job.id) && (
+                                            <div className={`flex items-center space-x-2 px-4 py-3 rounded-lg text-sm font-semibold
+                                            ${isRegistrationClosed(job.registration_deadline)
+                                                    ? 'bg-gray-100 border border-gray-300 text-gray-600'
+                                                    : isExpiringSoon(job.registration_deadline)
+                                                        ? 'bg-shnoor-warningLight border border-shnoor-warningLight text-shnoor-warning'
+                                                        : 'bg-shnoor-lavender border border-shnoor-mist text-shnoor-indigo'
+                                                }`}>
+                                                <Clock size={16} />
+                                                <span>
+                                                    {isRegistrationClosed(job.registration_deadline)
+                                                        ? `Registration closed on ${fmtDeadline(job.registration_deadline)}`
+                                                        : `Deadline: ${fmtDeadline(job.registration_deadline)}`
+                                                    }
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {/* Enroll / Status buttons */}
+                                        {applications.has(job.id) ? (
+                                            <div className="space-y-3">
+                                                <div className="w-full py-3 bg-shnoor-successLight border-2 border-shnoor-success text-shnoor-success rounded-lg font-bold text-center flex items-center justify-center space-x-2">
+                                                    <CheckCircle size={20} />
+                                                    <span>Enrolled</span>
+                                                </div>
+
+                                                {applications.get(job.id).total_tests > applications.get(job.id).completed_tests && (
+                                                    <button
+                                                        onClick={() => navigate('/student/my-applications')}
+                                                        className="w-full py-3 bg-shnoor-indigo hover:bg-[#4d4d9c] text-white rounded-lg font-bold transition-all shadow-sm"
+                                                    >
+                                                        Take Pending Tests ({applications.get(job.id).total_tests - applications.get(job.id).completed_tests} remaining)
+                                                    </button>
+                                                )}
+
                                                 <button
                                                     onClick={() => navigate('/student/my-applications')}
-                                                    className="w-full py-3 bg-shnoor-indigo hover:bg-[#4d4d9c] text-white rounded-lg font-bold transition-all shadow-sm"
+                                                    className="w-full py-3 border-2 border-shnoor-indigo text-shnoor-indigo rounded-lg font-bold hover:bg-shnoor-lavender transition-all"
                                                 >
-                                                    Take Pending Tests ({applications.get(job.id).total_tests - applications.get(job.id).completed_tests} remaining)
+                                                    View Application Details
                                                 </button>
-                                            )}
-
+                                            </div>
+                                        ) : (
                                             <button
-                                                onClick={() => navigate('/student/my-applications')}
-                                                className="w-full py-3 border-2 border-shnoor-indigo text-shnoor-indigo rounded-lg font-bold hover:bg-shnoor-lavender transition-all"
+                                                onClick={() => handleEnrollClick(job)}
+                                                disabled={enrollingJobs.has(job.id)}
+                                                className="flex items-center justify-center space-x-2 w-full py-3.5 bg-shnoor-indigo hover:bg-[#4d4d9c] text-white rounded-lg font-bold text-base transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
-                                                View Application Details
+                                                {enrollingJobs.has(job.id) ? (
+                                                    <>
+                                                        <Loader2 size={18} className="animate-spin" />
+                                                        <span>Enrolling...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <CheckCircle2 size={18} />
+                                                        <span>Enroll Now</span>
+                                                    </>
+                                                )}
                                             </button>
-                                        </div>
-                                    ) : (
-                                        <button
-                                            onClick={() => handleEnrollClick(job)}
-                                            disabled={enrollingJobs.has(job.id)}
-                                            className="flex items-center justify-center space-x-2 w-full py-3.5 bg-shnoor-indigo hover:bg-[#4d4d9c] text-white rounded-lg font-bold text-base transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {enrollingJobs.has(job.id) ? (
-                                                <>
-                                                    <Loader2 size={18} className="animate-spin" />
-                                                    <span>Enrolling...</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <CheckCircle2 size={18} />
-                                                    <span>Enroll Now</span>
-                                                </>
-                                            )}
-                                        </button>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
                         </div>
                     </div>
                 )}

@@ -1,10 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { splitVendorChunkPlugin } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), splitVendorChunkPlugin()],
+  plugins: [react()],
   server: {
     hmr: {
       overlay: false,
