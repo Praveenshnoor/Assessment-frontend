@@ -5,6 +5,7 @@ import ExamSearchFilter from '../components/ExamSearchFilter';
 import StudentInterviews from '../components/StudentInterviews';
 import JobBoard from './JobBoard';
 import MyApplications from './MyApplications';
+import StudentSupportChatbot from '../components/chatbot/StudentSupportChatbot';
 import { apiFetch } from '../config/api';
 import shnoorLogo from '../assets/shnoor-logo1.png';
 
@@ -682,6 +683,7 @@ const Dashboard = () => {
           </div>
         )}
       </main>
+      <StudentSupportChatbot />
     </div>
   );
 };
