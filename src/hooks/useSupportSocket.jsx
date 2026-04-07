@@ -162,7 +162,7 @@ export const useSupportSocket = ({
 
     // Create socket connection
     const socket = io(SOCKET_URL, {
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,

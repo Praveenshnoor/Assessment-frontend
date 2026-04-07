@@ -12,6 +12,7 @@ import remarkGfm from 'remark-gfm';
 import StudentMessageAlert from '../components/student/StudentMessageAlert';
 import StudentWarningsSidebar from '../components/student/StudentWarningsSidebar';
 import Editor from '@monaco-editor/react';
+import LazyMonacoEditor from '../components/LazyMonacoEditor';
 import {
   Clock,
   AlertTriangle,
@@ -23,18 +24,16 @@ import {
   XCircle
 } from 'lucide-react';
 import { apiFetch } from '../config/api';
-// import codeExecutionAPI from '../services/codeExecutionAPI';
+import codeExecutionAPI from '../services/codeExecutionAPI';
 
 const TestScreen = () => {
   const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
-  // DISABLED: Coding questions feature
-  // const [codingQuestions, setCodingQuestions] = useState([]);
+  const [codingQuestions, setCodingQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
-  // DISABLED: Coding console output
   const [codingConsoleOutput, setCodingConsoleOutput] = useState({}); // Store console output per question
   const [markedForReview, setMarkedForReview] = useState(new Set());
 
@@ -87,10 +86,8 @@ int main() {
   const [currentAIViolation, setCurrentAIViolation] = useState(null);
   const [aiViolationCount, setAiViolationCount] = useState(0);
 
-  // Calculate total questions (MCQ only)
-  const totalQuestions = questions.length;
-  // DISABLED: Coding questions
-  // const totalQuestions = questions.length + codingQuestions.length;
+  // Calculate total questions (MCQ + Coding)
+  const totalQuestions = questions.length + codingQuestions.length;
 
   // Helper function to format errors for display
   const formatErrorForDisplay = (error) => {
@@ -464,20 +461,16 @@ int main() {
         if (data.success && data.test && data.test.questions) {
           console.log('Test data received:', data.test);
           console.log('MCQ Questions:', data.test.questions.length);
-          // DISABLED: Coding questions
-          // console.log('Coding Questions:', data.test.codingQuestions);
+          console.log('Coding Questions:', data.test.codingQuestions);
 
           setQuestions(data.test.questions);
-          // DISABLED: Coding questions
-          // setCodingQuestions(data.test.codingQuestions || []);
+          setCodingQuestions(data.test.codingQuestions || []);
 
           // Store test details for instruction screen
           setTestDetails({
             title: data.test.title || 'Assessment',
             duration: data.test.duration || 60,
-            totalQuestions: data.test.questions.length
-            // DISABLED: Coding questions
-            // totalQuestions: data.test.questions.length + (data.test.codingQuestions?.length || 0)
+            totalQuestions: data.test.questions.length + (data.test.codingQuestions?.length || 0)
           });
 
           // Get test duration from backend
@@ -760,14 +753,11 @@ int main() {
     );
   }
 
-  // DISABLED: Coding questions - all questions are MCQ now
   // Determine if current question is MCQ or Coding
-  // const isCodingQuestion = currentQuestion >= questions.length;
-  // const currentQ = isCodingQuestion 
-  //   ? codingQuestions[currentQuestion - questions.length]
-  //   : questions[currentQuestion];
-  const isCodingQuestion = false;
-  const currentQ = questions[currentQuestion];
+  const isCodingQuestion = currentQuestion >= questions.length;
+  const currentQ = isCodingQuestion 
+    ? codingQuestions[currentQuestion - questions.length]
+    : questions[currentQuestion];
 
   return (
     <div className="h-screen bg-shnoor-lavender flex flex-col overflow-hidden">
@@ -844,7 +834,8 @@ int main() {
       </header>
       {/* Main Content */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Left Sidebar - Question Palette */}
+        {/* Left Sidebar - Question Palette (MCQ view only) */}
+        {!isCodingQuestion && (
         <aside className="w-full lg:w-64 bg-white border-b lg:border-b-0 lg:border-r border-shnoor-mist flex flex-col flex-shrink-0 order-2 lg:order-1 h-40 sm:h-48 lg:h-auto overflow-y-auto">
           <div className="p-4 border-b border-shnoor-mist">
             <h3 className="font-bold text-shnoor-navy mb-3">Question Palette</h3>
@@ -880,8 +871,8 @@ int main() {
               </>
             )}
 
-            {/* DISABLED: Coding Questions */}
-            {/* {codingQuestions.length > 0 && (
+            {/* Coding Questions */}
+            {codingQuestions.length > 0 && (
               <>
                 <p className="text-xs text-shnoor-indigoMedium mb-2 font-medium">Coding Questions</p>
                 <div className="grid grid-cols-5 gap-2">
@@ -910,7 +901,7 @@ int main() {
                   })}
                 </div>
               </>
-            )} */}
+            )} 
           </div>
 
           <div className="p-4 space-y-3">
@@ -958,6 +949,7 @@ int main() {
             </div>
           </div>
         </aside>
+        )}
 
         {/* Main Question Area - MCQ */}
         {!isCodingQuestion && (
@@ -1094,14 +1086,114 @@ int main() {
             </div>
           </main>
         )}
-        {/* Coding Question - Split Screen Layout */}
-        {/* Coding Question - Split Screen Layout */}
+        {/* Coding Question - 3-Column Layout */}
         {isCodingQuestion && (
-          <main className="flex-1 flex flex-col lg:flex-row bg-shnoor-lavender overflow-hidden coding-container">
-            {/* Left Panel - Problem Description */}
+          <main className="flex-1 flex flex-row bg-shnoor-lavender overflow-hidden coding-container">
+
+            {/* Column 1 - Question Palette */}
+            <aside className="w-52 bg-white border-r border-shnoor-mist flex flex-col flex-shrink-0 overflow-y-auto">
+              <div className="p-3 border-b border-shnoor-mist">
+                <h3 className="font-bold text-shnoor-navy mb-3 text-sm">Question Palette</h3>
+                {questions.length > 0 && (
+                  <>
+                    <p className="text-xs text-shnoor-indigoMedium mb-2 font-medium">MCQ Questions</p>
+                    <div className="grid grid-cols-4 gap-1.5 mb-4">
+                      {questions.map((_, index) => {
+                        const status = getQuestionStatus(index);
+                        let bgClass = 'bg-[#F8F8FB] text-shnoor-indigoMedium border border-shnoor-mist/50';
+                        if (status === 'answered') bgClass = 'bg-shnoor-success text-white border border-shnoor-success';
+                        else if (status === 'review') bgClass = 'bg-shnoor-warning text-white border border-shnoor-warning';
+                        else if (status === 'visited') bgClass = 'bg-shnoor-mist text-shnoor-navy border border-shnoor-mist shadow-inner';
+                        return (
+                          <button
+                            key={index}
+                            onClick={() => handleNavigate(index)}
+                            className={`w-9 h-9 rounded-lg font-bold text-xs transition-all shadow-sm hover:opacity-80 ${bgClass} ${currentQuestion === index ? 'ring-2 ring-shnoor-indigo ring-offset-1' : ''}`}
+                          >
+                            {index + 1}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+                {codingQuestions.length > 0 && (
+                  <>
+                    <p className="text-xs text-shnoor-indigoMedium mb-2 font-medium">Coding Questions</p>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {codingQuestions.map((_, index) => {
+                        const actualIndex = questions.length + index;
+                        const status = getQuestionStatus(actualIndex);
+                        let bgClass = 'bg-[#F8F8FB] text-shnoor-indigoMedium border border-shnoor-mist/50';
+                        if (status === 'answered') bgClass = 'bg-shnoor-indigo text-white border border-shnoor-indigo';
+                        else if (status === 'review') bgClass = 'bg-shnoor-warning text-white border border-shnoor-warning';
+                        else if (status === 'visited') bgClass = 'bg-shnoor-mist text-shnoor-navy border border-shnoor-mist shadow-inner';
+                        return (
+                          <button
+                            key={actualIndex}
+                            onClick={() => handleNavigate(actualIndex)}
+                            className={`w-9 h-9 rounded-lg font-semibold text-xs transition-all hover:opacity-80 ${bgClass} ${currentQuestion === actualIndex ? 'ring-2 ring-shnoor-indigo ring-offset-1' : ''}`}
+                          >
+                            C{index + 1}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+              {/* Summary */}
+              <div className="p-3 space-y-2">
+                <div className="text-xs font-bold text-shnoor-indigoMedium uppercase mb-1">Summary</div>
+                <div className="flex items-center space-x-2 text-xs">
+                  <div className="w-3 h-3 bg-shnoor-success rounded"></div>
+                  <span className="text-shnoor-navy">Answered ({Object.keys(answers).filter(k => !markedForReview.has(parseInt(k))).length})</span>
+                </div>
+                <div className="flex items-center space-x-2 text-xs">
+                  <div className="w-3 h-3 bg-shnoor-warning rounded"></div>
+                  <span className="text-shnoor-navy">Marked ({markedForReview.size})</span>
+                </div>
+                <div className="flex items-center space-x-2 text-xs">
+                  <div className="w-3 h-3 bg-shnoor-mist rounded border border-shnoor-mist"></div>
+                  <span className="text-shnoor-navy">Not Answered ({totalQuestions - Object.keys(answers).length})</span>
+                </div>
+              </div>
+
+              {/* Messages from Proctor - inline in left column */}
+              <div className="border-t border-shnoor-mist flex-1 flex flex-col min-h-0">
+                <div className="flex items-center space-x-2 px-3 py-2 border-b border-shnoor-mist bg-shnoor-lavender/30">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-shnoor-navy"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                  <span className="text-xs font-bold text-shnoor-navy">Messages from Proctor</span>
+                  {proctoringMessages.length > 0 && (
+                    <span className="ml-auto w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                      {proctoringMessages.length > 9 ? '9+' : proctoringMessages.length}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                  {proctoringMessages.length === 0 ? (
+                    <div className="py-4 text-center">
+                      <p className="text-xs text-gray-400">No messages yet</p>
+                      <p className="text-xs text-gray-300 mt-0.5">Proctor messages will appear here</p>
+                    </div>
+                  ) : (
+                    proctoringMessages.map((msg, idx) => (
+                      <div key={msg.id || idx} className="bg-blue-50 border border-blue-200 rounded-lg p-2">
+                        <p className="text-xs text-gray-700 leading-relaxed">{msg.message}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {new Date(msg.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </aside>
+
+            {/* Column 2 - Problem Description (resizable) */}
             <div
-              className="bg-white lg:border-r border-shnoor-light overflow-y-auto flex-shrink-0 shadow-lg w-full lg:w-auto"
-              style={{ width: window.innerWidth >= 1024 ? `${leftPanelWidth}%` : '100%', minWidth: window.innerWidth >= 1024 ? '20%' : 'auto', maxWidth: window.innerWidth >= 1024 ? '50%' : '100%' }}
+              className="bg-white border-r border-shnoor-light overflow-y-auto flex-shrink-0 shadow-lg"
+              style={{ width: `${leftPanelWidth}%`, minWidth: '18%', maxWidth: '45%' }}
             >
               <div className="p-6">
                 {/* Title */}
@@ -1163,7 +1255,7 @@ int main() {
               style={{ cursor: 'col-resize' }}
             />
 
-            {/* Right Panel - Code Editor */}
+            {/* Column 3 - Code Editor + Console */}
             <div className="flex-1 flex flex-col bg-shnoor-navy code-editor-container min-w-0 shadow-xl">
               {/* Editor Header */}
               <div className="flex items-center justify-between px-4 py-2 bg-shnoor-navy border-b border-shnoor-indigo/30">
@@ -1697,12 +1789,14 @@ int main() {
           </main>
         )}
 
-        {/* Warnings Sidebar */}
-        <StudentWarningsSidebar
-          messages={proctoringMessages}
-          isCollapsed={warningsSidebarCollapsed}
-          onToggleCollapse={() => setWarningsSidebarCollapsed(prev => !prev)}
-        />
+        {/* Warnings Sidebar - only in MCQ view */}
+        {!isCodingQuestion && (
+          <StudentWarningsSidebar
+            messages={proctoringMessages}
+            isCollapsed={warningsSidebarCollapsed}
+            onToggleCollapse={() => setWarningsSidebarCollapsed(prev => !prev)}
+          />
+        )}
       </div>
 
       {/* Force Termination Modal */}
